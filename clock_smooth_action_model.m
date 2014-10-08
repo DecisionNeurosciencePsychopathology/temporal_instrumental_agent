@@ -170,12 +170,12 @@ u_hist = zeros(length(rts),length(t));
 gaussmat = zeros(length(c),length(t));
 
 for j = 1:length(c)
-        gaussmat(j,:) = gaussmf(t,[sig c(j)]);
+    gaussmat(j,:) = gaussmf(t,[sig c(j)]);
 end
 
 temp_vh = zeros(length(c),length(t));
 temp_uh = zeros(length(c),length(t));
- 
+
 
 % t_max = zeros(1,length(rts));
 % runs = 100;
@@ -202,38 +202,38 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     vh(i+1,:) = vh(i,:) + alpha.*deltah(i,:);
     
     
-%     udeltah(i,:) = uh(i,:) - sampling_h(i,:);
+    %     udeltah(i,:) = uh(i,:) - sampling_h(i,:);
     %unlike value, uncertainty does not decay
     uh(i+1,:) = uh(i,:) - alpha.*eh(i,:);
     
     %clf
     
-%     for h = 1:length(c)
-%         %plot stimuli h separately at trial level, has rows for every
-%         %microstimulus and columns for time points within trial
-%         value_by_h(h,:) = vh(i,h)*gaussmf(t, [sig c(h)]);
-%         
-%     end
-
-    %make ones matrix for vectorization of gauss
-%     temp_vh = ones(1,500);
-%     temp_vh = vh(i,:)'*temp_vh;
-    temp_vh = repmat(vh(i,:),length(rts),1)';
+    %     for h = 1:length(c)
+    %         %plot stimuli h separately at trial level, has rows for every
+    %         %microstimulus and columns for time points within trial
+    %         value_by_h(h,:) = vh(i,h)*gaussmf(t, [sig c(h)]);
+    %
+    %     end
+    
+    
+    temp_vh = ones(1,500);
+    temp_vh = vh(i+1,:)'*temp_vh;
+    %temp_vh = repmat(vh(i,:),length(rts),1)';
     value_by_h=temp_vh.*gaussmat;
     
     
     % plot a sum of all stimulus value
     value_all = sum(value_by_h);
     
-%     for h = 1:length(c)
-%         %plot stimuli h separately
-%         u_by_h(h,:) = uh(i,h)*gaussmf(t, [sig c(h)]);
-%         
-%     end
+    %     for h = 1:length(c)
+    %         %plot stimuli h separately
+    %         u_by_h(h,:) = uh(i,h)*gaussmf(t, [sig c(h)]);
+    %
+    %     end
     
-%     temp_uh = ones(1,500);
-%     temp_uh = uh(i,:)'*temp_uh;
-      temp_uh = repmat(uh(i,:),length(rts),1)';
+    temp_uh = ones(1,500);
+    temp_uh = uh(i+1,:)'*temp_uh;
+    %temp_uh = repmat(uh(i,:),length(rts),1)';
     u_by_h=temp_uh.*gaussmat;
     
     % plot a sum of uncertainty over all microstimuli
@@ -281,9 +281,9 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     % find the RT corresponding to exploitative choice (choose randomly if
     % value unknown)
     if sum(value_all) == 0
-%         rt_exploit = ceil(rand(1)*trials); %Changed!!! from 5000 previously
+        %         rt_exploit = ceil(rand(1)*trials); %Changed!!! from 5000 previously
         rt_exploit = ceil(.5*trials); %Changed!!! from 5000 previously
-
+        
     else
         rt_exploit = max(round(find(value_all==max(value_all))));
     end
@@ -295,21 +295,21 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     % decreases)
     u = mean(u_all);
     if u == 0
-%         rt_explore = ceil(rand(1)*trials); %Changed!!! from 5000 previously
+        %         rt_explore = ceil(rand(1)*trials); %Changed!!! from 5000 previously
         rt_explore = ceil(.5*trials); %Changed!!! from 5000 previously
-
+        
     else
         rt_explore = max(round(find(u_all==max(u_all))));
     end
     
     % epsilon*u is the influence of uncertainty on choice
     % since u tends to be negative, epsilon has to bring it to a sane range
-    %  epsilon/u.^2 is our weight; 
+    %  epsilon/u.^2 is our weight;
     u_weight = epsilon./(u^2+.001);
     if i<trials
-    rts(i+1)= round(wmean([rt_exploit rt_explore],[1 u_weight],2)); 
+        rts(i+1)= round(wmean([rt_exploit rt_explore],[1 u_weight],2));
     end
-        
+    
     %% also try logistic between max(value) and max(uncertainty)
     
     if trial_plots == 1
@@ -324,8 +324,8 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
         plot(t,value_by_h);
         ylabel('temporal basis function')
         %title(sprintf('trial # = %i', h)); %
-%         xlabel('time(ms)')
-%         ylabel('reward value')
+        %         xlabel('time(ms)')
+        %         ylabel('reward value')
         subplot(5,2,4)
         plot(t, u_all, 'r');
         xlabel('time(ms)')
@@ -346,14 +346,14 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
         subplot(5,2,9)
         barh(u) %, axis([0 1000 0 2]);
         xlabel('mean uncertainty')
-%         pause(0.1);
+        %         pause(0.1);
         subplot(5,2,10)
         plot(1:500,rts, 'k');
-        ylabel('rt by trial') 
+        ylabel('rt by trial')
     end
-%     disp([i rts(i) rew(i) sum(value_all)])
+    %     disp([i rts(i) rew(i) sum(value_all)])
 end
-    cost = -sum(rew);
+cost = -sum(rew);
 
 %     cond_matrix(j,:) = rts;
 % end
