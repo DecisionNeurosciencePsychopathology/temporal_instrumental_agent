@@ -6,12 +6,14 @@ rts = 1:samples;
 rts_real = rts.*(5000./samples);
 b.iev_rew = zeros(1,length(rts));
 b.dev_rew = zeros(1,length(rts));
-for cond = [56 78]
+for cond = {'DEV' 'IEV', 'QUADUP'}
     for i = 1:length(rts)
-        if cond == 78
+        if strcmpi(cond, 'IEV')
             b.iev_rew(i) = RewFunction(rts_real(i),cond);
-        elseif cond == 56
+        elseif strcmpi(cond, 'DEV')
             b.dev_rew(i) = RewFunction(rts_real(i),cond);
+        elseif strcmpi(cond, 'QUADUP')
+            b.quadup_rew(i) = RewFunction(rts_real(i),cond);
         end
     end
 end

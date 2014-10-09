@@ -51,7 +51,7 @@ lambda = .99;
 % rt = 1:5000;         %Any temporal point in the time series (excluding zero)
 
 %Initialize condition 12 = CEV; 34 = CEVR; 56 = DEV; 78 = IEV
-cond = 78;
+cond = 'IEV';
 
 %get a vector of rts for each trial
 % rts = rand(1,1000)*5000;

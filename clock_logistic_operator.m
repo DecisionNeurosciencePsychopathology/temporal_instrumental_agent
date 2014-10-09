@@ -13,8 +13,8 @@ function [cost,constr,value_all,value_hist] = clock_logistic_operator(params)
 if (~exist('b', 'var')), load b; end;
 
 number_of_stimuli = 12;
-trial_plots = 0;
-cond = 56;
+trial_plots = 1;
+cond = 'QUADUP';
 %
 % if nargin<2
 %     number_of_stimuli = 12;
@@ -25,16 +25,15 @@ cond = 56;
 %     trial_plots = 0;
 % end
 
-%Initialize condition 12 = CEV; 34 = CEVR; 56 = DEV; 78 = IEV
-% cond = 56;
-
 constr = [];
-if cond == 78
+if strcmpi(cond, 'IEV')
     r = b.iev_rew;
     %rts = pseudor_iev_rts;
-elseif cond == 56
+elseif strcmpi(cond, 'DEV')
     %     r = fliplr(b.iev_rew);
     r = b.dev_rew;
+elseif strcmpi(cond, 'QUADUP')
+    r = b.quadup_rew;
 end
 
 ntrials = 100;          %number of trials in a run

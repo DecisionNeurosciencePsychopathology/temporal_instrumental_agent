@@ -15,7 +15,7 @@ load b;
 
 number_of_stimuli = 12;
 trial_plots = 1;
-cond = 78;
+cond = 'IEV';
 %
 % if nargin<2
 %     number_of_stimuli = 12;
@@ -26,12 +26,12 @@ cond = 78;
 %     trial_plots = 0;
 % end
 constr = [];
-if cond == 78
+if strcmpi(cond, 'IEV')
     r = b.iev_rew;
     %rts = pseudor_iev_rts;
-elseif cond == 56
-    r = fliplr(b.iev_rew);
-    %r = b.dev_rew;
+elseif strcmpi(cond 'DEV')
+    %r = fliplr(b.iev_rew);
+    r = b.dev_rew;
 end
 trials = length(r);
 %Initialize condition 12 = CEV; 34 = CEVR; 56 = DEV; 78 = IEV
