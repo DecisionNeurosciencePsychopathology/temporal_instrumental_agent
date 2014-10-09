@@ -10,11 +10,11 @@
 % function [cost,constr, value_all] = clock_smooth_action_model(...
 %     params, cond, number_of_stimuli, trial_plots)
 function [cost,constr,value_all,value_hist] = clock_logistic_operator(params)
-load b;
+if (~exist('b', 'var')), load b; end;
 
 number_of_stimuli = 12;
-trial_plots = 1;
-cond = 78;
+trial_plots = 0;
+cond = 56;
 %
 % if nargin<2
 %     number_of_stimuli = 12;
@@ -24,6 +24,10 @@ cond = 78;
 %     number_of_stimuli = 12;
 %     trial_plots = 0;
 % end
+
+%Initialize condition 12 = CEV; 34 = CEVR; 56 = DEV; 78 = IEV
+% cond = 56;
+
 constr = [];
 if cond == 78
     r = b.iev_rew;
@@ -32,36 +36,25 @@ elseif cond == 56
     %     r = fliplr(b.iev_rew);
     r = b.dev_rew;
 end
-trials = length(r);
-%Initialize condition 12 = CEV; 34 = CEVR; 56 = DEV; 78 = IEV
-% cond = 56;
 
-
+ntrials = 100;          %number of trials in a run
+ntimesteps = length(r); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
 
 %scatter(b.rts, b.iev_rew)
 %scatter(b.rts, b.dev_rew)
 
-
-
-% trial_plots = 1;
-
 %--program start
 
-%Initialize time scale and allocate for memory
-%t=0:5000;
-%t=0:trials;
-t=1:trials; %<-changed this on 10/2/14
-%y=zeros(4,length(t));
-%value_by_h = zeros(4,5001);
-%value_all = zeros(1,5001);
+%Initialize time step vector and allocate for memory
+t=1:ntimesteps;
 
 %Selected time points
-% c = [0 1250 2500 3750 5000];
 step_num = number_of_stimuli - 1;
-% step = (length(t)-1)/step_num;
-% c = 0:step:length(t)-1;
-step = (length(t)-1)/step_num;
-c = -step:step:length(t)+step;
+% step = (ntimesteps-1)/step_num;
+% c = 0:step:ntimesteps-1;
+step = (ntimesteps-1)/step_num;
+c = -step:step:ntimesteps+step;
+nbasis=length(c);
 % c = [0 1250 2500 3750 5000];
 
 
@@ -89,9 +82,8 @@ c = -step:step:length(t)+step;
 alpha = params(1);
 lambda = params(2);
 epsilon = params(3);
-% sig hard coded for now
-%sig = 500;
-sig = (250.*length(r))./5000;
+% sigma of Gaussian hard coded for now
+sig = (250.*ntimesteps)./5000;
 
 
 % % decay for values of stimuli h
@@ -103,88 +95,57 @@ sig = (250.*length(r))./5000;
 % rts = rand(1,1000)*5000;
 
 %% initialize RTs as a vector of zeros with a random initial RT;
-rts = zeros(1,trials);
+rts = zeros(1,ntrials);
 %rts(1) = rand(1)*5000;
 
 %Have initial rts by random
-%rts(1) = ceil(rand(1)*trials); %Changed!!! from 5000 previously
+%rts(1) = ceil(rand(1)*ntrials); %Changed!!! from 5000 previously
 
 %Have initial rts be constant
-rts(1) = ceil(.5*trials);
-
-%plot (1:100,rts)
+rts(1) = ceil(.5*ntrials);
 
 %get a vector of rewards for trial
 %r = rand(1,100);
-% r = zeros(1,length(rts));
-% for i = 1:length(rts)
+% r = zeros(1,ntrials);
+% for i = 1:ntrials
 %     r(i) = RewFunction(rts(i),cond);
 % end
 
 %Load in pseudo-random reward matrix
-%pseudorand_rew_generator(trials,cond);
+%pseudorand_rew_generator(ntrials,cond);
 
-% t = time step, in ms
 % i = trial
+% t = time step within trial, in centiseconds (1-500, representing 0-5 seconds)
 
 % get a trial loop going
-%initialize values
-vh(1,:) = zeros(1,length(c));
-
-% deltah -- prediction error assigned to each microstimulus
-deltah = zeros(length(rts),length(c));
-
-% rh -- reward assigned to each microstimulus
-rh = zeros(length(rts),length(c));
-
-% eh - eligibility traces for each microstimulus in relation to RT (US)
-eh = zeros(length(rts),length(c));
-
-%value by microstimulus (rows for every microstimulus and columns for time
-%points within trial)
-value_by_h = zeros(length(c),length(t));
-
-% value_hist - history of value by trial
-value_hist = zeros(length(rts),length(t));
-
-% rew -- actual reward for the trial
-rew = zeros(1, length(r));
-
-%%
-%uh -- uncertainty at each microstimulus
-uh = zeros(length(rts),length(c));
-
-%u_deltah -- uncertainty prediction error for each microstumulus (hour)
-udeltah = zeros(length(rts),length(c));
-
-% sampling_h -- the amount of sampling assigned to each microstimulus at
-% each trial
-sampling_h = zeros(length(rts),length(c));
-
-%uncertainty by microstimulus (rows for every microstimulus and columns for time
-%points within trial)
-u_by_h = zeros(length(c),length(t));
-
-% u_hist - history of uncertainty by trial
-u_hist = zeros(length(rts),length(t));
+vh =            zeros(ntrials, nbasis);     % initialize basis height values
+deltah =        zeros(ntrials, nbasis);     % prediction error assigned to each microstimulus
+rh =            zeros(ntrials, nbasis);     % reward assigned to each microstimulus
+eh =            zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
+value_by_h =    zeros(nbasis, ntimesteps);   % value by microstimulus (rows for every microstimulus and columns for time points within trial)
+value_hist =    zeros(ntrials, ntimesteps); % history of value by trial
+rew =           zeros(1, ntrials);          % actual reward for each trial
+uh =            zeros(ntrials, nbasis);     % uncertainty at each microstimulus
+udeltah =       zeros(ntrials, nbasis);     % uncertainty prediction error for each microstumulus (hour)
+sampling_h =    zeros(ntrials, nbasis);     % the amount of sampling assigned to each microstimulus at each trial
+u_by_h =        zeros(nbasis, ntimesteps);   % uncertainty by microstimulus (rows for every microstimulus and columns for time points within trial)
+u_hist =        zeros(ntrials,ntimesteps);  % history of uncertainty by trial
 
 %contruct gaussian matrix
-gaussmat = zeros(length(c),length(t));
+gaussmat = zeros(nbasis,ntimesteps);
 
-for j = 1:length(c)
+for j = 1:nbasis
     gaussmat(j,:) = gaussmf(t,[sig c(j)]);
 end
 
-temp_vh = zeros(length(c),length(t));
-temp_uh = zeros(length(c),length(t));
+temp_vh = zeros(nbasis,ntimesteps);
+temp_uh = zeros(nbasis,ntimesteps);
 
 
-% t_max = zeros(1,length(rts));
-% runs = 100;
+% t_max = zeros(1,ntrials);
 
-%Set up to run multiple runs for multiple trials
-% for j = 1:runs
-for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
+%Set up to run multiple runs for multiple ntrials
+for i = 1:ntrials
     %         disp(i)
     % get eligibility traces for each stimulus (h)
     % let's assume eligibility decays in inverse proporation to time
@@ -203,14 +164,13 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     deltah(i,:) = rh(i,:) - vh(i,:);
     vh(i+1,:) = vh(i,:) + alpha.*deltah(i,:);
     
-    
     %     udeltah(i,:) = uh(i,:) - sampling_h(i,:);
     %unlike value, uncertainty does not decay
     uh(i+1,:) = uh(i,:) - .01.*eh(i,:);
     
     %clf
     
-    %     for h = 1:length(c)
+    %     for h = 1:nbasis
     %         %plot stimuli h separately at trial level, has rows for every
     %         %microstimulus and columns for time points within trial
     %         value_by_h(h,:) = vh(i,h)*gaussmf(t, [sig c(h)]);
@@ -220,14 +180,14 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     
     temp_vh = ones(1,500);
     temp_vh = vh(i+1,:)'*temp_vh;
-    %temp_vh = repmat(vh(i,:),length(rts),1)';
+    %temp_vh = repmat(vh(i,:),ntrials,1)';
     value_by_h=temp_vh.*gaussmat;
     
     
     % plot a sum of all stimulus value
     value_all = sum(value_by_h);
     
-    %     for h = 1:length(c)
+    %     for h = 1:nbasis
     %         %plot stimuli h separately
     %         u_by_h(h,:) = uh(i,h)*gaussmf(t, [sig c(h)]);
     %
@@ -235,7 +195,7 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     
     temp_uh = ones(1,500);
     temp_uh = uh(i+1,:)'*temp_uh;
-    %temp_uh = repmat(uh(i,:),length(rts),1)';
+    %temp_uh = repmat(uh(i,:),ntrials,1)';
     u_by_h=temp_uh.*gaussmat;
     
     % plot a sum of uncertainty over all microstimuli
@@ -247,7 +207,7 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     
     % plot the location of the max(value)
     %     if max(value_all) == 0
-    %         t_max(i) = (length(t)-1)./2;
+    %         t_max(i) = (ntimesteps-1)./2;
     %         else
     %         t_max(i) = find(value_all == max(value_all));
     %     end
@@ -271,39 +231,35 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
     %%
     % Now the actual choice rule
     %     if sum(value_all) == 0
-    %         p_choice = (1./length(t-1)).*ones(1,length(t));
+    %         p_choice = (1./length(t-1)).*ones(1,ntimesteps);
     %     else
     %         p_choice = value_all./norm(value_all,1);
     %
     %     end
-    %     rts(i+1) = round(randsample(length(t),1,true,p_choice));
+    %     rts(i+1) = round(randsample(ntimesteps,1,true,p_choice));
     %
     
     %% CHOICE RULE
-    % find the RT corresponding to exploitative choice (choose randomly if
-    % value unknown)
+    % find the RT corresponding to exploitative choice (choose randomly if value unknown)
     % NB: we added just a little bit of noise
     if sum(value_all) == 0
-        %         rt_exploit = ceil(rand(1)*trials); %Changed!!! from 5000 previously
-        rt_exploit = ceil(.5*trials); %Changed!!! from 5000 previously
-        
+        %rt_exploit = ceil(rand(1)*ntrials); %random number within space
+        rt_exploit = ceil(.5*ntrials); %default to mid-point of time domain
     else
         %rt_exploit = max(round(find(value_all==max(value_all))));
         rt_exploit = max(round(find(value_all==max(value_all(20:500)))))-5+round(rand(1).*10);
-        if rt_exploit>500
+        if rt_exploit > 500
             rt_exploit = 500;
         end
     end
     
-    % find the RT corresponding to uncertainty-driven exploration (try
-    % random exploration if uncertainty is uniform)
+    % find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
     
-    % u -- total amount of uncertainty on this trial (starts at 0 and
-    % decreases)
+    % u -- total amount of uncertainty on this trial (starts at 0 and decreases)
     u = mean(u_all);
     if u == 0
-        %         rt_explore = ceil(rand(1)*trials); %Changed!!! from 5000 previously
-        rt_explore = ceil(.5*trials); %Changed!!! from 5000 previously
+        %rt_explore = ceil(rand(1)*ntrials); %Changed!!! from 5000 previously
+        rt_explore = ceil(.5*ntrials); %Changed!!! from 5000 previously
         
     else
         %rt_explore = max(round(find(u_all==max(u_all))));
@@ -311,82 +267,59 @@ for i = 1:length(rts) %-1 %-1 % added -1 here!!!!!
         
     end
     
-    % epsilon*u is the influence of uncertainty on choice
-    % since u tends to be negative, epsilon has to bring it to a sane range
-    %  epsilon/u.^2 is our weight;
-    %     u_weight = epsilon./(u^2+.001);
-    %%
-%         u=-.1;
-%         epsilons = -100:1:100;
-%         for ct = 1:length(epsilons)
-%             epsilon = epsilons(ct);
-%         sigmoid(ct) = 1./(1+exp((u.*epsilon)));
-%         end
-%         clf;
-%         plot(epsilons,sigmoid);
-%     
-
-explore = 1+u.*epsilon;
-% sigmoid = 1./(1+exp(-(cert+epsilon)));
+    discrim = 100; %need to increase steepness of logistic given the tiny values we have here. Could free later
+    sigmoid = 1./(1+exp(-discrim*(u - epsilon))); %Rasch model with epsilon as difficulty (location) parameter
     
-%     explore = round(shift_to_exploit);
-    
-    
-    
-    if i<trials
-        %rts(i+1)= round(wmean([rt_exploit rt_explore],[1 u_weight],2));
-        if explore>.5
+    %hard classification of exploration for now at 0.5
+    if i < ntrials %do not populate rt on final trial
+        if sigmoid > 0.5
             rts(i+1) = rt_explore;
         else
             rts(i+1) = rt_exploit;
         end
     end
     
-    %% also try logistic between max(value) and max(uncertainty)
-    
     if trial_plots == 1
         figure(1); clf;
-        subplot(6,2,1)
+        subplot(5,2,1)
         %plot(t,value_all);
-        scatter(rts(1:trials),rew);axis([1 500 1 350]);
-        subplot(6,2,2)
+        scatter(rts(1:i),rew(1:i)); axis([1 500 0 350]);
+        subplot(5,2,2)
         plot(t,value_all);
         ylabel('value')
-        subplot(6,2,3)
+        subplot(5,2,3)
         plot(t,value_by_h);
         ylabel('temporal basis function')
         %title(sprintf('trial # = %i', h)); %
         %         xlabel('time(ms)')
         %         ylabel('reward value')
-        subplot(6,2,4)
+        subplot(5,2,4)
         plot(t, u_all, 'r');
-        xlabel('time(ms)')
+        xlabel('time (centiseconds)')
         ylabel('uncertainty')
-        subplot(6,2,5)
-        barh(explore);
+        
+        subplot(5,2,5)
+        barh(sigmoid);
         xlabel('explore or not'); axis([-.1 1.1 0 2]);
-        subplot(6,2,6)
+        subplot(5,2,6)
         barh(alpha), axis([0 .2 0 2]);
         xlabel('learning rate')
-        subplot(6,2,7)
+        subplot(5,2,7)
         barh(lambda), axis([0.9 1 0 2]);
         xlabel('decay')
-        subplot(6,2,8)
-        barh(epsilon), axis([0 100 0 2]);
+        subplot(5,2,8)
+        barh(epsilon), axis([-0.5 0 0 2]);
         xlabel('strategic exploration')
         
-        subplot(6,2,9)
+        subplot(5,2,9)
         barh(u) %, axis([0 1000 0 2]);
         xlabel('mean uncertainty')
         %         pause(0.1);
-        subplot(6,2,10)
-        plot(1:500,rts, 'k');
+        subplot(5,2,10)
+        plot(1:ntrials,rts, 'k');
         ylabel('rt by trial')
         
-        subplot(6,2,11)
-        barh(u), axis([-10 0 0 2]);
-        xlabel('mean uncertainty')
-        
+        drawnow update;
     end
     %     disp([i rts(i) rew(i) sum(value_all)])
 end
@@ -424,4 +357,17 @@ cost = -sum(rew);
 %     deltaht(i,:) = rt(i)./tau_h(i,:);
 % end
 
-%--end of program
+%%leftovers
+
+% epsilon*u is the influence of uncertainty on choice
+% since u tends to be negative, epsilon has to bring it to a sane range
+%  epsilon/u.^2 is our weight;
+%     u_weight = epsilon./(u^2+.001);
+%         u=-.1;
+%         epsilons = -100:1:100;
+%         for ct = 1:length(epsilons)
+%             epsilon = epsilons(ct);
+%         sigmoid(ct) = 1./(1+exp((u.*epsilon)));
+%         end
+%         clf;
+%         plot(epsilons,sigmoid);

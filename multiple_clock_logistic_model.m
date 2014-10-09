@@ -18,17 +18,20 @@ tic
 % alpha_1=fittedparameters_1(1); lambda_1=fittedparameters_1(2); epsilon_1=fittedparameters_1(3);
 % [cost_1, constr,value_all_1,value_hist_1]=clock_smooth_action_model(fittedparameters_1);
 
-[fittedparameters_1,options]=simps('clock_logistic_operator',[0.01 0.9877 10],[1 2 3],[options],[0.001 0.9 0.001],[0.2 .999 10],fargs{:});
+%epsilon is now scaled as the indifference point along mean(u_all) where agent switches from exploration to exploitation
+%so should be a number between 0 and -1, roughly
+
+[fittedparameters_1,options]=simps('clock_logistic_operator',[0.01 0.9877 -.06],[1 2 3], options, [0.001 0.9 -1], [0.2 .999 0],fargs{:});
 alpha_1=fittedparameters_1(1); lambda_1=fittedparameters_1(2); epsilon_1=fittedparameters_1(3);
-[cost_1, constr,value_all_1,value_hist_1]=clock_smooth_action_model(fittedparameters_1);
+[cost_1, constr,value_all_1,value_hist_1]=clock_logistic_operator(fittedparameters_1);
 
-fittedparameters_2=simps('clock_logistic_operator',[.1 .9 .5],[1 2 3],[options],[0.001 0.9 0.01],[0.2 .99 10],fargs{:});
+fittedparameters_2=simps('clock_logistic_operator',[.1 .9 -.01],[1 2 3], options, [0.001 0.9 -1], [0.2 .99 0],fargs{:});
 alpha_2=fittedparameters_2(1); lambda_2=fittedparameters_2(2); epsilon_2=fittedparameters_2(3);
-[cost_2, constr,value_all_2,value_hist_2]=clock_smooth_action_model(fittedparameters_2);
+[cost_2, constr,value_all_2,value_hist_2]=clock_logistic_operator(fittedparameters_2);
 
-fittedparameters_3=simps('clock_logistic_operator',[.01 .99 1],[1 2 3],[options],[0.001 0.9 0.01],[0.2 .99 10],fargs{:});
+fittedparameters_3=simps('clock_logistic_operator',[.05 .99 -0.2],[1 2 3], options, [0.001 0.9 -1], [0.2 .99 0],fargs{:});
 alpha_3=fittedparameters_3(1); lambda_3=fittedparameters_3(2); epsilon_3=fittedparameters_3(3);
-[cost_3, constr,value_all_3,value_hist_3]=clock_smooth_action_model(fittedparameters_3);
+[cost_3, constr,value_all_3,value_hist_3]=clock_logistic_operator(fittedparameters_3);
 
 toc
 %
