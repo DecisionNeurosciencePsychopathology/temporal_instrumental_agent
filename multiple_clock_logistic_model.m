@@ -21,7 +21,52 @@ tic
 %epsilon is now scaled as the indifference point along mean(u_all) where agent switches from exploration to exploitation
 %so should be a number between 0 and -1, roughly
 
-[fittedparameters_1,options]=simps('clock_logistic_operator',[0.01 0.9877 -.06],[1 2 3], options, [0.001 0.9 -1], [0.2 .999 0],fargs{:});
+fmincon_options = optimset(@fmincon);
+
+opts = optimset('fmincon');
+opts.LargeScale = 'off';
+opts.Algorithm = 'active-set';
+opts.Display = 'none';
+
+%                 [params, SE, exitflag, xstart] = rmsearch(@(params) TC_minSE(params, subjdata{f}, model, emoSubset), 'fmincon', init_params, ...
+%                     lower_limits, upper_limits, 'initialsample', num_start_pts, 'options', opts);
+num_start_pts=50;
+init_params_1 = [.01 .9877 -.06];
+lower_bounds = [0.001 0.9 -1];
+upper_bounds = [0.2 .999 0];
+
+% init_params_1 = [.01 -.06];
+% lower_bounds = [0.001 -0.3];
+% upper_bounds = [0.2 0];
+
+init_params_1 = [-.06];
+lower_bounds = [-0.4];
+upper_bounds = [0];
+
+% init_params_1 = [.1];
+% lower_bounds = [0];
+% upper_bounds = [1];
+
+%[fittedparameters_rmsearch,cost_rmsearch,exitflag_rmsearch,xstart_rmsearch]=rmsearch(@(params) clock_logistic_operator(params), 'fmincon', init_params_1, lower_bounds, upper_bounds, 'initialsample', num_start_pts, 'options', opts);
+
+epsvalues = -0.6:.003:-.01;
+%alphavalues = 0:.005:1;
+costs=[];
+for i = 1:length(epsvalues)
+    %costs(i) = clock_logistic_operator(alphavalues(i));
+    costs(i) = clock_logistic_operator(epsvalues(i));
+end
+
+%plot(alphavalues, costs);
+%figure(2);
+plot(epsvalues, costs);
+
+
+[fittedparameters_fmincon, cost_fmincon, exitflag_fmincon] = fmincon(@(params) clock_logistic_operator(params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+
+[fittedparameters_1,options]=simps('clock_logistic_operator', init_params_1, [1 2 3], options, lower_bounds, upper_bounds,fargs{:});
+%[fittedparameters_1,options]=simps('clock_logistic_operator', init_params_1, [1 2], options, lower_bounds, upper_bounds,fargs{:});
+
 alpha_1=fittedparameters_1(1); lambda_1=fittedparameters_1(2); epsilon_1=fittedparameters_1(3);
 [cost_1, constr,value_all_1,value_hist_1]=clock_logistic_operator(fittedparameters_1);
 
