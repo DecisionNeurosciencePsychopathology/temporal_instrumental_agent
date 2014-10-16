@@ -1,6 +1,6 @@
 function [rew, ev] = RewFunction(rt, cond)
 
-%global rew_rng_state;
+global rew_rng_state;
 
 Shift = 700;
 rt_extended = 7000;
@@ -29,15 +29,16 @@ elseif strcmpi(cond, 'IEV')
 elseif strcmpi(cond, 'QUADUP')
     frq = 1 - .62.*rt./5000;
     mag = 0.00002*(rt-1800).^2+20;
-    
 end
 
-%rng(rew_rng_state); %draw from reward rng
-if frq>=rand
+rng(rew_rng_state); %draw from reward rng
+rprob=rand;
+%fprintf('rew func with prob: %.2f\n', rprob);
+if frq>=rprob
     rew =mag;
 else rew= 0;
 end;
-%rew_rng_state=rng; %save state after random draw above
+rew_rng_state=rng; %save state after random draw above
 
 ev=frq*mag; %return expected value
 
