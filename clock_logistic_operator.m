@@ -142,7 +142,10 @@ fprintf('updating value by epsilon: %.4f\n', epsilon);
 %This seems especially relevant for the integral of u... But then again, we are only using the AUC and the max
 %value/uncertainty within the interval of interest, so maybe this doesn't matter whatsoever.
 
-%NB: Even though some matrices 
+%10/16/2014 NB: Even though some matrices such as value_hist have columns for discrete timesteps, the
+%agent now learns entirely on a continuous time basis by maximizing the value and uncertainty curves over the
+%radial basis set and estimating total uncertainty as the definite integral of the uncertainty function over the
+%time window of the trial.
 
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
