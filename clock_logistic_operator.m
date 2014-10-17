@@ -8,45 +8,45 @@
 %calls on RewFunction.m (Frank lab code)
 
 % function [cost,constr, value_all] = clock_smooth_action_model(...
-%     params, cond, number_of_stimuli, trial_plots)
-function [cost,constr,value_all,value_hist,rts] = clock_logistic_operator(params)
+%     params, cond, nbasis, trial_plots)
+function [cost,constr,value_all,value_hist,rts] = clock_logistic_operator(params, cond, ntrials, nbasis, ntimesteps)
+%params is the vector of parameters used in fitting
+%cond is the character string of the reward contingency
+%ntrials is the number of trials to run
+%nbasis is the number of radial basis functions used to estimate value and uncertainty
+%nevalpts is the number of time bins used for obtaining estimates of time functions for plotting etc.
+
+if nargin < 2, cond = 'IEV'; end
+if nargin < 3, ntrials=100; end
+if nargin < 4, nbasis = 12; end
+if nargin < 5, ntimesteps=500; end
+
+%old approach: load pseudorandom draws from each contingency
+%we now use repeatable random numbers from rng in RewFunction.m
 %if (~exist('b', 'var')), load b; end;
-if (~exist('b', 'var')), load pseudorand_trial; end;
+%if (~exist('b', 'var')), load pseudorand_trial; end;
 %if (~exist('b', 'var')), load pseudorand_trial_5000; end;
+% if strcmpi(cond, 'IEV')
+%     r = b.iev_rew;
+% elseif strcmpi(cond, 'DEV')
+%     r = b.dev_rew;
+% elseif strcmpi(cond, 'QUADUP')
+%     r = b.quadup_rew;
+% end
+%ntimesteps = length(r); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
+%ntimesteps = size(r, 2); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
 
 global rew_rng_state explore_rng_state;
 
 %generate states for two repeatable random number generators using different seeds
-rng(100);
+rng(999);
 rew_rng_state=rng;
 rng(83);
 explore_rng_state=rng;
 
-number_of_stimuli = 12;
-trial_plots = 0;
-cond = 'IEV';
-%
-% if nargin<2
-%     number_of_stimuli = 12;
-%     trial_plots = 0;
-%     cond = 78;
-% elseif nargin<3
-%     number_of_stimuli = 12;
-%     trial_plots = 0;
-% end
+trial_plots = 1; %whether to show trialwise graphics of parameters
 
 constr = [];
-if strcmpi(cond, 'IEV')
-    r = b.iev_rew;
-elseif strcmpi(cond, 'DEV')
-    r = b.dev_rew;
-elseif strcmpi(cond, 'QUADUP')
-    r = b.quadup_rew;
-end
-
-ntrials = 250;          %number of trials in a run
-%ntimesteps = length(r); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
-ntimesteps = size(r, 2); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
 
 %scatter(b.rts, b.iev_rew)
 %scatter(b.rts, b.dev_rew)
@@ -57,9 +57,11 @@ ntimesteps = size(r, 2); %number of timesteps in action space (set based on pseu
 t=1:ntimesteps;
 
 %Selected time points
-step_num = number_of_stimuli - 1;
+step_num = nbasis - 1;
 % step = (ntimesteps-1)/step_num;
 % c = 0:step:ntimesteps-1;
+
+%expand basis functions at edges
 step = (ntimesteps-1)/step_num;
 c = -step:step:ntimesteps+step;
 nbasis=length(c);
@@ -77,7 +79,7 @@ nbasis=length(c);
 
 %learning rate:
 % alpha = .1; %params(2);
-lambda = .99;
+lambda = .95;
 alpha=0.1;
 %epsilon=-.06;
 
@@ -131,7 +133,7 @@ for j = 1:nbasis
     gaussmat(j,:) = gaussmf(t,[sig c(j)]);
 end
 
-%plot(t,gaussmat);
+plot(t,gaussmat);
 
 % t_max = zeros(1,ntrials);
 
@@ -147,6 +149,8 @@ fprintf('updating value by epsilon: %.4f\n', epsilon);
 %radial basis set and estimating total uncertainty as the definite integral of the uncertainty function over the
 %time window of the trial.
 
+%rng('shuffle');
+
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
     %         disp(i)
@@ -160,26 +164,36 @@ for i = 1:ntrials
     %rew(i) = r(i, rts(i)); %RewFunction(rts(i).*10, cond); 
     [rew(i) ev(i)] = RewFunction(rts(i).*10, cond); 
     %[dummy ev(i)] = RewFunction(rts(i), cond); 
+    
+    %NB: This is problematic! Conceptually, we don't want to spread the point value of rewards in time and then
+    %compare the spread reward to the expect reward at each time. This leads to big prediction errors far from
+    %the chosen RT because only a fraction of the reward remains, which will almost always be worse than if temporally
+    %distal reward were actually sampled.
     rh(i,:) = rew(i).*(eh(i,:));
     
     sampling_h(i,:) = (eh(i,:));
     % learning rule: estimate value for each stimulus (h) separately
-    deltah(i,:) = rh(i,:) - vh(i,:);
+    %deltah(i,:) = rh(i,:) - vh(i,:);
+    
+    %this seems more sensible: use the discrepancy between the expected value for each basis and the obtained reward
+    %as predicition error and scale its effect on learning by eligibility.
+    deltah(i,:) = eh(i,:).*(rew(i) - vh(i,:));
     vh(i+1,:) = vh(i,:) + alpha.*deltah(i,:);
     
     %udeltah(i,:) = uh(i,:) - sampling_h(i,:);
     %unlike value, uncertainty does not decay
+    
+    %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision of
+    %sampling is higher.
     uh(i+1,:) = uh(i,:) - .01.*eh(i,:);
     
     temp_vh = vh(i+1,:)'*ones(1,ntimesteps);
-    %temp_vh = repmat(vh(i,:),ntrials,1)';
     value_by_h=temp_vh.*gaussmat;
     
     %subjective value by timestep as a sum of all basis functions
     value_all = sum(value_by_h);
             
     temp_uh = uh(i+1,:)'*ones(1,ntimesteps);
-    %temp_uh = repmat(uh(i,:),ntrials,1)';
     u_by_h=temp_uh.*gaussmat;
     u_all = sum(u_by_h);
     
@@ -234,15 +248,16 @@ for i = 1:ntrials
 %     end
     
     %soft classification (explore in proportion to uncertainty)
-    %rng(explore_rng_state); %draw from reward rng
+    rng(explore_rng_state); %draw from reward rng
+    %rng('shuffle');
     if i < ntrials
-        if b.randdraws(i) < sigmoid
+        if rand < sigmoid %b.randdraws(i)
             rts(i+1) = rt_explore;
         else
             rts(i+1) = rt_exploit;
         end 
     end
-    %explore_rng_state=rng; %save state after random draw above
+    explore_rng_state=rng; %save state after random draw above
     
     if trial_plots == 1
         figure(1); clf;

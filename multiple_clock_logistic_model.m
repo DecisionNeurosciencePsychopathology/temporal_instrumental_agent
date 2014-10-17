@@ -53,15 +53,33 @@ upper_bounds = [-.005];
 epsvalues = -0.6:.005:-.01;
 %alphavalues = 0:.005:1;
 costs=zeros(1,length(epsvalues));
-rts=zeros(length(epsvalues), 300); %150 trials
+rts=zeros(length(epsvalues), 125); %125 trials
 for i = 1:length(epsvalues)
     %costs(i) = clock_logistic_operator(alphavalues(i));
     [costs(i) dummy1 dummy2 dummy3 rts(i,:)] = clock_logistic_operator(epsvalues(i));
 end
 
 %plot(alphavalues, costs);
-%figure(2);
+figure(5);
 plot(epsvalues, costs);
+
+figure(1);
+plot(epsvalues, costs_shuffle);
+
+sum(diff(costs_shuffle)==0)
+
+figure(2);
+plot(epsvalues, costs_hard);
+
+sum(diff(costs_hard)==0)
+
+figure(3);
+plot(epsvalues, costs_soft);
+
+sum(diff(costs_soft)==0)
+
+
+
 
 %identical costs at epsilon = -.45 and -.455
 [cost_1, dummy1, dummy2, dummy3, rts_1] = clock_logistic_operator(-.45);
@@ -69,16 +87,17 @@ plot(epsvalues, costs);
 
 
 %testing rbfeval function
-% weights=[0.0776 7.4801 0.0792 0.0008 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0024 0.2286 22.0326 0.2332];
-% centers=[-454.5455 0.0000 454.5455 909.0909 1363.6364 1818.1818 2272.7273 2727.2727 3181.8182 3636.3636 4090.9091 4545.4545 5000.0000 5454.5455];
-% widths=ones(1,14).*350.0700;
-% 
-% outs=[];
-% for v = 0:5000
-%     outs(v+1) = rbfeval(v, weights, centers, widths);
-% end
-% 
-% plot(0:5000, outs);
+weights=[0.0776 7.4801 0.0792 0.0008 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0024 0.2286 22.0326 0.2332];
+centers=[-454.5455 0.0000 454.5455 909.0909 1363.6364 1818.1818 2272.7273 2727.2727 3181.8182 3636.3636 4090.9091 4545.4545 5000.0000 5454.5455];
+widths=ones(1,14).*350.0700;
+ 
+ outs=[];
+ for v = 0:5000
+     outs(v+1) = rbfeval(v, weights, centers, widths);
+end
+
+plot(0:5000, outs);
+
 % 
 % calc=fmincon(@(params) rbfeval(params, weights, centers, widths), 1000, [], [], [], [], 0, 5000, [], opts);
 % calc=fminbnd(@(params) -rbfeval(params, weights, centers, widths), 0, 5000);
