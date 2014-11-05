@@ -39,7 +39,7 @@ num_start_pts=50;
 % upper_bounds = [0.2 0];
 
 %epsilon only
-init_params_1 = [-.2];
+init_params_1 = [-.08];
 init_params_2 = [-.08];
 lower_bounds = [-0.5];
 upper_bounds = [-.005];
@@ -50,13 +50,14 @@ upper_bounds = [-.005];
 
 %[fittedparameters_rmsearch,cost_rmsearch,exitflag_rmsearch,xstart_rmsearch]=rmsearch(@(params) clock_logistic_operator(params), 'fmincon', init_params_1, lower_bounds, upper_bounds, 'initialsample', num_start_pts, 'options', opts);
 
-epsvalues = -0.6:.005:-.01;
+epsvalues = -0.6:.005:-.001;
 %alphavalues = 0:.005:1;
 costs=zeros(1,length(epsvalues));
 rts=zeros(length(epsvalues), 125); %125 trials
 for i = 1:length(epsvalues)
     %costs(i) = clock_logistic_operator(alphavalues(i));
-    [costs(i) dummy1 dummy2 dummy3 rts(i,:)] = clock_logistic_operator(epsvalues(i));
+    %[costs(i) dummy1 dummy2 dummy3 rts(i,:)] = clock_logistic_operator(epsvalues(i));
+    [costs(i)] = multirun_clock_logistic_operator(10, 999, epsvalues(i)); %clock_logistic_operator(epsvalues(i));
 end
 
 %plot(alphavalues, costs);
@@ -102,6 +103,14 @@ plot(0:5000, outs);
 % calc=fmincon(@(params) rbfeval(params, weights, centers, widths), 1000, [], [], [], [], 0, 5000, [], opts);
 % calc=fminbnd(@(params) -rbfeval(params, weights, centers, widths), 0, 5000);
 % rbfeval(calc, weights, centers, widths)
+
+%encourage optimizer to look around!
+fmincon_options.DiffMinChange = 0.01;
+%wrapper for multiple draws of clock_logistic_operator
+[test, totcost, costs] = fmincon(@(params) multirun_clock_logistic_operator(10, 999, params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+
+
+[totcost, runcosts, runseeds] = multirun_clock_logistic_operator(10, 999, init_params_1);
 
 [fittedparameters_fmincon, cost_fmincon, exitflag_fmincon] = fmincon(@(params) clock_logistic_operator(params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
 

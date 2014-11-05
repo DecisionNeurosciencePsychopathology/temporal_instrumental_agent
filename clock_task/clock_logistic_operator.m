@@ -9,17 +9,20 @@
 
 % function [cost,constr, value_all] = clock_smooth_action_model(...
 %     params, cond, nbasis, trial_plots)
-function [cost,constr,value_all,value_hist,rts] = clock_logistic_operator(params, cond, ntrials, nbasis, ntimesteps)
+function [cost,constr,value_all,value_hist,rts] = clock_logistic_operator(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
 %params is the vector of parameters used in fitting
 %cond is the character string of the reward contingency
 %ntrials is the number of trials to run
 %nbasis is the number of radial basis functions used to estimate value and uncertainty
 %nevalpts is the number of time bins used for obtaining estimates of time functions for plotting etc.
 
-if nargin < 2, cond = 'IEV'; end
-if nargin < 3, ntrials=100; end
-if nargin < 4, nbasis = 12; end
-if nargin < 5, ntimesteps=500; end
+if nargin < 2
+    rngseeds=[98 83];
+end
+if nargin < 3, cond = 'IEV'; end
+if nargin < 4, ntrials=100; end
+if nargin < 5, nbasis = 12; end
+if nargin < 6, ntimesteps=500; end
 
 %old approach: load pseudorandom draws from each contingency
 %we now use repeatable random numbers from rng in RewFunction.m
@@ -39,12 +42,14 @@ if nargin < 5, ntimesteps=500; end
 global rew_rng_state explore_rng_state;
 
 %generate states for two repeatable random number generators using different seeds
-rng(999);
+rew_rng_seed=rngseeds(1);
+explore_rng_seed=rngseeds(2);
+rng(rew_rng_seed);
 rew_rng_state=rng;
-rng(83);
+rng(explore_rng_seed);
 explore_rng_state=rng;
 
-trial_plots = 1; %whether to show trialwise graphics of parameters
+trial_plots = 0; %whether to show trialwise graphics of parameters
 
 constr = [];
 
@@ -138,7 +143,7 @@ plot(t,gaussmat);
 % t_max = zeros(1,ntrials);
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
-fprintf('updating value by epsilon: %.4f\n', epsilon);
+fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
 
 %QUESTION/CONCERN. Should value and uncertainty functions be summed over all plausible values, not just 0-500?
 %This seems especially relevant for the integral of u... But then again, we are only using the AUC and the max
@@ -234,7 +239,7 @@ for i = 1:ntrials
         %rt_explore = find(u_all==max(u_all));
         %rt_explore = max(round(find(u_all==max(u_all(20:500)))));        
     end
-    
+
     discrim = 50; %need to increase steepness of logistic given the tiny values we have here. Could free later
     sigmoid = 1./(1+exp(-discrim.*(u - epsilon))); %Rasch model with epsilon as difficulty (location) parameter
     

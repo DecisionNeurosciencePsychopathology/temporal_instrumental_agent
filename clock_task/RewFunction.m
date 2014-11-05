@@ -29,6 +29,9 @@ elseif strcmpi(cond, 'IEV')
 elseif strcmpi(cond, 'QUADUP')
     frq = 1 - .62.*rt./5000;
     mag = 0.00002*(rt-1800).^2+20;
+    
+else
+    error(['Unknown function: ' cond]);
 end
 
 rng(rew_rng_state); %draw from reward rng

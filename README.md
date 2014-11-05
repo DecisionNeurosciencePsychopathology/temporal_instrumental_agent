@@ -1,4 +1,7 @@
-clock_smoothoperator
+temporal_instrumental_agent
 ====================
 
-Temporal basis function approach to value learning on the clock task.
+Temporal basis function approach to reward learning of time-varying contingencies.
+
+Current applications: Clock task and willingness to wait.
+
