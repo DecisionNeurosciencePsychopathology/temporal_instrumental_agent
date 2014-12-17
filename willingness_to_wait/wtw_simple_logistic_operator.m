@@ -9,12 +9,12 @@
 %distrib_num = 1 - uniform, 2 - gen. Pareto, 3 - early beta, 4 - late beta
 
 
-function [cost,constr,value_all,value_hist, wtw] = wtw_simple_logistic_operator(params, distrib_num)
+function [cost,constr,value_all,value_hist, wtw, mov] = wtw_simple_logistic_operator(params, distrib_num)
 if (~exist('prr', 'var')), load prr; end;
 %if (~exist('pev', 'var')), load pev; end;
 
 number_of_stimuli = 12;
-trial_plots = 0;
+trial_plots = 1;
 
 
 trial_length = 2000; %2000 10ms bins = 20s
@@ -29,8 +29,10 @@ sampling_reward = 0.01; % scaling constant representing the update to the
 %uncertainty function in arbitrary units of uncertainty.  Scaled to make
 %the sigmoid choice rule work.
 
+%% initialize the move
+mov=repmat(struct('cdata', [], 'colormap', []), maxtrials,1);
 
-
+%%
 pars = {{0, 1},{.4, .575, 0},{0.25, 0.25}, {5, 1}, {maxtrials,300}};
 conds = {'unif', 'gp', 'beta', 'beta', 'normal'};
 output_names = {'unif', 'gp', 'beta', 'late_beta', 'camel'};
@@ -79,8 +81,8 @@ nbasis=length(c);
 alpha = params(1);
 lambda = params(2);
 epsilon = params(3);
-log_k = params(4);
-k = exp(log_k);
+% log_k = params(4);
+% k = exp(log_k);
 % k is the hyperbolic discounting parameter
 % sigma of Gaussian hard coded for now
 sig = (150.*ntimesteps)./trial_length;
@@ -297,16 +299,106 @@ while task_time<task_length;
         figure(1); %clf;
         
         %% make new intuitive plot like the one in Joe McGuire's papers
-        subplot(7,2,1:2)
-            title('black: wtw blue: RT(reward) red: RT(quit)');  hold on; ...
+%         subplot(7,2,1:2)
+%             title('black: wtw blue: RT(reward) red: RT(quit)');  hold on; ...
+%             plot(find(rew(1:maxtrials)==large_rew),reward_times(rew(1:maxtrials)==large_rew),'bo-','LineWidth',2);
+%         plot(find(rew(1:maxtrials)==small_rew),wtw(rew(1:maxtrials)==small_rew),'ro-','LineWidth',2); hold off;
+%         
+% 
+%         subplot(7,2,3)
+%         plot(t,value_all);
+%         ylabel('value')
+%         subplot(7,2,4)
+%         %barh(sigmoid); axis([-.1 1.1 0 2]);
+%         plot(t(1:ntimesteps),value_by_h);
+%         ylabel('value temporal basis')
+%         %title(sprintf('trial # = %i', h)); %
+%         %         xlabel('time(ms)')
+%         %         ylabel('reward value')
+% 
+%         subplot(7,2,5)
+%         plot(cumulative_reward_fx(i,:));
+%         ylabel('cumlulative reward function')
+%         
+%         subplot(7,2,6)
+%         plot(return_on_policy(i,:));
+%         ylabel('return on policy')
+%         
+%         %         subplot(7,2,5)
+% %         plot(t(1:ntimesteps), u_all, 'r');
+% %         xlabel('time (centiseconds)')
+% %         ylabel('uncertainty')
+% %         
+% %         subplot(7,2,6)
+% %         plot(t(1:ntimesteps),u_by_h);
+% %         ylabel('uncertainty temporal basis')
+% %         
+%         subplot(7,2,7)
+%         barh(sigmoid);
+%         xlabel('explore or not'); axis([-.1 1.1 0 2]);
+%         %         subplot(5,2,6)
+%         %         barh(alpha), axis([0 .2 0 2]);
+%         %         xlabel('learning rate')
+%         subplot(7,2,8)
+%         barh(lambda), axis([0.9 1 0 2]);
+%         xlabel('decay')
+%         
+%         subplot(7,2,9)
+%         barh(epsilon) %, axis([-0.5 0 0 2]);
+%         xlabel('strategic exploration')
+%         
+%         subplot(7,2,10)
+%         barh(u) %, axis([0 1000 0 2]);
+%         xlabel('mean uncertainty')
+%         %         pause(0.1);
+%         
+% %         subplot(7,2,11)
+% %         plot(1:maxtrials,wtw)
+% %         xlabel('will. to wait');
+% %         
+% %         subplot(7,2,12)
+% %         barh(rt_exploit)
+% %         xlabel('rt_exploit');
+%         
+%         
+%         subplot(7,2,11) 
+%         %barh(disc_rew(i));
+%         barh(rew(i)), axis([0 10 1 1.099]);
+%         ylabel('reward')
+%         
+%         subplot(7,2,12)
+%         plot(1:i,find(value_all==max(value_all)));
+%         xlabel('value_peak');
+%         
+%         
+%         subplot(7,2,13:14) 
+%         %plot(1:i,deltah(1:i));
+%         barh(deltah(i,:), .5);
+%         axis([-10 10 1 14])
+%         xlabel('prediction error')
+%        
+%         
+% %         xlabel('trial')
+% %         ylabel('prediction error')
+%         
+%           % Plotexpected value for each trial
+% %         subplot(6,2,12) 
+% %         plot(1:i,ev(1:i));
+% %         xlabel('trial')
+% %         ylabel('ev')
+%         
+       
+%% figures for the movie
+subplot(4,2,1:4)    
+title('black: wtw blue: RT(reward) red: RT(quit)');  hold on; ...
             plot(find(rew(1:maxtrials)==large_rew),reward_times(rew(1:maxtrials)==large_rew),'bo-','LineWidth',2);
         plot(find(rew(1:maxtrials)==small_rew),wtw(rew(1:maxtrials)==small_rew),'ro-','LineWidth',2); hold off;
         
 
-        subplot(7,2,3)
+        subplot(4,2,5)
         plot(t,value_all);
         ylabel('value')
-        subplot(7,2,4)
+        subplot(4,2,6)
         %barh(sigmoid); axis([-.1 1.1 0 2]);
         plot(t(1:ntimesteps),value_by_h);
         ylabel('value temporal basis')
@@ -314,78 +406,16 @@ while task_time<task_length;
         %         xlabel('time(ms)')
         %         ylabel('reward value')
 
-        subplot(7,2,5)
+        subplot(4,2,7)
         plot(cumulative_reward_fx(i,:));
         ylabel('cumlulative reward function')
         
-        subplot(7,2,6)
+        subplot(4,2,8)
         plot(return_on_policy(i,:));
         ylabel('return on policy')
-        
-        %         subplot(7,2,5)
-%         plot(t(1:ntimesteps), u_all, 'r');
-%         xlabel('time (centiseconds)')
-%         ylabel('uncertainty')
-%         
-%         subplot(7,2,6)
-%         plot(t(1:ntimesteps),u_by_h);
-%         ylabel('uncertainty temporal basis')
-%         
-        subplot(7,2,7)
-        barh(sigmoid);
-        xlabel('explore or not'); axis([-.1 1.1 0 2]);
-        %         subplot(5,2,6)
-        %         barh(alpha), axis([0 .2 0 2]);
-        %         xlabel('learning rate')
-        subplot(7,2,8)
-        barh(lambda), axis([0.9 1 0 2]);
-        xlabel('decay')
-        
-        subplot(7,2,9)
-        barh(epsilon) %, axis([-0.5 0 0 2]);
-        xlabel('strategic exploration')
-        
-        subplot(7,2,10)
-        barh(u) %, axis([0 1000 0 2]);
-        xlabel('mean uncertainty')
-        %         pause(0.1);
-        
-%         subplot(7,2,11)
-%         plot(1:maxtrials,wtw)
-%         xlabel('will. to wait');
-%         
-%         subplot(7,2,12)
-%         barh(rt_exploit)
-%         xlabel('rt_exploit');
-        
-        
-        subplot(7,2,11) 
-        %barh(disc_rew(i));
-        barh(rew(i)), axis([0 10 1 1.099]);
-        ylabel('reward')
-        
-        subplot(7,2,12)
-        plot(1:i,find(value_all==max(value_all)));
-        xlabel('value_peak');
-        
-        
-        subplot(7,2,13:14) 
-        %plot(1:i,deltah(1:i));
-        barh(deltah(i,:), .5);
-        axis([-10 10 1 14])
-        xlabel('prediction error')
-       
-        
-%         xlabel('trial')
-%         ylabel('prediction error')
-        
-          % Plotexpected value for each trial
-%         subplot(6,2,12) 
-%         plot(1:i,ev(1:i));
-%         xlabel('trial')
-%         ylabel('ev')
-        
-       
+
+        drawnow update;
+        mov(i) = getframe(gcf);
     end
     %     disp([i rts(i) rew(i) sum(value_all)])
 end

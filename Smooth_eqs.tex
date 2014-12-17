@@ -1,0 +1,92 @@
+\documentclass[fleqn]{article}
+
+\usepackage{amsmath}
+\usepackage{multicol}
+
+
+\begin{document}
+
+\begin{center}
+\textbf{Smooth Operator Equations} \newline
+\end{center}
+
+\begin{multicols}{2} %sep into 2 cols
+\textbf{Temporal Basis}
+
+\begin{equation*}
+  \phi=\displaystyle\sum_{k=1}^{K} N (\mu_k , \sigma_k)
+\end{equation*}
+
+\begin{equation*}
+ Q_i=\displaystyle\sum_{k=1}^{K}  w_{ik} \cdot \varphi_k
+\end{equation*}
+
+\begin{equation*}
+  U_i=\displaystyle\sum_{k=1}^{K}  z_{ik} \cdot \varphi_k
+\end{equation*}\\
+
+\textbf{Learning Rule (V)}
+
+\begin{equation*}
+  E_{ik}=\lambda \cdot \mid rt(i) - \mu_k \mid
+\end{equation*}
+
+\begin{equation*}
+  \delta_{ik}=E_{ik} \cdot r_i
+\end{equation*}
+
+\begin{equation*}
+  w_{ik}=w_{i-1k} + \alpha \cdot \Delta_{ik}
+\end{equation*}
+
+\columnbreak
+
+\textbf{Learning Rule (U)}
+
+\begin{equation*}
+  U_{ik}=U_{i-1k} -  E_{ik}
+\end{equation*}
+
+\textbf{Choice Rule}
+
+\begin{equation*}
+  rt_{exploit\, i} = max(Q_i)
+\end{equation*}
+
+\begin{equation*}
+  rt_{explore\,  i} = max(U_i)
+\end{equation*}
+
+\begin{equation*}
+  rt(i) = \frac{1}{1+e^{-d \left (\frac{\left [\int^0_{rt_max - 1}U_i \right ]}{T} - \epsilon \right )}}
+\end{equation*}
+
+
+\end{multicols}
+
+\textbf{Willingness to wait Add. Equations}
+
+\begin{equation*}
+  V^{cum}_i= \int^T_{t=0}V_i
+\end{equation*}
+
+\begin{equation*}
+  \rho_i = \rho_{i-1} + \alpha(r_i - \rho_{i-1})
+\end{equation*}
+
+\begin{equation*}
+  R =  \frac{V^{cum}_i}{\rho_i \cdot t}
+\end{equation*}
+
+
+%%%some updates
+\textrm{rt}_\textrm{exploit}(i) = \textrm{max}(Q(i))
+Q(i)=\displaystyle\sum_{k=1}^{K}  w_{ik} \cdot \varphi_k
+\textrm{rt}_\textrm{explore}(i) = \textrm{max}(U_i)
+U(i)=\displaystyle\sum_{k=1}^{K}  z_{ik} \cdot \varphi_k
+  \textrm{p}(explore) = \frac{1}{1+e^{-d \left (\frac{\left [\int^{\textrm{rt}_\textrm{max}}_0U_i \right ]}{T} - \epsilon \right )}}
+  
+  p(\textrm{explore}) = \frac{1}{1+e^{-d \left (\frac{\left [\int^{T}_{0}U(i) \right ]}{T} - \varepsilon \right )}}
+
+\end{document}
+

@@ -9,39 +9,44 @@
 
 % function [cost,constr, value_all] = clock_smooth_action_model(...
 %     params, cond, nbasis, trial_plots)
-function [cost,constr,value_all,value_hist,rts] = clock_logistic_operator(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
-%params is the vector of parameters used in fitting
+function [cost,constr,value_all,value_hist,rts,mov] = clock_logistic_operator(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
+%params is the vector of parameters used to fit
+%   params(1): alpha
 %cond is the character string of the reward contingency
 %ntrials is the number of trials to run
 %nbasis is the number of radial basis functions used to estimate value and uncertainty
-%nevalpts is the number of time bins used for obtaining estimates of time functions for plotting etc.
+%ntimesteps is the number of time bins used for obtaining estimates of time functions for plotting etc.
 
+
+%% free parameters: learning rate (alpha), temporal decay (lambda, as in TD(lambda)), exploration tradeoff (epsilon)
+alpha = params(1);
+
+if length(params) < 2
+    disp('defaulting to lambda=.98');
+    lambda = .98;
+else
+    lambda = params(2);
+end
+
+if length(params) < 3
+    disp('defaulting to epsilon=-.08');
+    epsilon = -.08;
+else
+    epsilon = params(3);
+end
+    
 if nargin < 2
     rngseeds=[98 83];
 end
-if nargin < 3, cond = 'IEV'; end
+if nargin < 3, cond = 'DEV'; end
 if nargin < 4, ntrials=100; end
 if nargin < 5, nbasis = 12; end
 if nargin < 6, ntimesteps=500; end
 
-%old approach: load pseudorandom draws from each contingency
-%we now use repeatable random numbers from rng in RewFunction.m
-%if (~exist('b', 'var')), load b; end;
-%if (~exist('b', 'var')), load pseudorand_trial; end;
-%if (~exist('b', 'var')), load pseudorand_trial_5000; end;
-% if strcmpi(cond, 'IEV')
-%     r = b.iev_rew;
-% elseif strcmpi(cond, 'DEV')
-%     r = b.dev_rew;
-% elseif strcmpi(cond, 'QUADUP')
-%     r = b.quadup_rew;
-% end
-%ntimesteps = length(r); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
-%ntimesteps = size(r, 2); %number of timesteps in action space (set based on pseudorandom sampling of contingency above)
-
+%states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
 
-%generate states for two repeatable random number generators using different seeds
+%initialize states for two repeatable random number generators using different seeds
 rew_rng_seed=rngseeds(1);
 explore_rng_seed=rngseeds(2);
 rng(rew_rng_seed);
@@ -51,60 +56,34 @@ explore_rng_state=rng;
 
 trial_plots = 0; %whether to show trialwise graphics of parameters
 
+%initialize movie storage
+mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
+
 constr = [];
-
-%scatter(b.rts, b.iev_rew)
-%scatter(b.rts, b.dev_rew)
-
-%--program start
 
 %Initialize time step vector and allocate for memory
 t=1:ntimesteps;
 
 %Selected time points
 step_num = nbasis - 1;
-% step = (ntimesteps-1)/step_num;
-% c = 0:step:ntimesteps-1;
+%step = (ntimesteps-1)/step_num;
+%c = 0:step:ntimesteps-1;
 
 %expand basis functions at edges
 step = (ntimesteps-1)/step_num;
 c = -step:step:ntimesteps+step;
+%c = -(step*4):step:(ntimesteps+step*4);
 nbasis=length(c);
 % c = [0 1250 2500 3750 5000];
-
-%Now set up the meat and potatoes (i.e. the learning rate code)
-%The equation to set up is:
-%Vht = gamma*Vht-1 + alpha*deltaht where:
-%deltaht = rt/tau_h where:
-%tau_h = abs(tau_t - tau_max)
 
 %%NB: not sure how to use gamma (normally the discounting constant
 %gamma = params(1); %Random number between 0 and 1
 % gamma = 0.7;
 
-%learning rate:
-% alpha = .1; %params(2);
-lambda = .95;
-alpha=0.1;
-%epsilon=-.06;
-
-%% free parameters: learning rate (alpha), temporal decay (lambda, as in TD(lambda))
-%alpha = params(1);
-%lambda = params(2);
-epsilon = params(1);
 % sigma of Gaussian hard coded for now
 sig = (350.*ntimesteps)./5000;
 
-
-% % decay for values of stimuli h
-% epsilon = params(3)
-
-% rt = 1:5000;         %Any temporal point in the time series (excluding zero)
-
-%get a vector of rts for each trial
-% rts = rand(1,1000)*5000;
-
-%% initialize RTs as a nan vector;
+%% initialize RTs chosen by agent as a nan vector;
 rts = nan(1,ntrials);
 %rts(1) = rand(1)*5000; %initial random rt?
 
@@ -116,8 +95,7 @@ rts(1) = ceil(.5*ntimesteps);
 
 % i = trial
 % t = time step within trial, in centiseconds (1-500, representing 0-5 seconds)
-
-vh =            zeros(ntrials, nbasis);     % initialize basis height values
+w_ik =          zeros(ntrials, nbasis);     % initialize basis height values
 deltah =        zeros(ntrials, nbasis);     % prediction error assigned to each microstimulus
 rh =            zeros(ntrials, nbasis);     % reward assigned to each microstimulus
 eh =            zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
@@ -131,19 +109,18 @@ sampling_h =    zeros(ntrials, nbasis);     % the amount of sampling assigned to
 u_by_h =        zeros(nbasis, ntimesteps);  % uncertainty by microstimulus (rows for every microstimulus and columns for time points within trial)
 u_hist =        zeros(ntrials,ntimesteps);  % history of uncertainty by trial
 
-%construct gaussian matrix
+%construct radial basis matrix using Gaussians
 gaussmat = zeros(nbasis,ntimesteps);
 
 for j = 1:nbasis
     gaussmat(j,:) = gaussmf(t,[sig c(j)]);
 end
 
-plot(t,gaussmat);
-
-% t_max = zeros(1,ntrials);
+%plot(t,gaussmat);
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
-fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
+%fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
+fprintf('running agent with alpha: %.3f, lambda: %.3f, epsilon: %.3f and rngseeds: %s \n', alpha, lambda, epsilon, num2str(rngseeds));
 
 %QUESTION/CONCERN. Should value and uncertainty functions be summed over all plausible values, not just 0-500?
 %This seems especially relevant for the integral of u... But then again, we are only using the AUC and the max
@@ -158,46 +135,45 @@ fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str
 
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
-    %         disp(i)
+    
     % get eligibility traces for each stimulus (h)
     % let's assume eligibility decays in inverse proporation to time
     % elapsed from or remaining until the peak of a stimulus
     eh(i,:) = lambda.^(abs(rts(i)-c)+1);
-    %     eh(i,:) = 1./(abs(rts(i)-c)+1);
+    % eh(i,:) = 1./(abs(rts(i)-c)+1);
     
     % estimate reward assigned to each stimulus h
     %rew(i) = r(i, rts(i)); %RewFunction(rts(i).*10, cond); 
-    [rew(i) ev(i)] = RewFunction(rts(i).*10, cond); 
-    %[dummy ev(i)] = RewFunction(rts(i), cond); 
+    [rew(i) ev(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     
     %NB: This is problematic! Conceptually, we don't want to spread the point value of rewards in time and then
     %compare the spread reward to the expect reward at each time. This leads to big prediction errors far from
     %the chosen RT because only a fraction of the reward remains, which will almost always be worse than if temporally
     %distal reward were actually sampled.
-    rh(i,:) = rew(i).*(eh(i,:));
+    %rh(i,:) = rew(i).*(eh(i,:));
     
     sampling_h(i,:) = (eh(i,:));
     % learning rule: estimate value for each stimulus (h) separately
-    %deltah(i,:) = rh(i,:) - vh(i,:);
+    %deltah(i,:) = rh(i,:) - w_ik(i,:);
     
     %this seems more sensible: use the discrepancy between the expected value for each basis and the obtained reward
     %as predicition error and scale its effect on learning by eligibility.
-    deltah(i,:) = eh(i,:).*(rew(i) - vh(i,:));
-    vh(i+1,:) = vh(i,:) + alpha.*deltah(i,:);
+    deltah(i,:) = eh(i,:).*(rew(i) - w_ik(i,:));
+    w_ik(i+1,:) = w_ik(i,:) + alpha.*deltah(i,:);
     
     %udeltah(i,:) = uh(i,:) - sampling_h(i,:);
     %unlike value, uncertainty does not decay
     
-    %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision of
-    %sampling is higher.
+    %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision of sampling is higher.
+    %update 
     uh(i+1,:) = uh(i,:) - .01.*eh(i,:);
     
-    temp_vh = vh(i+1,:)'*ones(1,ntimesteps);
-    value_by_h=temp_vh.*gaussmat;
+    temp_w_ik = w_ik(i+1,:)'*ones(1,ntimesteps);
+    value_by_h=temp_w_ik.*gaussmat;
     
     %subjective value by timestep as a sum of all basis functions
     value_all = sum(value_by_h);
-            
+    
     temp_uh = uh(i+1,:)'*ones(1,ntimesteps);
     u_by_h=temp_uh.*gaussmat;
     u_all = sum(u_by_h);
@@ -212,34 +188,42 @@ for i = 1:ntrials
         %rt_exploit = ceil(rand(1)*ntrials); %random number within space
         rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
     else
-        rt_exploit = fminbnd(@(x) -rbfeval(x, vh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-        %rt_exploit = find(value_all==max(value_all));
+        %DANGER: fminbnd is giving local minimum solution that clearly
+        %misses the max value. Could switch to something more comprehensive
+        %like rmsearch, but for now revert to discrete approximation
+        %rt_exploit = fminbnd(@(x) -rbfeval(x, w_ik(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        %figure(2);
+        %vfunc = rbfeval(0:500, w_ik(i+1,:), c, ones(1,nbasis).*sig);
+        %plot(0:500, vfunc);
+        rt_exploit = find(value_all==max(value_all));
         %rt_exploit = max(round(find(value_all==max(value_all(20:500)))))-5+round(rand(1).*10);
         if rt_exploit > 500
             rt_exploit = 500;
         end
     end
-    
+        
     % find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
     
     % u -- total amount of uncertainty on this trial (starts at 0 and decreases)
     % u = mean(u_all);
     
-    %use numerical integration to get area under curve of uncertainty
+    %use integration to get area under curve of uncertainty
     %otherwise, our estimate of u is discretized, affecting cost function
     
     total_u = integral(@(x)rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
     u = total_u/500; %make scaling similar? (come back)...
     
     if u == 0
-        %rt_explore = ceil(rand(1)*ntrials); %Changed!!! from 5000 previously
-        rt_explore = ceil(.5*ntimesteps); %Changed!!! from 5000 previously        
+        %rt_explore = ceil(rand(1)*ntrials);
+        rt_explore = ceil(.5*ntimesteps); 
     else
-        rt_explore = fminbnd(@(x) -rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-        %rt_explore = find(u_all==max(u_all));
+        %rt_explore = fminbnd(@(x) -rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        rt_explore = find(u_all==max(u_all));
         %rt_explore = max(round(find(u_all==max(u_all(20:500)))));        
     end
 
+    %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
+    
     discrim = 50; %need to increase steepness of logistic given the tiny values we have here. Could free later
     sigmoid = 1./(1+exp(-discrim.*(u - epsilon))); %Rasch model with epsilon as difficulty (location) parameter
     
@@ -261,23 +245,44 @@ for i = 1:ntrials
         else
             rts(i+1) = rt_exploit;
         end 
+        
+        %playing with basis update at the edge
+        %rts(i+1) = 500; %force to latest time
+    
     end
     explore_rng_state=rng; %save state after random draw above
+    
+    verbose=1;
+    if verbose == 1
+       fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew(i), rts(i));
+       fprintf('w_i,k:    '); fprintf('%.2f ', w_ik(i,:)); fprintf('\n');
+       fprintf('deltah:   '); fprintf('%.2f ', alpha*deltah(i,:)); fprintf('\n');
+       fprintf('w_i+1,k:  '); fprintf('%.2f ', w_ik(i+1,:)); fprintf('\n');
+       fprintf('\n');
+       
+    end
     
     if trial_plots == 1
         figure(1); clf;
         subplot(5,2,1)
         %plot(t,value_all);
         scatter(rts(1:i),rew(1:i)); axis([1 500 0 350]);
+        hold on;
+        plot(rts(i),rew(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
+        hold off;
         subplot(5,2,2)
         plot(t,value_all); xlim([-1 ntimesteps+1]);
         ylabel('value')
         subplot(5,2,3)
+        
+%         bar(c, w_ik(i,:));
+%         ylabel('basis function heights');
         plot(t,value_by_h);
         ylabel('temporal basis function')
-        %title(sprintf('trial # = %i', h)); %
-        %         xlabel('time(ms)')
-        %         ylabel('reward value')
+%         title(sprintf('trial # = %i', h)); %
+                xlabel('time(ms)')
+                ylabel('reward value')
+        
         subplot(5,2,4)
         plot(t, u_all, 'r'); xlim([-1 ntimesteps+1]);
         xlabel('time (centiseconds)')
@@ -302,9 +307,35 @@ for i = 1:ntrials
         %         pause(0.1);
         subplot(5,2,10)
         plot(1:ntrials,rts, 'k');
-        ylabel('rt by trial')
+        ylabel('rt by trial'); axis([1 ntrials -5 505]);
+%         
+%         figure(1); clf;
+%         subplot(2,2,1)
+%         %plot(t,value_all);
+%         scatter(rts(1:i),rew(1:i)); axis([1 500 0 350]);
+%         hold on;
+%         plot(rts(i),rew(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
+%         hold off;
+%         subplot(2,2,2)
+%         plot(t,value_all); xlim([-1 ntimesteps+1]);
+%         ylabel('value')
+%         subplot(2,2,3)
+%         
+% %         bar(c, w_ik(i,:));
+% %         ylabel('basis function heights');
+%         plot(t,value_by_h);
+%         ylabel('temporal basis function')
+% %         title(sprintf('trial # = %i', h)); %
+%                 xlabel('time(ms)')
+%                 ylabel('reward value')
+%         
+%         subplot(2,2,4)
+%         plot(t, u_all, 'r'); xlim([-1 ntimesteps+1]);
+%         xlabel('time (centiseconds)')
+%         ylabel('uncertainty')
         
         drawnow update;
+        mov(i) = getframe(gcf);
     end
     %     disp([i rts(i) rew(i) sum(value_all)])
 end

@@ -21,7 +21,9 @@ tic
 %epsilon is now scaled as the indifference point along mean(u_all) where agent switches from exploration to exploitation
 %so should be a number between 0 and -1, roughly
 
-fmincon_options = optimset(@fmincon);
+%fmincon_options = optimset(@fmincon);
+%fmincon_options = optimoptions(@fmincon, 'UseParallel',true, 'Algorithm', 'active-set', 'DiffMinChange', 0.01);
+fmincon_options = optimoptions(@fmincon, 'UseParallel',false, 'Algorithm', 'active-set', 'DiffMinChange', 0.005);
 
 opts = optimset('fmincon');
 opts.LargeScale = 'off';
@@ -29,9 +31,9 @@ opts.Algorithm = 'active-set';
 opts.Display = 'none';
 
 num_start_pts=50;
-% init_params_1 = [.01 .9877 -.06];
-% lower_bounds = [0.001 0.9 -1];
-% upper_bounds = [0.2 .999 0];
+init_params_1 = [.01 .9877 -.06];
+lower_bounds = [0.001 0.9 -1];
+upper_bounds = [0.2 .999 0];
 
 %alpha and epsilon only
 % init_params_1 = [.01 -.06];
@@ -39,10 +41,10 @@ num_start_pts=50;
 % upper_bounds = [0.2 0];
 
 %epsilon only
-init_params_1 = [-.08];
-init_params_2 = [-.08];
-lower_bounds = [-0.5];
-upper_bounds = [-.005];
+%init_params_1 = [-.08];
+%init_params_2 = [-.08];
+%lower_bounds = [-0.5];
+%upper_bounds = [-.005];
 
 % init_params_1 = [.1];
 % lower_bounds = [0];
@@ -50,6 +52,7 @@ upper_bounds = [-.005];
 
 %[fittedparameters_rmsearch,cost_rmsearch,exitflag_rmsearch,xstart_rmsearch]=rmsearch(@(params) clock_logistic_operator(params), 'fmincon', init_params_1, lower_bounds, upper_bounds, 'initialsample', num_start_pts, 'options', opts);
 
+poolobj = parpool('local', 12);
 epsvalues = -0.6:.005:-.001;
 %alphavalues = 0:.005:1;
 costs=zeros(1,length(epsvalues));
@@ -57,8 +60,9 @@ rts=zeros(length(epsvalues), 125); %125 trials
 for i = 1:length(epsvalues)
     %costs(i) = clock_logistic_operator(alphavalues(i));
     %[costs(i) dummy1 dummy2 dummy3 rts(i,:)] = clock_logistic_operator(epsvalues(i));
-    [costs(i)] = multirun_clock_logistic_operator(10, 999, epsvalues(i)); %clock_logistic_operator(epsvalues(i));
+    [costs(i)] = multirun_clock_logistic_operator(20, 999, {epsvalues(i), 0, 'IEV', 100}); %clock_logistic_operator(epsvalues(i));
 end
+delete(poolobj);
 
 %plot(alphavalues, costs);
 figure(5);
@@ -105,14 +109,15 @@ plot(0:5000, outs);
 % rbfeval(calc, weights, centers, widths)
 
 %encourage optimizer to look around!
-fmincon_options.DiffMinChange = 0.01;
+%fmincon_options.
 %wrapper for multiple draws of clock_logistic_operator
-[test, totcost, costs] = fmincon(@(params) multirun_clock_logistic_operator(10, 999, params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
-
+poolobj = parpool('local', 4);
+[test, totcost, costs] = fmincon(@(params) multirun_clock_logistic_operator(4, 999, params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+delete(poolobj);
 
 [totcost, runcosts, runseeds] = multirun_clock_logistic_operator(10, 999, init_params_1);
 
-[fittedparameters_fmincon, cost_fmincon, exitflag_fmincon] = fmincon(@(params) clock_logistic_operator(params), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+[fittedparameters_fmincon, cost_fmincon, exitflag_fmincon] = fmincon(@(params) clock_logistic_operator(params, [93 62], 'DEV', 125), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
 
 %[fittedparameters_1,options]=simps('clock_logistic_operator', init_params_1, [1 2 3], options, lower_bounds, upper_bounds,fargs{:});
 [fittedparameters_1,options]=simps('clock_logistic_operator', init_params_1, [1], options, lower_bounds, upper_bounds,fargs{:});
