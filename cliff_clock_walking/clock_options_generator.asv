@@ -1,0 +1,38 @@
+function clock_options_generator
+%This file creates and saves the clock_options.mat file to be used in
+%clockWalker.m
+
+gamma = 0.9; %discount factor: how important are are short-term versus long-term gains (0 = short-sighted, 1 = long-term payoff)
+alpha = 0.05; %learning rate: how much to weight new information (0 = no learning, 1 = only value latest information)
+epsilon = 0.1; %how often does agent explore? 10% here
+%gridcols = 500; %10ms bins so total trial length 5000ms
+gridcols = 5000; %10ms bins so total trial length 5000ms
+gridrows = 2; %Agent can only wait or quit
+fontsize = 16;
+showTitle = 1;
+
+episodeCount = 2000;
+plotEpisodes = [20 200 700 1000 2000];
+allowDiagonal = 0;
+canHold = 0;
+
+start.row = 1;
+start.col = 1;
+goal.row = 2; 
+%goal.col = 10;
+agent = 'qlearning';
+cond = 'IEV';
+speedbumpcol = 0; %by default, leave out speedbump
+speedbumpcost = -10;
+smallreward.on = 0; 
+smallreward.row = 1;
+smallreward.col = 1;
+smallreward.payoff = 3;
+episodesToTrack = [ 5 100 200 300 1000 2000 ]; %which episodes to track (snapshots)
+newgoal.on = 0; %off by default
+newgoal.episode = episodeCount;
+newgoal.row = 1;
+newgoal.col = gridcols; %position in NE corner
+
+save clock_options
+end
