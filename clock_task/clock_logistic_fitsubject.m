@@ -1,23 +1,20 @@
-%Authors: Jonathan Wilson, Alex Dombrovski, & Michael Hallquist
-%Date last modified: 10/16/14
-%Matlab Version: R2012a
-%Model of RT on the clock task using Gaussian stimuli for actions or "CSs"
-%free parameters: learning rate (alpha), temporal decay (lambda, as in TD(lambda))
-%learning rule - modified RW with TD(lambda)-type credit assignment
-%choice rule: stochastic continuous RT weighted by value
-%calls on RewFunction.m (Frank lab code)
+%Authors: Michael Hallquist, Jonathan Wilson, & Alex Dombrovski
+%Date last modified: 12/17/14
+%Matlab Version: R2014b
+%building on clock_logistic_operator, fit empirical data on the clock task
+%using the temporal basis model
 
-% function [cost,constr, value_all] = clock_smooth_action_model(...
-%     params, cond, nbasis, trial_plots)
-function [cost,constr,value_all,value_hist,rts,mov] = clock_logistic_operator(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
+
+
+function [cost_total,ret] = clock_logistic_fitsubject(params, rts_obs, rew_obs, explore_rng_seed, nbasis, ntimesteps)
 %params is the vector of parameters used to fit
 %   params(1): alpha
-%cond is the character string of the reward contingency
-%ntrials is the number of trials to run
+%   params(2): lambda
+%   params(3): epsilon
 %nbasis is the number of radial basis functions used to estimate value and uncertainty
 %ntimesteps is the number of time bins used for obtaining estimates of time functions for plotting etc.
-
-
+ret=[];
+ntrials=length(rew_obs);
 %% free parameters: exploration tradeoff (epsilon), learning rate (alpha), temporal decay (lambda, as in TD(lambda))
 epsilon = params(1);
 
@@ -35,22 +32,22 @@ else
     lambda = params(3);
 end
     
-if nargin < 2
-    rngseeds=[98 83];
+if nargin < 4
+    explore_rng_seed=83;
 end
-if nargin < 3, cond = 'DEV'; end
-if nargin < 4, ntrials=100; end
+
 if nargin < 5, nbasis = 12; end
-if nargin < 6, ntimesteps=500; end
+if nargin < 6, ntimesteps=400; end
+
+maxtime=400;
+
+fprintf('Downsampling rts_obs by a factor of 10 to to 0..%d\n', maxtime);
+rts_obs = round(rts_obs/10);
 
 %states for random generators are shared across functions to allow for repeatable draws
-global rew_rng_state explore_rng_state;
+global explore_rng_state;
 
 %initialize states for two repeatable random number generators using different seeds
-rew_rng_seed=rngseeds(1);
-explore_rng_seed=rngseeds(2);
-rng(rew_rng_seed);
-rew_rng_state=rng;
 rng(explore_rng_seed);
 explore_rng_state=rng;
 
@@ -83,31 +80,28 @@ nbasis=length(c);
 % sigma of Gaussian hard coded for now
 sig = (350.*ntimesteps)./5000;
 
-%% initialize RTs chosen by agent as a nan vector;
-rts = nan(1,ntrials);
-%rts(1) = rand(1)*5000; %initial random rt?
-
-%Have initial rts by random
-%rts(1) = ceil(rand(1)*ntrials); %Changed!!! from 5000 previously
-
-%Have initial rts be constant for cost function
-rts(1) = ceil(.5*ntimesteps);
-
 % i = trial
 % t = time step within trial, in centiseconds (1-500, representing 0-5 seconds)
 w_ik =          zeros(ntrials, nbasis);     % initialize basis height values
 deltah =        zeros(ntrials, nbasis);     % prediction error assigned to each microstimulus
-rh =            zeros(ntrials, nbasis);     % reward assigned to each microstimulus
 eh =            zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
 value_by_h =    zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
 value_hist =    zeros(ntrials, ntimesteps); % history of value by trial
-rew =           zeros(1, ntrials);          % actual reward for each trial
 ev =            nan(1, ntrials);            % expected value of choice for each trial
 uh =            zeros(ntrials, nbasis);     % uncertainty at each microstimulus
 udeltah =       zeros(ntrials, nbasis);     % uncertainty prediction error for each microstumulus (hour)
 sampling_h =    zeros(ntrials, nbasis);     % the amount of sampling assigned to each microstimulus at each trial
 u_by_h =        zeros(nbasis, ntimesteps);  % uncertainty by microstimulus (rows for every microstimulus and columns for time points within trial)
 u_hist =        zeros(ntrials,ntimesteps);  % history of uncertainty by trial
+rts_pred =      nan(1, ntrials);            % predicted reaction times
+rts_pred_explore = nan(1, ntrials);            % predicted exploratory reaction times
+rts_pred_exploit = nan(1, ntrials);            % predicted exploratory reaction times
+exploit_trials = [] %vector of trials where model predicts exploitation
+explore_trials = [] %vector of trials where model predicts exploration
+
+rts_pred(1) = rts_obs(1); %first choice is exogenous to model
+rts_pred_explore(1) = rts_obs(1); %first choice is exogenous to model
+rts_pred_exploit(1) = rts_obs(1); %first choice is exogenous to model
 
 %construct radial basis matrix using Gaussians
 gaussmat = zeros(nbasis,ntimesteps);
@@ -120,7 +114,7 @@ end
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
 %fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
-fprintf('running agent with alpha: %.3f, lambda: %.3f, epsilon: %.3f and rngseeds: %s \n', alpha, lambda, epsilon, num2str(rngseeds));
+fprintf('running agent with alpha: %.3f, lambda: %.3f, epsilon: %.3f and rngseeds: %s \n', alpha, lambda, epsilon, num2str(explore_rng_seed));
 
 %QUESTION/CONCERN. Should value and uncertainty functions be summed over all plausible values, not just 0-500?
 %This seems especially relevant for the integral of u... But then again, we are only using the AUC and the max
@@ -139,33 +133,21 @@ for i = 1:ntrials
     % get eligibility traces for each stimulus (h)
     % let's assume eligibility decays in inverse proporation to time
     % elapsed from or remaining until the peak of a stimulus
-    eh(i,:) = lambda.^(abs(rts(i)-c)+1);
-    % eh(i,:) = 1./(abs(rts(i)-c)+1);
-    
-    % estimate reward assigned to each stimulus h
-    %rew(i) = r(i, rts(i)); %RewFunction(rts(i).*10, cond); 
-    [rew(i) ev(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-    
-    %NB: This is problematic! Conceptually, we don't want to spread the point value of rewards in time and then
-    %compare the spread reward to the expect reward at each time. This leads to big prediction errors far from
-    %the chosen RT because only a fraction of the reward remains, which will almost always be worse than if temporally
-    %distal reward were actually sampled.
-    %rh(i,:) = rew(i).*(eh(i,:));
-    
+    eh(i,:) = lambda.^(abs(rts_obs(i)-c)+1);
+    % eh(i,:) = 1./(abs(rts_obs(i)-c)+1);
+       
+    %information sampling for each basis function
     sampling_h(i,:) = (eh(i,:));
-    % learning rule: estimate value for each stimulus (h) separately
-    %deltah(i,:) = rh(i,:) - w_ik(i,:);
     
     %this seems more sensible: use the discrepancy between the expected value for each basis and the obtained reward
     %as predicition error and scale its effect on learning by eligibility.
-    deltah(i,:) = eh(i,:).*(rew(i) - w_ik(i,:));
+    deltah(i,:) = eh(i,:).*(rew_obs(i) - w_ik(i,:));
     w_ik(i+1,:) = w_ik(i,:) + alpha.*deltah(i,:);
     
     %udeltah(i,:) = uh(i,:) - sampling_h(i,:);
     %unlike value, uncertainty does not decay
     
     %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision of sampling is higher.
-    %update 
     uh(i+1,:) = uh(i,:) - .01.*eh(i,:);
     
     temp_w_ik = w_ik(i+1,:)'*ones(1,ntimesteps);
@@ -186,19 +168,19 @@ for i = 1:ntrials
     % NB: we added just a little bit of noise
     if sum(value_all) == 0
         %rt_exploit = ceil(rand(1)*ntrials); %random number within space
-        rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
+        rt_exploit = rts_obs(1); %feed RT exploit the first observed RT
     else
         %DANGER: fminbnd is giving local minimum solution that clearly
         %misses the max value. Could switch to something more comprehensive
         %like rmsearch, but for now revert to discrete approximation
-        %rt_exploit = fminbnd(@(x) -rbfeval(x, w_ik(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        %rt_exploit = fminbnd(@(x) -rbfeval(x, w_ik(i+1,:), c, ones(1,nbasis).*sig), 0, maxtime);
         %figure(2);
-        %vfunc = rbfeval(0:500, w_ik(i+1,:), c, ones(1,nbasis).*sig);
-        %plot(0:500, vfunc);
+        %vfunc = rbfeval(0:maxtime, w_ik(i+1,:), c, ones(1,nbasis).*sig);
+        %plot(0:maxtime, vfunc);
         rt_exploit = find(value_all==max(value_all));
-        %rt_exploit = max(round(find(value_all==max(value_all(20:500)))))-5+round(rand(1).*10);
-        if rt_exploit > 500
-            rt_exploit = 500;
+        %rt_exploit = max(round(find(value_all==max(value_all(20:maxtime)))))-5+round(rand(1).*10);
+        if rt_exploit > maxtime
+            rt_exploit = maxtime;
         end
     end
         
@@ -210,16 +192,15 @@ for i = 1:ntrials
     %use integration to get area under curve of uncertainty
     %otherwise, our estimate of u is discretized, affecting cost function
     
-    total_u = integral(@(x)rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-    u = total_u/500; %make scaling similar? (come back)...
+    total_u = integral(@(x)rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, maxtime);
+    u = total_u/maxtime; %make scaling similar? (come back)...
     
     if u == 0
-        %rt_explore = ceil(rand(1)*ntrials);
-        rt_explore = ceil(.5*ntimesteps); 
+        rt_explore = rt_obs(1); %%FEED RTOBS(1) on the first trial so that the fit is not penalized by misfit on first choice
     else
-        %rt_explore = fminbnd(@(x) -rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        %rt_explore = fminbnd(@(x) -rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, maxtime);
         rt_explore = find(u_all==max(u_all));
-        %rt_explore = max(round(find(u_all==max(u_all(20:500)))));        
+        %rt_explore = max(round(find(u_all==max(u_all(20:maxtime)))));        
     end
 
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
@@ -230,9 +211,9 @@ for i = 1:ntrials
     %hard classification of exploration for now at 0.5
 %     if i < ntrials %do not populate rt on final trial
 %         if sigmoid > 0.5
-%             rts(i+1) = rt_explore;
+%             rts_pred(i+1) = rt_explore;
 %         else
-%             rts(i+1) = rt_exploit;
+%             rts_pred(i+1) = rt_exploit;
 %         end
 %     end
     
@@ -241,20 +222,25 @@ for i = 1:ntrials
     %rng('shuffle');
     if i < ntrials
         if rand < sigmoid %b.randdraws(i)
-            rts(i+1) = rt_explore;
+            rts_pred(i+1) = rt_explore; %predict next RT on the basis of explore/exploit
+            explore_trials = [explore_trials i+1]; %predict next RT on the basis of explore/exploit
         else
-            rts(i+1) = rt_exploit;
+            rts_pred(i+1) = rt_exploit;
+            exploit_trials = [exploit_trials i+1]; %predict next RT on the basis of explore/exploit
         end 
         
         %playing with basis update at the edge
-        %rts(i+1) = 500; %force to latest time
+        %rts_pred(i+1) = maxtime; %force to latest time
     
     end
     explore_rng_state=rng; %save state after random draw above
     
-    verbose=0;
+    rts_pred_explore(i+1) = rt_explore;
+    rts_pred_exploit(i+1) = rt_exploit;
+    
+    verbose=1;
     if verbose == 1
-       fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew(i), rts(i));
+       fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew_obs(i), rts_obs(i));
        fprintf('w_i,k:    '); fprintf('%.2f ', w_ik(i,:)); fprintf('\n');
        fprintf('deltah:   '); fprintf('%.2f ', alpha*deltah(i,:)); fprintf('\n');
        fprintf('w_i+1,k:  '); fprintf('%.2f ', w_ik(i+1,:)); fprintf('\n');
@@ -266,9 +252,9 @@ for i = 1:ntrials
         figure(1); clf;
         subplot(5,2,1)
         %plot(t,value_all);
-        scatter(rts(1:i),rew(1:i)); axis([1 500 0 350]);
+        scatter(rts_obs(1:i),rew_obs(1:i)); axis([1 maxtime 0 350]);
         hold on;
-        plot(rts(i),rew(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
+        plot(rts_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 maxtime 0 350]);
         hold off;
         subplot(5,2,2)
         plot(t,value_all); xlim([-1 ntimesteps+1]);
@@ -306,15 +292,15 @@ for i = 1:ntrials
         xlabel('mean uncertainty')
         %         pause(0.1);
         subplot(5,2,10)
-        plot(1:ntrials,rts, 'k');
+        plot(1:ntrials,rts_obs, 'k');
         ylabel('rt by trial'); axis([1 ntrials -5 505]);
 %         
 %         figure(1); clf;
 %         subplot(2,2,1)
 %         %plot(t,value_all);
-%         scatter(rts(1:i),rew(1:i)); axis([1 500 0 350]);
+%         scatter(rts_obs(1:i),rew_obs(1:i)); axis([1 maxtime 0 350]);
 %         hold on;
-%         plot(rts(i),rew(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
+%         plot(rts_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 maxtime 0 350]);
 %         hold off;
 %         subplot(2,2,2)
 %         plot(t,value_all); xlim([-1 ntimesteps+1]);
@@ -337,12 +323,26 @@ for i = 1:ntrials
         drawnow update;
         mov(i) = getframe(gcf);
     end
-    %     disp([i rts(i) rew(i) sum(value_all)])
+    %     disp([i rts_obs(i) rew_obs(i) sum(value_all)])
 end
-%cost = -sum(rew);
-cost = -sum(ev);
+%cost = -sum(rew_obs);
+cost_total = -sum((rts_pred - rts_obs).^2);
+ret.cost_total = cost_total;
+ret.cost_explore = -sum((rts_pred(explore_trials) - rts_obs(explore_trials)).^2);
+ret.cost_exploit = -sum((rts_pred(exploit_trials) - rts_obs(exploit_trials)).^2);
+ret.rts_pred = rts_pred;
+ret.rts_pred_explore = rts_pred_explore;
+ret.rts_pred_exploit = rts_pred_exploit;
+ret.explore_trials = explore_trials;
+ret.exploit_trials = exploit_trials;
+ret.rts_obs = rts_obs;
+ret.rew_obs = rew_obs;
+ret.value = value_all;
 
-%     cond_matrix(j,:) = rts;
+
+%cost_explore,cost_exploit,constr,value_all,value_hist,rts_pred,mov
+
+%     cond_matrix(j,:) = rts_obs;
 % end
 
 % %% to be run after code completes
@@ -409,7 +409,7 @@ cost = -sum(ev);
 %         p_choice = value_all./norm(value_all,1);
 %
 %     end
-%     rts(i+1) = round(randsample(ntimesteps,1,true,p_choice));
+%     rts_obs(i+1) = round(randsample(ntimesteps,1,true,p_choice));
 %
 
 %     for h = 1:nbasis
@@ -431,7 +431,7 @@ cost = -sum(ev);
 %r = rand(1,100);
 % r = zeros(1,ntrials);
 % for i = 1:ntrials
-%     r(i) = RewFunction(rts(i),cond);
+%     r(i) = RewFunction(rts_obs(i),cond);
 % end
 
 %Load in pseudo-random reward matrix

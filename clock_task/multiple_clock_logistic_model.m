@@ -41,10 +41,10 @@ upper_bounds = [0.2 .999 0];
 % upper_bounds = [0.2 0];
 
 %epsilon only
-%init_params_1 = [-.08];
-%init_params_2 = [-.08];
-%lower_bounds = [-0.5];
-%upper_bounds = [-.005];
+init_params_1 = [-.08];
+init_params_2 = [-.08];
+lower_bounds = [-0.5];
+upper_bounds = [-.005];
 
 % init_params_1 = [.1];
 % lower_bounds = [0];
@@ -52,7 +52,7 @@ upper_bounds = [0.2 .999 0];
 
 %[fittedparameters_rmsearch,cost_rmsearch,exitflag_rmsearch,xstart_rmsearch]=rmsearch(@(params) clock_logistic_operator(params), 'fmincon', init_params_1, lower_bounds, upper_bounds, 'initialsample', num_start_pts, 'options', opts);
 
-poolobj = parpool('local', 12);
+poolobj = parpool('local', 4);
 epsvalues = -0.6:.005:-.001;
 %alphavalues = 0:.005:1;
 costs=zeros(1,length(epsvalues));
@@ -67,6 +67,8 @@ delete(poolobj);
 %plot(alphavalues, costs);
 figure(5);
 plot(epsvalues, costs);
+
+diff(costs)
 
 figure(1);
 plot(epsvalues, costs_shuffle);
@@ -107,6 +109,38 @@ plot(0:5000, outs);
 % calc=fmincon(@(params) rbfeval(params, weights, centers, widths), 1000, [], [], [], [], 0, 5000, [], opts);
 % calc=fminbnd(@(params) -rbfeval(params, weights, centers, widths), 0, 5000);
 % rbfeval(calc, weights, centers, widths)
+
+%optionsGA = gaoptimset('PlotFcns',@gaplotbestfun,'PlotInterval',5, ...
+%    'PopInitRange',[-5;5]);
+
+optionsGA = gaoptimset('PlotFcns',@gaplotbestf,'Display','iter','InitialPopulation',init_params_1);
+% We run GA with the options 'optionsGA' as the tenth argument.
+numVars = 3;
+
+init_params_1 = [-.06 .01 .9877 ];
+lower_bounds = [-1 0.001 0.9 ];
+upper_bounds = [0 0.2 .999];
+
+[Xga,Fga] = ga(@fitnessfcn, ...
+    numVars, ... %number of free parameters
+    [], ... A*x
+    [], ... %b
+    [], ... %Aeq
+    [], ... %beq
+    lower_bounds, ... %LB
+    upper_bounds, ... %UB
+    [], ... %nonlcon
+    optionsGA);
+
+%best values from genetic algorithm:  -0.0600    0.0100    0.9875
+gabest=[-0.0600    0.0100    0.9875];
+
+
+%more best values from 20 runs of data: seed=999
+gabest = [-0.0434    0.0202    0.9706];
+
+[cost,constr,value_all,value_hist,rts,mov] = clock_logistic_operator(gabest, [20 80], 'IEV', 100);
+
 
 %encourage optimizer to look around!
 %fmincon_options.
