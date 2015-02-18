@@ -18,21 +18,21 @@ function [cost,constr,value_all,value_hist,rts,mov] = clock_logistic_operator(pa
 %ntimesteps is the number of time bins used for obtaining estimates of time functions for plotting etc.
 
 
-%% free parameters: learning rate (alpha), temporal decay (lambda, as in TD(lambda)), exploration tradeoff (epsilon)
-alpha = params(1);
+%% free parameters: exploration tradeoff (epsilon), learning rate (alpha), temporal decay (lambda, as in TD(lambda))
+epsilon = params(1);
 
 if length(params) < 2
-    disp('defaulting to lambda=.98');
-    lambda = .98;
+    disp('defaulting to alpha=.06');
+    alpha = .06;
 else
-    lambda = params(2);
+    alpha = params(2);
 end
 
 if length(params) < 3
-    disp('defaulting to epsilon=-.08');
-    epsilon = -.08;
+    disp('defaulting to lambda=.985');
+    lambda = .985;
 else
-    epsilon = params(3);
+    lambda = params(3);
 end
     
 if nargin < 2
@@ -252,7 +252,7 @@ for i = 1:ntrials
     end
     explore_rng_state=rng; %save state after random draw above
     
-    verbose=1;
+    verbose=0;
     if verbose == 1
        fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew(i), rts(i));
        fprintf('w_i,k:    '); fprintf('%.2f ', w_ik(i,:)); fprintf('\n');
