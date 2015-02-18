@@ -175,7 +175,9 @@ for ei = 1:episodeCount,
             %episodeFinished = 1;
             %r = -100; %provide a big punishment
         else
-            r = RewFunction(nextpos.col.*factor, cond); %every move recives probablistic reward
+            r = 0;
+            %continue;
+            %r = RewFunction(nextpos.col.*factor, cond); %every move recives probablistic reward
         end
         
         %if requested, take snapshot of agent in episode before next action chosen and Q is updated.
