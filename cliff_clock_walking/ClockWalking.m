@@ -1,4 +1,4 @@
-function [cumReward] = ClockWalking(options)
+function [cumReward, quits] = ClockWalking(options)
 global episodesStruct;
 % CliffWalking: implements the cliff-walking problem using either the Q-Learning method or SARSA.
 
@@ -26,8 +26,7 @@ if(nargin < 1),
     gamma = 0.9; %discount factor: how important are are short-term versus long-term gains (0 = short-sighted, 1 = long-term payoff)
     alpha = 0.05; %learning rate: how much to weight new information (0 = no learning, 1 = only value latest information)
     epsilon = 0.1; %how often does agent explore? 10% here
-    gridcols = 10;
-    gridrows = 7;
+    ntimesteps = 50; %how many timesteps for the trial
     fontsize = 5;
     showTitle = 1;
 
@@ -36,28 +35,16 @@ if(nargin < 1),
     allowDiagonal = 0; 
     canHold = 0;
 
-    start.row = 7;
-    start.col = 1;
-    goal.row = 7;
-    goal.col = 10;
+    start = 1; %always start at first timestep
     agent = 'qlearning';
     speedbumpcol = 0; %by default, leave out speedbump
     speedbumpcost = -10;
-    smallreward.on = 0;
-    smallreward.row = 1;
-    smallreward.col = 1;
-    smallreward.payoff = 3;
     episodesToTrack = [ 5 100 200 300 1000 2000 ]; %which episodes to track (snapshots)
-    newgoal.on = 0; %off by default
-    newgoal.episode = episodeCount;
-    newgoal.row = 1;
-    newgoal.col = gridcols; %position in NE corner
 else
     gamma = options.gamma;
     alpha = options.alpha;
     epsilon = options.epsilon;
-    gridcols = options.gridcols; 
-    gridrows = options.gridrows;
+    ntimesteps = options.ntimesteps;
     fontsize = options.fontsize;
     showTitle = options.showTitle;
 
@@ -67,13 +54,11 @@ else
     canHold = options.canHold;
 
     start = options.start;
-    goal = options.goal;
     agent = options.agent;
     speedbumpcol = options.speedbumpcol;
     speedbumpcost = options.speedbumpcost;
     episodesToTrack = options.snapshotEpisodes;
     smallreward = options.smallreward;
-    newgoal = options.newgoal;
     cond = options.cond;
     diagnos = options.diag;
     decay_flag = options.decayflag;
@@ -96,16 +81,13 @@ decay_val=.95; %Currently 5%
 
 
 selectedEpIndex = 1;
-%Only move east and south
-actionCount = 2;
-
-%if(allowDiagonal ~= 0),  actionCount = 8; else actionCount = 4; end
-if(canHold ~= 0 && allowDiagonal ~= 0), actionCount = actionCount + 1; end
+%quit or wait
+nactions = 2;
 
 % initialize Q with zeros (no initial information about environment)
-% Q is the action-value function: expected reward for each possible action at a given position in the maze.
+% Q is the action-value function: expected reward for each possible action at a given timestep in the trial.
 global Q;
-Q = zeros(gridrows, gridcols, actionCount);
+Q = zeros(ntimesteps, nactions);
 cumReward = zeros(episodeCount, 1); %vector to track total reward earned per episode
 
 a = 0; % an invalid action
@@ -116,25 +98,14 @@ a = 0; % an invalid action
 e2t_i = 1; %index of episode being tracked
 episodesStruct = []; %will be a vector (episodes) of structs containing cell arrays of Q and a (per action/step)
 
-reversalOccurred = 0; %whether goal has been moved
-
 %set factor depending upon a 10ms or 100ms bin size
-if length(num2str(gridcols))==2
-    factor=100;
-elseif length(num2str(gridcols))==3
-    factor=10;
-end
+factor=100; %bins are 100ms
+
+quits=zeros(episodeCount,1);
 
 for ei = 1:episodeCount,
     fprintf('Running episode %d\n', ei);
     
-    %Have agent start in middle
-%     if ei==1
-%         start.col=gridcols/2;
-%     else
-%         start.col=1;
-%     end
-%     
     curpos = start; %initialize current position to the start
     nextpos = start; %initialize the next position to the start
     
@@ -142,50 +113,35 @@ for ei = 1:episodeCount,
     if (decay_flag ==1 && episodeCount ~=1),epsilon=epsilon.*decay_val; end
     
     % 1) choose initial action at current position using an epsilon greedy policy derived from Q
-    [qmax, a, explore] = chooseAction(epsilon, Q, curpos, gridrows, gridcols, actionCount);
-    
-    %switch goal to newgoal if requested
-    if reversalOccurred == 0 && newgoal.on == 1 && ei >= newgoal.episode 
-        goal = newgoal;
-        reversalOccurred = 1;
-    end
-    
+    [qmax, a, explore] = chooseAction(epsilon, Q, curpos, ntimesteps, nactions);
+      
     episodeFinished = 0;
     %Wander in the environment until agent 1) achieves the goal state, or 2) falls off the cliff.
     %This constitutes a single episode (i.e., arrive at the final/absorbing state).
         
     step = 1;
-    while(episodeFinished == 0)
+    while(episodeFinished == 0 && curpos < ntimesteps)
         % 2) take action a to move from curpos to nextpos
         % 3) receive reward r (at nextpos)
-        nextpos = GiveNextPos(curpos, a, gridcols, gridrows);
-        %fprintf('Location: %d %d\n', nextpos.row, nextpos.col);
-        if(PosCmp(nextpos, goal) == 0)
+        nextpos = curpos+1; %next timestep
+        %fprintf('ei is: %d, nextpos is %d\n', ei, nextpos);
+        %fprintf('Location: %d %d\n', nextpos, nextpos);
+        if a == 2 %i.e., quit
             %if we have arrived at the goal state, mark as finished and provide reward 0
             episodeFinished = 1;
-            r = RewFunction(nextpos.col.*factor, cond);
+            r = RewFunction(nextpos.*factor, cond);
+            fprintf('harvested rew: %.2f ', r);
 %             figure(88)
-%             scatter(nextpos.col,r)
-             quits(ei)=nextpos.col;
+%             scatter(nextpos,r)
+              quits(ei)=nextpos;
 %             rs(ei)=r;
             %hold on
-        elseif(speedbumpcol > 0 && nextpos.col == speedbumpcol && nextpos.row <= floor(0.5 .* gridrows))
-            %put a speedbump on the upper half of the rows at a given column (speedbumpcol)
-            %this is a non-absorbing negative reward (to be avoided)
-            r = speedbumpcost;
-        elseif (smallreward.on == 1 && PosCmp(nextpos, smallreward) == 0)
-            %provide agent a small reward (absorbing)
-            episodeFinished = 1;
-            r = smallreward.payoff;
-        %elseif(nextpos.row == gridrows && 1 < nextpos.col && nextpos.col < gridcols)
-            %if the next move puts us on the bottom row and is 1 < column < gridcols,
-            %then we have fallen off the cliff (bottom row, middle columns)
-            %episodeFinished = 1;
-            %r = -100; %provide a big punishment
-        else
+        else %wait
             r = 0;
+            %curpos = curpos + 1;
+            %[qmax, a, explore] = chooseAction(epsilon, Q, curpos, ntimesteps, nactions);
             %continue;
-            %r = RewFunction(nextpos.col.*factor, cond); %every move recives probablistic reward
+            %r = RewFunction(nextpos.*factor, cond); %every move recives probablistic reward
         end
         
         %if requested, take snapshot of agent in episode before next action chosen and Q is updated.
@@ -202,10 +158,10 @@ for ei = 1:episodeCount,
         
         % exploit: choose best action based on max Q (greedy selection)
         % put this here (not within explore/exploit if statement) so that qmax is always known for Q-learning.
-        [qmax, a_next, explore] = chooseAction(epsilon, Q, nextpos, gridrows, gridcols, actionCount);
+        [qmax, a_next, explore] = chooseAction(epsilon, Q, nextpos, ntimesteps, nactions);
         
         % update Q for prior location (t-1) based on payoff at this location (t)
-        curQ = Q(curpos.row, curpos.col, a); % working estimate of expected value at location(t-1), action(t-1) 
+        curQ = Q(curpos, a); % working estimate of expected value at location(t-1), action(t-1) 
         if strcmp(agent, 'qlearning')
             %Q-learning updates the curQ estimate based on the highest expected payoff for the next action (greedy)
             %This is an off policy decision because we have an epsilon greedy policy, not greedy
@@ -214,31 +170,27 @@ for ei = 1:episodeCount,
             %SARSA updates curQ using information about expected payoff at the next time step, knowing the next action
             %This is on policy in this sense that it respects whatever action selection policy is used
             %  (here, epsilon-greedy instead of pure greedy)
-            nextQ = Q(nextpos.row, nextpos.col, a_next);
+            nextQ = Q(nextpos, a_next);
         end
 
         % update Q matrix (action-value)
         % learned value is [r + gamma*nextQ]
         % old value is curQ
-        Q(curpos.row, curpos.col, a) = curQ + alpha*(r + gamma*nextQ - curQ);    
+        Q(curpos, a) = curQ + alpha*(r + gamma*nextQ - curQ);    
         
         %update time step
         curpos = nextpos; a = a_next; step = step + 1;
         
         cumReward(ei) = cumReward(ei) + r;
         
-        
-        
     end % states in each episode
     
     if (e2t_i <= length(episodesToTrack) && ei == episodesToTrack(e2t_i))
         %add information about the environment to struct
         episodesStruct(e2t_i).start = start;
-        episodesStruct(e2t_i).goal = goal;
         episodesStruct(e2t_i).agent = agent;
         episodesStruct(e2t_i).episode = ei;
-        episodesStruct(e2t_i).gridrows = gridrows;
-        episodesStruct(e2t_i).gridcols = gridcols;
+        episodesStruct(e2t_i).ntimesteps = ntimesteps;
         episodesStruct(e2t_i).speedbumpcol = speedbumpcol;
         episodesStruct(e2t_i).smallreward = smallreward;
         e2t_i = e2t_i + 1;
@@ -246,30 +198,30 @@ for ei = 1:episodeCount,
     
     
     % if the current state of the world is going to be drawn ...
-    if(selectedEpIndex <= length(plotEpisodes) && ei == plotEpisodes(selectedEpIndex))
-        curpos = start;
-        rows = []; cols = []; acts = [];
-        for i = 1:(gridrows + gridcols) * 10,
-            %[qmax, a] = max(Q(curpos.row,curpos.col,:));
-            [qmax, a] = chooseAction(epsilon, Q, curpos, gridrows, gridcols, actionCount);
-            nextpos = GiveNextPos(curpos, a, gridcols, gridrows);
-            rows = [rows curpos.row];
-            cols = [cols curpos.col];
-            acts = [acts a];
-
-            if(PosCmp(nextpos, goal) == 0), break; end
-            curpos = nextpos;
-        end % states in each episode
-        
-        %figure;
-        figure('Name',sprintf('Episode: %d', ei), 'NumberTitle','off');
-        DrawClockEpisodeState(rows, cols, acts, start.row, start.col, goal.row, goal.col, gridrows, gridcols, fontsize, speedbumpcol, smallreward);
-        if(showTitle == 1),
-            title(sprintf('Cliff Walking %s - episode %d - (\\epsilon: %3.3f), (\\alpha = %3.4f), (\\gamma = %1.1f)', agent, ei, epsilon, alpha, gamma));
-        end
-        
-        selectedEpIndex = selectedEpIndex + 1;
-    end
+%     if(selectedEpIndex <= length(plotEpisodes) && ei == plotEpisodes(selectedEpIndex))
+%         curpos = start;
+%         rows = []; cols = []; acts = [];
+%         for i = 1:(ntimesteps) * 10,
+%             %[qmax, a] = max(Q(curpos,curpos.col,:));
+%             [qmax, a] = chooseAction(epsilon, Q, curpos, ntimesteps, nactions);
+%             nextpos = curpos+1;
+%             rows = [rows curpos];
+%             cols = [cols curpos.col];
+%             acts = [acts a];
+% 
+%             if(PosCmp(nextpos, goal) == 0), break; end
+%             curpos = nextpos;
+%         end % states in each episode
+%         
+%         %figure;
+%         figure('Name',sprintf('Episode: %d', ei), 'NumberTitle','off');
+%         DrawClockEpisodeState(rows, cols, acts, start, start.col, goal, goal.col, ntimesteps, fontsize, speedbumpcol, smallreward);
+%         if(showTitle == 1),
+%             title(sprintf('Cliff Walking %s - episode %d - (\\epsilon: %3.3f), (\\alpha = %3.4f), (\\gamma = %1.1f)', agent, ei, epsilon, alpha, gamma));
+%         end
+%         
+%         selectedEpIndex = selectedEpIndex + 1;
+%     end
     
     %plot value curves and quit counts
     if diagnos == 1
@@ -277,83 +229,45 @@ for ei = 1:episodeCount,
         figure(10002)
         subplot(4,1,1)
         plot(1:length(quits),quits) %I think this is it
-        axis([0 episodeCount 0 gridcols]) 
+        axis([0 episodeCount 0 ntimesteps]) 
         title('rt by trial')
 %         hist(quits,20)
 %         title('hist of quits')
         
         
         subplot(4,1,2)
-        plot(smooth(Q(1,1:gridcols)))
+        plot(smooth(Q(1:ntimesteps, 1)))
         hold on
-        plot(smooth(Q(1,(gridcols+1):end)),'r')
+        plot(smooth(Q(1:ntimesteps, 2)),'r')
         hold off
         title('value of waits & quits')
         
         subplot(4,1,3)
-        plot(smooth(Q(1,(gridcols+1):end)))
+        plot(smooth(Q(1:ntimesteps, 2)))
         title('value of quits')
         
         subplot(4,1,4)
-        scatter(nextpos.col,r)
+        scatter(nextpos,r)
         title('rewards gained at rt')
         hold on
+        
+        drawnow update;
     end
 
 end % episodes loop
 
-function c = PosCmp(pos1, pos2)
-%are the two positions identical? (i.e., 0)
-c = pos1.row - pos2.row;
-%if(c == 0)
-%    c = c + pos1.col - pos2.col;   %Since there are only two rows...
-%end
-
-
-% deprecated, just use randi function directly
-% function n = IntRand(lowerBound, upperBound)
-%     %goal is to generate random uniform integers
-%     %note that as previously coded, would only generate numbers [lowerBound, upperBound - 1]
-%     upperBound = upperBound + 1; %ensure that numbers range [lowerBound, upperBound]
-%     n = floor((upperBound - lowerBound) * rand + lowerBound);
-
-function [qmax, a, explore] = chooseAction(epsilon, Q, pos, gridrows, gridcols, actionCount)
+function [qmax, a, explore] = chooseAction(epsilon, Q, pos, ntimesteps, nactions)
     %choose an action based on epsilon greedy strategy
     %does not permit selection of actions that move off the grid   
-    east = 1;
-    south = 2;
-    west = 3;
-    north = 4;
-    northeast = 5;
-    southeast = 6;
-    southwest = 7;
-    northwest = 8;
-    hold = 9;
+    wait = 1;
+    quit = 2;
     
-    actionNames={'east' 'south' 'west' 'north' 'northeast' 'southeast' 'southwest' 'northwest' 'hold'};
+    actionNames={'wait' 'quit'};
     
-    validActions = 1:actionCount;
-    
-    %restrict max Q selection to valid moves
-    % gridrows are numbered top-to-bottom, gridcols are numbered left-to-right.
-    if pos.row == gridrows, validActions = validActions(validActions ~= south); end %can't go south on bottom row
-    if pos.row == 1, validActions = validActions(validActions ~= north); end %can't go north on top row
-    if pos.col == gridcols, validActions = validActions(validActions ~= east); end %can't go east on right col
-    if pos.col == 1, validActions = validActions(validActions ~= west); end %can't go west on left col
+    validActions = 1:nactions;
 
-    if actionCount > 4
-        if pos.row == gridrows, validActions = validActions(~ismember(validActions, [southeast southwest])); end %can't go SE or SW on bottom row
-        if pos.row == 1, validActions = validActions(~ismember(validActions, [northeast northwest])); end %can't go NE or NW on top row
-        if pos.col == gridcols, validActions(~ismember(validActions, [southeast northeast])); end %can't go NE or SE on right col
-        if pos.col == 1, validActions(~ismember(validActions, [southwest northwest])); end %can't go NW or SW on left col
-    end  
-    
-    if isempty(validActions)
-        validActions=2; %Quick fix for edges?
-    end
-    
-    [qmax, apos] = max(Q(pos.row, pos.col, validActions)); %qmax is the maximum value of Q, a is its index/position
-    a = validActions(apos); %make sure that match above is translated into the n, e, s, w nomenclature above
+    [qmax, apos] = max(Q(pos, validActions)); %qmax is the maximum value of Q, a is its index/position
+    a = validActions(apos); %make sure that match above is translated into numbering for quit and wait
     explore = 0; %tracks whether current action is exploit versus explore.
     
     if(rand <= epsilon)
@@ -363,4 +277,4 @@ function [qmax, a, explore] = chooseAction(epsilon, Q, pos, gridrows, gridcols, 
         explore = 1;
     end
     
-    %fprintf('Action chosen %s\n', char(actionNames(a)));
+    %fprintf('Action chosen %s, explore is: %d\n', char(actionNames(a)), explore);
