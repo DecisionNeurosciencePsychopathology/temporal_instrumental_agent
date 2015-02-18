@@ -43,6 +43,11 @@ if nargin < 4, ntrials=100; end
 if nargin < 5, nbasis = 12; end
 if nargin < 6, ntimesteps=500; end
 
+%states if ew want to decay epsilon
+decay_flag = 1;
+decay = .95;
+
+
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
 
@@ -54,7 +59,7 @@ rew_rng_state=rng;
 rng(explore_rng_seed);
 explore_rng_state=rng;
 
-trial_plots = 0; %whether to show trialwise graphics of parameters
+trial_plots = 1; %whether to show trialwise graphics of parameters
 
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
@@ -135,6 +140,9 @@ fprintf('running agent with alpha: %.3f, lambda: %.3f, epsilon: %.3f and rngseed
 
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
+    
+    %decay epsilon
+    if (decay_flag ==1 && ntrials ~=1),epsilon=epsilon.*decay; end
     
     % get eligibility traces for each stimulus (h)
     % let's assume eligibility decays in inverse proporation to time
@@ -334,8 +342,8 @@ for i = 1:ntrials
 %         xlabel('time (centiseconds)')
 %         ylabel('uncertainty')
         
-        drawnow update;
-        mov(i) = getframe(gcf);
+        %drawnow update;
+        %mov(i) = getframe(gcf);
     end
     %     disp([i rts(i) rew(i) sum(value_all)])
 end
