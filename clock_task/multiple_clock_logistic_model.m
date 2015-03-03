@@ -93,6 +93,9 @@ sum(diff(costs_soft)==0)
 [cost_2, dummy1, dummy2, dummy3, rts_2] = clock_logistic_operator(-.4550);
 
 
+[cost_1, dummy1, dummy2, dummy3, rts_1] = clock_logistic_operator(-.08);
+
+
 %testing rbfeval function
 weights=[0.0776 7.4801 0.0792 0.0008 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000 0.0024 0.2286 22.0326 0.2332];
 centers=[-454.5455 0.0000 454.5455 909.0909 1363.6364 1818.1818 2272.7273 2727.2727 3181.8182 3636.3636 4090.9091 4545.4545 5000.0000 5454.5455];

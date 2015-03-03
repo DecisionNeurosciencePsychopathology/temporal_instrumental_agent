@@ -40,7 +40,7 @@ if nargin < 2
 end
 if nargin < 3, cond = 'DEV'; end
 if nargin < 4, ntrials=100; end
-if nargin < 5, nbasis = 12; end
+if nargin < 5, nbasis = 24; end
 if nargin < 6, ntimesteps=500; end
 
 %states for random generators are shared across functions to allow for repeatable draws
@@ -64,24 +64,40 @@ constr = [];
 %Initialize time step vector and allocate for memory
 t=1:ntimesteps;
 
-%Selected time points
-step_num = nbasis - 1;
-%step = (ntimesteps-1)/step_num;
-%c = 0:step:ntimesteps-1;
+%OLD BASIS SETUP
+%step_num = nbasis - 1;
 
 %expand basis functions at edges
-step = (ntimesteps-1)/step_num;
-c = -step:step:ntimesteps+step;
+%step = (ntimesteps-1)/step_num;
+%c = -step:step:ntimesteps+step;
 %c = -(step*4):step:(ntimesteps+step*4);
-nbasis=length(c);
+%nbasis=length(c);
 % c = [0 1250 2500 3750 5000];
+
+% sigma of Gaussian hard coded for now
+%sig = (350.*ntimesteps)./5000;
+
+
+%setup centers (means) and sds of basis functions
+%based on testing in fix_rbf_basis.m, place the lowest center 12.5% below the first timestep and the last
+%center 12.5% above last timestep. We were giving the agent 14 basis functions previously, so keep that for
+%now (arg 6 above). SD should be calculated to give a Cohen's d of 1.52 between basis functions (~45% distribution overlap).
+
+%margin_offset=0;
+%margin_offset = (max(t) - min(t))*.125; % 12.5% offset
+margin_offset = (max(t) - min(t))*.25; % 8% offset
+%margin_offset = (max(t) - min(t))*.50; % try 25% offset to handle problem of edges
+
+%define lowest and highest centers
+tmin = min(t) - margin_offset; tmax=max(t) + margin_offset;
+c=tmin:(tmax-tmin)/(nbasis-1):tmax;
+
+sig = (c(2) - c(1))/1.52; %cohen's d of 1.52 between basis functions
 
 %%NB: not sure how to use gamma (normally the discounting constant
 %gamma = params(1); %Random number between 0 and 1
 % gamma = 0.7;
 
-% sigma of Gaussian hard coded for now
-sig = (350.*ntimesteps)./5000;
 
 %% initialize RTs chosen by agent as a nan vector;
 rts = nan(1,ntrials);
@@ -115,8 +131,22 @@ gaussmat = zeros(nbasis,ntimesteps);
 for j = 1:nbasis
     gaussmat(j,:) = gaussmf(t,[sig c(j)]);
 end
-
 %plot(t,gaussmat);
+
+%gauss mat for all possible timesteps
+lowest_t = tmin - 4*sig; %3 SDs below lowest center.
+highest_t = tmax + 4*sig;
+
+t_all = round(lowest_t):round(highest_t);
+
+gaussmat_all = zeros(nbasis,length(t_all));
+
+for j = 1:nbasis
+    gaussmat_all(j,:) = gaussmf(t_all,[sig c(j)]);
+end
+plot(t_all, gaussmat_all);
+
+
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
 %fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
@@ -133,15 +163,55 @@ fprintf('running agent with alpha: %.3f, lambda: %.3f, epsilon: %.3f and rngseed
 
 %rng('shuffle');
 
+c_bounded = c;
+%interpolate eligibility trace to give weight to basis functions outside of interval matching the lowest or highest
+%basis inside the interval
+c_bounded(find(c > 500)) = 500;
+c_bounded(find(c < 0)) = 0;
+%c_bounded(find(c > 500)) = c(max(find(c < 500)));
+%c_bounded(find(c < 0)) = c(min(find(c > 0)));;
+
+%c_bounded(find(c < 0)) = 0;
+
+
+%divide the weight update by the proportion of the Gaussian CDF inside the observed time interval
+correction_factor=[];
+for k = 1:nbasis
+    if c(k) < ntimesteps/2
+        correction_factor(k) = 1 - normcdf(0, c(k), sig); %add normcdf above 500, too.
+    else
+        correction_factor(k) = normcdf(500, c(k), sig); %add normcdf above 500, too.
+    end
+end
+
+%arbitrary
+correction_factor=sqrt(correction_factor);
+
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
     
     % get eligibility traces for each stimulus (h)
     % let's assume eligibility decays in inverse proporation to time
     % elapsed from or remaining until the peak of a stimulus
-    eh(i,:) = lambda.^(abs(rts(i)-c)+1);
-    % eh(i,:) = 1./(abs(rts(i)-c)+1);
+    %eh(i,:) = lambda.^(abs(rts(i)-c)); %exponential update
+    %eh(i,:) = lambda.^(abs(rts(i)-c_bounded)); %exponential update
+    % eh(i,:) = 1./(abs(rts(i)-c)+1); %inverse update
+    % triangular update
+    %decay_zero = 100; %function decays to zero for rt diff > 100
+    %rt_diffs = abs(rts(i)-c);
+    %rt_diffs = abs(rts(i)-c_bounded);
+    %eh_temp = abs(decay_zero - rt_diffs)/decay_zero;
+    %eh_temp(find(rt_diffs > decay_zero)) = 0; %zero out anything beyond the decay
+    %eh(i,:) = eh_temp;
     
+    %square function within bounds
+    %rt_diffs = abs(rts(i) - c);
+    %eh(i,:) = (decay_zero - rt_diffs) > 0;
+        
+    %gaussian update function
+    eh(i,:) = gaussmf(c_bounded, [sig, rts(i)]);
+    %eh(i,:) = gaussmf(c, [sig*0.7, rts(i)]);
+        
     % estimate reward assigned to each stimulus h
     %rew(i) = r(i, rts(i)); %RewFunction(rts(i).*10, cond); 
     [rew(i) ev(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
@@ -166,7 +236,8 @@ for i = 1:ntrials
     
     %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision of sampling is higher.
     %update 
-    uh(i+1,:) = uh(i,:) - .01.*eh(i,:);
+    uh(i+1,:) = uh(i,:) - 1.0.*eh(i,:)./correction_factor;
+    %uh(i+1,:) = uh(i,:) - 1.0.*eh(i,:);
     
     temp_w_ik = w_ik(i+1,:)'*ones(1,ntimesteps);
     value_by_h=temp_w_ik.*gaussmat;
@@ -177,6 +248,10 @@ for i = 1:ntrials
     temp_uh = uh(i+1,:)'*ones(1,ntimesteps);
     u_by_h=temp_uh.*gaussmat;
     u_all = sum(u_by_h);
+    
+    temp_uh = uh(i+1,:)'*ones(1,length(t_all));
+    u_by_h=temp_uh.*gaussmat_all;
+    u_allt = sum(u_by_h);
     
     value_hist(i,:) = value_all;
     u_hist(i,:) = u_all;
@@ -218,8 +293,12 @@ for i = 1:ntrials
         rt_explore = ceil(.5*ntimesteps); 
     else
         %rt_explore = fminbnd(@(x) -rbfeval(x, uh(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-        rt_explore = find(u_all==max(u_all));
+        rt_explore = find(u_all==max(u_all), 1); %return position of first max
         %rt_explore = max(round(find(u_all==max(u_all(20:500)))));        
+        
+        
+        %rt_explore=500; %always choose max for testing
+        %rt_explore = randi([400,500],1);
     end
 
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
@@ -240,11 +319,12 @@ for i = 1:ntrials
     rng(explore_rng_state); %draw from reward rng
     %rng('shuffle');
     if i < ntrials
-        if rand < sigmoid %b.randdraws(i)
-            rts(i+1) = rt_explore;
-        else
-            rts(i+1) = rt_exploit;
-        end 
+        rts(i+1) = rt_explore;
+%        if rand < sigmoid %b.randdraws(i)
+%            rts(i+1) = rt_explore;
+%        else
+%            rts(i+1) = rt_exploit;
+%        end 
         
         %playing with basis update at the edge
         %rts(i+1) = 500; %force to latest time
@@ -334,6 +414,15 @@ for i = 1:ntrials
 %         xlabel('time (centiseconds)')
 %         ylabel('uncertainty')
         
+        figure(2); clf;
+        %plot(1:500, u_all);
+        plot(t_all, u_allt);
+        hold on;
+        %plot(c, eh(i,:))
+        plot(c, eh(1:i,:)')
+        bar(c, uh(i,:))
+        
+
         drawnow update;
         mov(i) = getframe(gcf);
     end
