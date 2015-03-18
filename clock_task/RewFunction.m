@@ -1,4 +1,8 @@
-function [rew, ev] = RewFunction(rt, cond)
+function [rew, ev] = RewFunction(rt, cond, userngseed)
+
+if nargin < 3
+    userngseed=1; %whether to use global rew_rng_state for draws
+end
 
 global rew_rng_state;
 
@@ -34,14 +38,15 @@ else
     error(['Unknown function: ' cond]);
 end
 
-rng(rew_rng_state); %draw from reward rng
+if userngseed, rng(rew_rng_state); end %draw from reward rng chain
+%else rng('shuffle'); end %draw from random chain
 rprob=rand;
 %fprintf('rew func with prob: %.2f\n', rprob);
-if frq>=rprob
-    rew =mag;
-else rew= 0;
+if frq >= rprob
+    rew = mag;
+else rew = 0;
 end;
-rew_rng_state=rng; %save state after random draw above
+if userngseed, rew_rng_state=rng; end %save state after random draw above
 
 ev=frq*mag; %return expected value
 

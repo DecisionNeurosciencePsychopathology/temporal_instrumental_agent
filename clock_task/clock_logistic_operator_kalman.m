@@ -1,3 +1,5 @@
+%Kalman filter extension of temporal basis operator: each basis function tracks the mean value and uncertainty (sd) as a
+%Gaussian.
 %Authors: Jonathan Wilson, Alex Dombrovski, & Michael Hallquist
 %Date last modified: 3/12/2015
 %Matlab Version: R2012a
@@ -7,9 +9,7 @@
 %choice rule: stochastic continuous RT weighted by value
 %calls on RewFunction.m (Frank lab code)
 
-% function [cost,constr, value_func] = clock_smooth_action_model(...
-%     params, cond, nbasis, trial_plots)
-function [cost,constr,value_func,value_it,rts,mov] = clock_logistic_operator(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
+function [cost,v_it,rts,mov,ret] = clock_logistic_operator_kalman(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
 %params is the vector of parameters used to fit
 %   params(1): alpha
 %cond is the character string of the reward contingency
@@ -18,23 +18,21 @@ function [cost,constr,value_func,value_it,rts,mov] = clock_logistic_operator(par
 %ntimesteps is the number of time bins used for obtaining estimates of time functions for plotting etc.
 
 
-%% free parameters: exploration tradeoff (epsilon), learning rate (alpha), temporal decay (sd of Gaussian temporal spread)
+%% free parameters: exploration tradeoff (epsilon), temporal decay (sd of Gaussian temporal spread)
 epsilon = params(1);
 
-if length(params) < 2
-    disp('defaulting to alpha=.06');
-    alpha = .06;
-else
-    alpha = params(2);
-end
+%for now, setup the hack (just for prototype) that epsilon is the proportion reduction in variance at which
+%exploration versus exploitation become equally probable in the sigmoid. Need to have a nicer choice rule that
+%integrates time-varying information about value and uncertainty.
 
-if length(params) < 3
+%note: Kalman filter does not have a free learning rate parameter.
+if length(params) < 2
     disp('defaulting to prop_spread=.02');
     prop_spread = .02; %sigma of temporal spread function as a proportion of the finite interval (0..0.5)
 else
-    prop_spread = params(3);
+    prop_spread = params(2);
 end
-    
+
 if nargin < 2
     rngseeds=[98 83];
 end
@@ -58,8 +56,6 @@ trial_plots = 1; %whether to show trialwise graphics of parameters
 
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
-
-constr = [];
 
 %Initialize time step vector and allocate for memory
 tvec=1:ntimesteps;
@@ -93,16 +89,44 @@ rts(1) = ceil(.5*ntimesteps);
 % i = trial
 % j = basis function
 % t = time step within trial, in centiseconds (1-500, representing 0-5 seconds)
-w_ij =          zeros(ntrials, nbasis);     % initialize basis height values
 delta_ij =      zeros(ntrials, nbasis);     % prediction error assigned to each microstimulus
 e_ij =          zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
-value_jt =      zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
-value_it =      zeros(ntrials, ntimesteps); % history of value function by trial
+v_jt =      zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
+v_it =      zeros(ntrials, ntimesteps); % history of value function by trial
 rew_i =         nan(1, ntrials);            % actual reward for each trial
 ev_i =          nan(1, ntrials);            % expected value of choice for each trial (used for cost function)
-u_ij =          zeros(ntrials, nbasis);     % uncertainty at each microstimulus over trials (history)
 u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each timestep
 u_it =          zeros(ntrials,ntimesteps);  % history of uncertainty by trial at each timestep
+
+%kalman setup
+mu_ij =         nan(ntrials, nbasis);       %means of Gaussians for Kalman
+k_ij =          zeros(ntrials, nbasis);     %Kalman gain (learning rate)
+sigma_ij =      zeros(ntrials, nbasis);     %Standard deviations of Gaussians (uncertainty)
+
+mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all Gaussians.
+
+%noise in the reward signal: sigma_rew. In the Frank model, the squared SD of the Reward vector represents the noise in
+%the reward signal, which is part of the Kalman gain. This provides a non-arbitrary initialization for sigma_rew, such
+%that the variability in returns is known up front... This is implausible from an R-L perspective, but not a bad idea
+%for getting a reasonable estimate of variability in returns. It would be interesting (plausible) to give a unique
+%estimate to each basis based on its temporal receptive field, but hard to decide this up front. But it does seem like
+%this could give local sensitivity to volatility (e.g., low- versus high-probability windows in time). For now, I'll
+%just use the variance of the returns (ala Frank). But for the generative agent, this is not known up front -- so sample
+%from the chosen contingency for each timestep as a guess.
+
+sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
+
+u_threshold = (1-epsilon) * sigma_noise(1); %proportion reduction in variance from initial
+
+%As in Frank, initialize estimate of std of each Gaussian to the noise of returns on a sample of the whole contingency.
+%This leads to an effective learning rate of 0.5 since k = sigma_ij / sigma_ij + sigma_noise
+sigma_ij(1,:) = sigma_noise; 
+
+%so, Kalman Gaussians should be updated by the obtained reward (alternative: PE), spread in time as usual, which forms a
+%temporal eligibility trace... But how do we make sure that we don't get big PEs by gain*(Rew - mean)? Should be a
+%similar problem to the existing guy. In the current implementation we use the alpha*elig*Reward - Expected), such that
+%we only effectively update value representation for large values of the eligibility trace. Should be parallel here:
+%elig*gain*(Rew - mean).
 
 %construct radial basis matrix using Gaussians
 gaussmat = zeros(nbasis,ntimesteps);
@@ -139,8 +163,6 @@ figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
 %the update inside the finite interval but then evaluating the function on the regular RBF... to be developed further
 %since this remains a bit of a mystery. :)
 
-
-
 %note: with truncated gaussian basis (which functions properly), the idea of extending the basis representation outside
 %of the finite interval of interest does not apply (i.e., the functions are not defined outside of the bounds).
 %gauss mat for all possible timesteps
@@ -158,9 +180,9 @@ figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
 %fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
-fprintf('running agent with alpha: %.3f, sigs: %.3f, epsilon: %.3f and rngseeds: %s \n', alpha, sig_spread, epsilon, num2str(rngseeds));
+fprintf('running agent with sigs: %.3f, epsilon: %.3f and rngseeds: %s \n', sig_spread, epsilon, num2str(rngseeds));
 
-%10/16/2014 NB: Even though some matrices such as value_it have columns for discrete timesteps, the
+%10/16/2014 NB: Even though some matrices such as v_it have columns for discrete timesteps, the
 %agent now learns entirely on a continuous time basis by maximizing the value and uncertainty curves over the
 %radial basis set and estimating total uncertainty as the definite integral of the uncertainty function over the
 %time window of the trial.
@@ -194,45 +216,51 @@ for i = 1:ntrials
 
     % estimate reward assigned to each stimulus h
     [rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
+            
+    %Changing Kalman variance a posteriori should also use the elig*gain approach: [1 - k(ij)*elig(ij)]*sigma(ij)
+    %this would only allow a 1.0 update*kalman gain for basis functions solidly in the window and a decay in diminishing
+    %variance as the basis deviates from the timing of the obtained reward.
        
-    %use the discrepancy between the expected value for each basis and the obtained reward
-    %as prediction error and scale its effect on learning by eligibility.
-    delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - w_ij(i,:));
-    w_ij(i+1,:) = w_ij(i,:) + alpha.*delta_ij(i,:);
+    %1) compute the Kalman gains for the current trial
+    k_ij(i,:) = sigma_ij(i,:)./(sigma_ij(i,:) + sigma_noise);
+        
+    %2) update posterior variances on the basis of Kalman gains
+    sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*sigma_ij(i,:);
     
-    %lower lambdas will necessarily lead to a slower drop in average uncertainty because temporal precision 
-    %of sampling is higher. this may be a problem for parameter fitting
-    u_ij(i+1,:) = u_ij(i,:) - 1.0.*e_ij(i,:);
+    %3) update reward expectation
+    delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
+    mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
     
-    value_jt=w_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+    v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
     
     %subjective value by timestep as a sum of all basis functions
-    value_func = sum(value_jt);
+    v_func = sum(v_jt);
     
-    u_jt=u_ij(i+1,:)'*ones(1,ntimesteps) .*gaussmat;
+    %uncertainty is now a function of Kalman uncertainties.
+    u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .*gaussmat;
     u_func = sum(u_jt);
         
-    value_it(i,:) = value_func;
+    v_it(i,:) = v_func;
     u_it(i,:) = u_func;
     
     %% CHOICE RULE
     % find the RT corresponding to exploitative choice (choose randomly if value unknown)
     % NB: we added just a little bit of noise
-    if sum(value_func) == 0
+    if sum(v_func) == 0
         %rt_exploit = ceil(rand(1)*ntrials); %random number within space
         rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
     else
         %DANGER: fminbnd is giving local minimum solution that clearly
         %misses the max value. Could switch to something more comprehensive
         %like rmsearch, but for now revert to discrete approximation
-        %rt_exploit = fminbnd(@(x) -rbfeval(x, w_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        %rt_exploit = fminbnd(@(x) -rbfeval(x, mu_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
         %figure(2);
-        %vfunc = rbfeval(0:500, w_ij(i+1,:), c, ones(1,nbasis).*sig);
+        %vfunc = rbfeval(0:500, mu_ij(i+1,:), c, ones(1,nbasis).*sig);
         %plot(0:500, vfunc);
-        rt_exploit = find(value_func==max(value_func));
-        %rt_exploit = max(round(find(value_func==max(value_func(20:500)))))-5+round(rand(1).*10);
-        if rt_exploit > 500
-            rt_exploit = 500;
+        rt_exploit = find(v_func==max(v_func));
+        %rt_exploit = max(round(find(v_func==max(v_func(20:500)))))-5+round(rand(1).*10);
+        if rt_exploit > max(tvec)
+            rt_exploit = max(tvec);
         end
     end
         
@@ -244,14 +272,14 @@ for i = 1:ntrials
     %use integration to get area under curve of uncertainty
     %otherwise, our estimate of u is discretized, affecting cost function
     
-    total_u = integral(@(x)rbfeval(x, u_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-    u = total_u/500; %make scaling similar to original sum? (come back)...
+    total_u = integral(@(x)rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+    u = total_u/max(tvec); %make scaling similar to original sum? (come back)...
     
     if u == 0
         %rt_explore = ceil(rand(1)*ntrials);
         rt_explore = ceil(.5*ntimesteps); 
     else
-        %rt_explore = fminbnd(@(x) -rbfeval(x, u_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+        %rt_explore = fminbnd(@(x) -rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
         rt_explore = find(u_func==max(u_func), 1); %return position of first max
         %rt_explore = max(round(find(u_func==max(u_func(20:500)))));        
         
@@ -261,8 +289,8 @@ for i = 1:ntrials
 
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
     
-    discrim = 50; %need to increase steepness of logistic given the tiny values we have here. Could free later
-    sigmoid = 1/(1+exp(-discrim.*(u - epsilon))); %Rasch model with epsilon as difficulty (location) parameter
+    discrim = 0.1;
+    sigmoid = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with epsilon as difficulty (location) parameter
         
     %soft classification (explore in proportion to uncertainty)
     rng(explore_rng_state); %draw from reward rng
@@ -284,9 +312,9 @@ for i = 1:ntrials
     verbose=0;
     if verbose == 1
        fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew_i(i), rts(i));
-       fprintf('w_i,k:    '); fprintf('%.2f ', w_ij(i,:)); fprintf('\n');
-       fprintf('delta_ij:   '); fprintf('%.2f ', alpha*delta_ij(i,:)); fprintf('\n');
-       fprintf('w_i+1,k:  '); fprintf('%.2f ', w_ij(i+1,:)); fprintf('\n');
+       fprintf('w_i,k:    '); fprintf('%.2f ', mu_ij(i,:)); fprintf('\n');
+       fprintf('delta_ij:   '); fprintf('%.2f ', delta_ij(i,:)); fprintf('\n');
+       fprintf('w_i+1,k:  '); fprintf('%.2f ', mu_ij(i+1,:)); fprintf('\n');
        fprintf('\n');
        
     end
@@ -294,19 +322,19 @@ for i = 1:ntrials
     if trial_plots == 1
         figure(1); clf;
         subplot(5,2,1)
-        %plot(tvec,value_func);
+        %plot(tvec,v_func);
         scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
         hold on;
         plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
         hold off;
         subplot(5,2,2)
-        plot(tvec,value_func); xlim([-1 ntimesteps+1]);
+        plot(tvec,v_func); xlim([-1 ntimesteps+1]);
         ylabel('value')
         subplot(5,2,3)
         
-%         bar(c, w_ij(i,:));
+%         bar(c, mu_ij(i,:));
 %         ylabel('basis function heights');
-        plot(tvec,value_jt);
+        plot(tvec,v_jt);
         ylabel('temporal basis function')
 %         title(sprintf('trial # = %i', h)); %
                 xlabel('time(ms)')
@@ -321,8 +349,8 @@ for i = 1:ntrials
         barh(sigmoid);
         xlabel('p(explore)'); axis([-.1 1.1 0 2]);
         subplot(5,2,6)
-        barh(alpha), axis([0 .2 0 2]);
-        xlabel('learning rate')
+        %barh(alpha), axis([0 .2 0 2]);
+        %xlabel('learning rate')
         subplot(5,2,7)
         barh(sig_spread), axis([0.0 0.5 0 2]);
         xlabel('decay')
@@ -340,19 +368,19 @@ for i = 1:ntrials
 %         
 %         figure(1); clf;
 %         subplot(2,2,1)
-%         %plot(tvec,value_func);
+%         %plot(tvec,v_func);
 %         scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
 %         hold on;
 %         plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
 %         hold off;
 %         subplot(2,2,2)
-%         plot(tvec,value_func); xlim([-1 ntimesteps+1]);
+%         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
 %         ylabel('value')
 %         subplot(2,2,3)
 %         
-% %         bar(c, w_ij(i,:));
+% %         bar(c, mu_ij(i,:));
 % %         ylabel('basis function heights');
-%         plot(tvec,value_jt);
+%         plot(tvec,v_jt);
 %         ylabel('temporal basis function')
 % %         title(sprintf('trial # = %i', h)); %
 %                 xlabel('time(ms)')
@@ -368,108 +396,24 @@ for i = 1:ntrials
         %hold on;
         %plot(c, e_ij(i,:))
         %plot(c, e_ij(1:i,:)')
-        %bar(c, u_ij(i,:))
+        %bar(c, sigma_ij(i,:))
 
         drawnow update;
         mov(i) = getframe(gcf);
     end
-    %     disp([i rts(i) rew_i(i) sum(value_func)])
+    %     disp([i rts(i) rew_i(i) sum(v_func)])
 end
 %cost = -sum(rew_i);
 cost = -sum(ev_i);
 
-%     cond_matrix(j,:) = rts;
-% end
+ret.mu_ij = mu_ij;
+ret.sigma_ij = sigma_ij;
+ret.k_ij = k_ij;
+ret.delta_ij = delta_ij;
+ret.e_ij = e_ij;
+ret.v_it = v_it;
+ret.u_it = u_it;
+ret.rew_i = rew_i;
+ret.ev_i = ev_i;
 
-% %% to be run after code completes
-% for i = 1:length(cond_matrix)
-%     plot(smooth(cond_matrix(i,:))) %Load in either iev or dev matrix and change variable name
-%     pause(0.5)
-% end
-
-
-
-%figure(3)
-% plot(smooth(t_max));
-%clf;
-%plot(mean(value_it));
-% scatter(1:i,smooth(t_max),100);
-% xlabel('trial')
-% title(sprintf('time of maxumum value by trial'));
-%figure(3)
-%vh_tot = sum(vh);
-%plot(1:4,vh_tot)
-% tau_rt = rt;
-% tau_max = c;
-% tau_h = ones(5000,4); %Initalize
-%
-% %calculate deltaht, finding the distances between any rt in the time series
-% %and the 4 cardnial time points, then dividing the singular rt point by the four distances.
-% for i = 1:length(tau_rt)
-%     tau_h(i,:)=abs(tau_rt(i) - tau_max);
-%     deltaht(i,:) = rt(i)./tau_h(i,:);
-% end
-
-%% leftovers
-% epsilon*u is the influence of uncertainty on choice
-% since u tends to be negative, epsilon has to bring it to a sane range
-%  epsilon/u.^2 is our weight;
-%     u_weight = epsilon./(u^2+.001);
-%         u=-.1;
-%         epsilons = -100:1:100;
-%         for ct = 1:length(epsilons)
-%             epsilon = epsilons(ct);
-%         sigmoid(ct) = 1./(1+exp((u.*epsilon)));
-%         end
-%         clf;
-%         plot(epsilons,sigmoid);
-
-% the choice probability (Moustafa 2008 after McClure 2003 after Egelman 1998)
-% b and m are scaling constants
-%         b = 2;
-% need to scale m for p to add up to 1
-%     m = 0.8;
-%     p = (1./(1+exp(-m.*(value_func - b))));
-%      if trial_plots == 1
-%             subplot(3,1,3)
-%
-%         plot(tvec,p);
-%         xlabel('time(ms)');
-%         ylabel('choice probability');
-%     pause(0.05)
-
-% Now the actual choice rule
-%     if sum(value_func) == 0
-%         p_choice = (1./length(tvec-1)).*ones(1,ntimesteps);
-%     else
-%         p_choice = value_func./norm(value_func,1);
-%
-%     end
-%     rts(i+1) = round(randsample(ntimesteps,1,true,p_choice));
-%
-
-%     for h = 1:nbasis
-%         %plot stimuli h separately at trial level, has rows for every
-%         %microstimulus and columns for time points within trial
-%         value_jt(h,:) = vh(i,h)*gaussmf(tvec, [sig c(h)]);
-%
-%     end
-    
-% plot the location of the max(value)
-%     if max(value_func) == 0
-%         t_max(i) = (ntimesteps-1)./2;
-%         else
-%         t_max(i) = find(value_func == max(value_func));
-%     end
-% store all the value functions by trial
-
-%get a vector of rewards for trial
-%r = rand(1,100);
-% r = zeros(1,ntrials);
-% for i = 1:ntrials
-%     r(i) = RewFunction(rts(i),cond);
-% end
-
-%Load in pseudo-random reward matrix
-%pseudorand_rew_generator(ntrials,cond);
 
