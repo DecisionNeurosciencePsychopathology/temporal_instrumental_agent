@@ -9,7 +9,7 @@
 %choice rule: stochastic continuous RT weighted by value
 %calls on RewFunction.m (Frank lab code)
 
-function [cost,v_it,rts,mov,ret] = clock_logistic_operator_kalman(params, rngseeds, cond, ntrials, nbasis, ntimesteps)
+function [cost,v_it,rts,mov,ret] = clock_logistic_operator_kalman(params, rngseeds, cond, ntrials, nbasis, ntimesteps, trial_plots)
 %params is the vector of parameters used to fit
 %   params(1): alpha
 %cond is the character string of the reward contingency
@@ -33,13 +33,24 @@ else
     prop_spread = params(2);
 end
 
+if (length(params)) < 3
+    disp('defaulting to no Gaussian random walk: k=0, s_grw=0');
+    k=0;
+    s_grw=0;
+else
+    k=params(3);
+    s_grw=params(4);    
+    %for now, don't link sigma for GRW to uncertainty (but could so that GRW decays with uncertainty)
+end
+
 if nargin < 2
-    rngseeds=[98 83];
+    rngseeds=[98 83 66 10];
 end
 if nargin < 3, cond = 'DEV'; end
 if nargin < 4, ntrials=100; end
 if nargin < 5, nbasis = 24; end
 if nargin < 6, ntimesteps=500; end
+if nargin < 7, trial_plots = 1; end
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -47,12 +58,17 @@ global rew_rng_state explore_rng_state;
 %initialize states for two repeatable random number generators using different seeds
 rew_rng_seed=rngseeds(1);
 explore_rng_seed=rngseeds(2);
+grw_step_rng_seed=rngseeds(3);
+exptype_rng_seed=rngseeds(4);
+
 rng(rew_rng_seed);
 rew_rng_state=rng;
 rng(explore_rng_seed);
 explore_rng_state=rng;
-
-trial_plots = 1; %whether to show trialwise graphics of parameters
+rng(grw_step_rng_seed);
+grw_step_rng_state=rng;
+rng(exptype_rng_seed);
+exptype_rng_seed=rng;
 
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
@@ -61,10 +77,17 @@ mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 tvec=1:ntimesteps;
 sig_spread=prop_spread*range(tvec); %determine SD of spread function
 
+%rescale s_grw wrt the interval (not as a proportion)
+s_grw=s_grw*range(tvec); %determine SD of spread function
+
+%add Gaussian noise with sigma = 1% of the range of the time interval to rt_explore
+prop_expnoise=.01;
+sig_expnoise=prop_expnoise*range(tvec);
+
 %setup centers (means) and sds of basis functions
 %based on testing in fix_rbf_basis.m, place the lowest center 12.5% below the first timestep and the last
-%center 12.5% above last timestep. We were giving the agent 14 basis functions previously, so keep that for
-%now (arg 6 above). SD should be calculated to give a Cohen's d of 1.52 between basis functions (~45% distribution overlap).
+%center 12.5% above last timestep. SD should be calculated to give a Cohen's d of 1.52 between 
+%basis functions (~45% distribution overlap).
 
 %margin_offset=0;
 margin_offset = (max(tvec) - min(tvec))*.125; % 12.5% offset
@@ -91,8 +114,8 @@ rts(1) = ceil(.5*ntimesteps);
 % t = time step within trial, in centiseconds (1-500, representing 0-5 seconds)
 delta_ij =      zeros(ntrials, nbasis);     % prediction error assigned to each microstimulus
 e_ij =          zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
-v_jt =      zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
-v_it =      zeros(ntrials, ntimesteps); % history of value function by trial
+v_jt =          zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
+v_it =          zeros(ntrials, ntimesteps); % history of value function by trial
 rew_i =         nan(1, ntrials);            % actual reward for each trial
 ev_i =          nan(1, ntrials);            % expected value of choice for each trial (used for cost function)
 u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each timestep
@@ -135,10 +158,14 @@ for j = 1:nbasis
     gaussmat(j,:) = gaussmf(tvec,[sig c(j)]);
 end
 
+%version of gaussian where each function has AUC = 1.0 (PDF representation)
+maxauc_all=max(sum(gaussmat, 2));
+gaussmat_pdf=gaussmat./maxauc_all;
+
 %normalize gauss functions to each have AUC = 1.0 within observed time interval
 %this is essentially a truncated Gaussian basis such that AUC = 1.0 for basis functions within interval
-maxauc=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
-gaussmat_trunc=gaussmat./maxauc;
+maxauc_each=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
+gaussmat_trunc=gaussmat./maxauc_each;
 
 %rescale the truncated basis so that the typical RBF (not truncated) has range 0..1. The current
 %implementation is leading to tiny eligibility traces once you multiply by learning rate.
@@ -151,9 +178,9 @@ gaussmat_trunc=gaussmat./maxauc;
 %use the value of the regular basis (0..1 scaling) divided by the truncated basis at the max as the adjustment factor
 %note that maxauc above will be equal to this correction factor for all RBFs that are not truncated! Thus, we
 %are "undoing" the rescaling of these RBFs, while maintaining the correction at the edge.
-[~,indmid]=min(abs(c - median(tvec)));
-trunc_adjust=max(gaussmat(indmid,:))/max(gaussmat_trunc(indmid,:));
-gaussmat_trunc=gaussmat_trunc*trunc_adjust;
+%[~,indmid]=min(abs(c - median(tvec)));
+%trunc_adjust=max(gaussmat(indmid,:))/max(gaussmat_trunc(indmid,:));
+%gaussmat_trunc=gaussmat_trunc*trunc_adjust;
 
 figure(20); plot(tvec,gaussmat); title('Regular RBF');
 figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
@@ -189,6 +216,21 @@ fprintf('running agent with sigs: %.3f, epsilon: %.3f and rngseeds: %s \n', sig_
 
 %rng('shuffle');
 
+%determine the AUC of a non-truncated eligilibity function
+%use this to rescale elibility below to maintain constant AUC equivalent to a standard Gaussian membership function
+%this leads to eligibility 0-1.0 for eligibility functions within the interval, and > 1.0 max for truncated functions.
+%in testing (weightfit.m), this gives the best sampling behavior
+refspread = sum(gaussmf([min(tvec)-range(tvec):max(tvec)+range(tvec)], [sig_spread, median(tvec)]));
+
+%objective expected value for this function
+ev=[];
+for val = 1:length(tvec)
+    [~,ev(val)] = RewFunction(tvec(val).*10, cond);
+end
+
+figure(6); plot(tvec, ev);
+title('Expected value of contingency');
+
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
     
@@ -201,10 +243,11 @@ for i = 1:ntrials
     %compute sum of area under the curve of the gaussian function
     auc=sum(elig);
     
-    %divide gaussian update function by its sum so that AUC=1.0
+    %divide gaussian update function by its sum so that AUC=1.0, then rescale to have AUC of a non-truncated basis
+    %this ensures that eligibility is 0-1.0 for non-truncated update function, and can exceed 1.0 at the edge.
     %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
     %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
-    elig=elig/auc;
+    elig=elig/auc*refspread;
     
     %truncated gaussian eligibility
     %figure(7); plot(tvec, elig);
@@ -223,7 +266,7 @@ for i = 1:ntrials
        
     %1) compute the Kalman gains for the current trial
     k_ij(i,:) = sigma_ij(i,:)./(sigma_ij(i,:) + sigma_noise);
-        
+
     %2) update posterior variances on the basis of Kalman gains
     sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*sigma_ij(i,:);
     
@@ -232,14 +275,16 @@ for i = 1:ntrials
     mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
     
     v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+    %v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat_pdf; %use vector outer product to replicate weight vector
     
     %subjective value by timestep as a sum of all basis functions
     v_func = sum(v_jt);
     
     %uncertainty is now a function of Kalman uncertainties.
-    u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .*gaussmat;
+    u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;
+    %u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat_pdf;
     u_func = sum(u_jt);
-        
+
     v_it(i,:) = v_func;
     u_it(i,:) = u_func;
     
@@ -272,7 +317,7 @@ for i = 1:ntrials
     %use integration to get area under curve of uncertainty
     %otherwise, our estimate of u is discretized, affecting cost function
     
-    total_u = integral(@(x)rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+    total_u = integral(@(x)rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), min(tvec), max(tvec));
     u = total_u/max(tvec); %make scaling similar to original sum? (come back)...
     
     if u == 0
@@ -280,7 +325,7 @@ for i = 1:ntrials
         rt_explore = ceil(.5*ntimesteps); 
     else
         %rt_explore = fminbnd(@(x) -rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-        rt_explore = find(u_func==max(u_func), 1); %return position of first max
+        rt_explore = find(u_func==max(u_func), 1) + round(sig_expnoise*randn(1,1)); %return position of first max and add gaussian noise
         %rt_explore = max(round(find(u_func==max(u_func(20:500)))));        
         
         %rt_explore=500; %always choose max for testing
@@ -293,13 +338,41 @@ for i = 1:ntrials
     sigmoid = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with epsilon as difficulty (location) parameter
         
     %soft classification (explore in proportion to uncertainty)
-    rng(explore_rng_state); %draw from reward rng
+    rng(explore_rng_state); %draw from explore/exploit rng
+    choice_rand=rand;
+    explore_rng_state=rng; %save state after random draw above
+    
+    %determine whether to strategic explore versus GRW
+    rng(exptype_rng_seed);
+    explore_type_rand=rand;
+    exptype_rng_seed=rng;
+    
+    %determine step size for GRW
+    rng(grw_step_rng_state); %draw from GRW rng
+    grw_step=round(s_grw*randn(1,1));
+    grw_step_rng_state=rng; %save state after draw 
+    
     %rng('shuffle');
     if i < ntrials
-        rts(i+1) = rt_explore;
-        if rand < sigmoid
-            rts(i+1) = rt_explore;
+        if choice_rand < sigmoid
+            if (explore_type_rand > k)
+                %strategic
+                exptxt='strategic explore';
+                rts(i+1) = rt_explore;
+            else
+                %grw
+                exptxt='grw explore';
+                rt_grw = rts(i) + grw_step;
+                
+                %N.B.: Need to have more reasonable GRW near the edge such that it doesn't just oversample min/max
+                %e.g., perhaps reflect the GRW if rt(t-1) was already very close to edge and GRW samples in that
+                %direction again.                
+                if rt_grw > max(tvec), rt_grw = max(tvec);
+                elseif rt_grw < min(tvec), rt_grw = min(tvec); end
+                rts(i+1) = rt_grw;
+            end
         else
+            exptxt='exploit';%for graph annotation
             rts(i+1) = rt_exploit;
         end 
         
@@ -307,7 +380,7 @@ for i = 1:ntrials
         %rts(i+1) = randi([400,500],1); %force to late times
     
     end
-    explore_rng_state=rng; %save state after random draw above
+    
     
     verbose=0;
     if verbose == 1
@@ -320,63 +393,17 @@ for i = 1:ntrials
     end
     
     if trial_plots == 1
-        figure(1); clf;
-        subplot(5,2,1)
-        %plot(tvec,v_func);
-        scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
-        hold on;
-        plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
-        hold off;
-        subplot(5,2,2)
-        plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-        ylabel('value')
-        subplot(5,2,3)
-        
-%         bar(c, mu_ij(i,:));
-%         ylabel('basis function heights');
-        plot(tvec,v_jt);
-        ylabel('temporal basis function')
-%         title(sprintf('trial # = %i', h)); %
-                xlabel('time(ms)')
-                ylabel('reward value')
-        
-        subplot(5,2,4)
-        plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-        xlabel('time (centiseconds)')
-        ylabel('uncertainty')
-        
-        subplot(5,2,5)
-        barh(sigmoid);
-        xlabel('p(explore)'); axis([-.1 1.1 0 2]);
-        subplot(5,2,6)
-        %barh(alpha), axis([0 .2 0 2]);
-        %xlabel('learning rate')
-        subplot(5,2,7)
-        barh(sig_spread), axis([0.0 0.5 0 2]);
-        xlabel('decay')
-        subplot(5,2,8)
-        barh(epsilon), axis([-0.5 0 0 2]);
-        xlabel('strategic exploration')
-        
-        subplot(5,2,9)
-        barh(u) %, axis([0 1000 0 2]);
-        xlabel('mean uncertainty')
-        %         pause(0.1);
-        subplot(5,2,10)
-        plot(1:ntrials,rts, 'k');
-        ylabel('rt by trial'); axis([1 ntrials -5 505]);
-%         
 %         figure(1); clf;
-%         subplot(2,2,1)
+%         subplot(5,2,1)
 %         %plot(tvec,v_func);
 %         scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
 %         hold on;
 %         plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
 %         hold off;
-%         subplot(2,2,2)
+%         subplot(5,2,2)
 %         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
 %         ylabel('value')
-%         subplot(2,2,3)
+%         subplot(5,2,3)
 %         
 % %         bar(c, mu_ij(i,:));
 % %         ylabel('basis function heights');
@@ -386,10 +413,66 @@ for i = 1:ntrials
 %                 xlabel('time(ms)')
 %                 ylabel('reward value')
 %         
-%         subplot(2,2,4)
+%         subplot(5,2,4)
 %         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
 %         xlabel('time (centiseconds)')
 %         ylabel('uncertainty')
+%         
+%         subplot(5,2,5)
+%         barh(sigmoid);
+%         xlabel('p(explore)'); axis([-.1 1.1 0 2]);
+%         subplot(5,2,6)
+%         %barh(alpha), axis([0 .2 0 2]);
+%         %xlabel('learning rate')
+%         subplot(5,2,7)
+%         barh(sig_spread), axis([0.0 0.5 0 2]);
+%         xlabel('decay')
+%         subplot(5,2,8)
+%         barh(epsilon), axis([-0.5 0 0 2]);
+%         xlabel('strategic exploration')
+%         
+%         subplot(5,2,9)
+%         barh(u) %, axis([0 1000 0 2]);
+%         xlabel('mean uncertainty')
+%         %         pause(0.1);
+%         subplot(5,2,10)
+%         plot(1:ntrials,rts, 'k');
+%         ylabel('rt by trial'); axis([1 ntrials -5 505]);
+        
+        figure(1); clf;
+        set(gca,'FontSize',18);
+        subplot(2,2,1);
+        title('Choice history');
+        %plot(tvec,v_func);
+        scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
+        text(20, max(rew_i), exptxt);
+        hold on;
+        plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
+        hold off;
+        subplot(2,2,2)
+        title('Learned value');
+        plot(tvec,v_func); xlim([-1 ntimesteps+1]);
+        ylabel('expected value')
+        subplot(2,2,3);
+        
+        %eligibility trace
+        title('eligibility trace');
+        %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
+        %plot(tvec, elig_plot);
+        plot(tvec, elig);
+%         bar(c, mu_ij(i,:));
+%         ylabel('basis function heights');
+        %title('basis function values');
+        %plot(tvec,v_jt);
+        %ylabel('temporal basis function')
+%         title(sprintf('trial # = %i', h)); %
+        xlabel('time(centiseconds)')
+        ylabel('eligibility')
+        
+        subplot(2,2,4);
+        plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
+        xlabel('time (centiseconds)')
+        ylabel('uncertainty')
         
         %figure(2); clf;
         %plot(tvec, u_func);

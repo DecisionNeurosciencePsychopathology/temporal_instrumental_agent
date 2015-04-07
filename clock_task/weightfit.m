@@ -24,7 +24,7 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     
     w = zeros(ntrials, nbasis); %initialize zero sampling weights
     
-    if strcmpi(func, 'gauss_auc')
+    if strcmpi(func, 'gauss_auc') || strcmpi(func, 'gauss_mult')
         %gauss auc with truncated basis and spread function is the winner.
         %Here, allow for 4 params for optimization: prop_offset, basis_sep, prop_spread, prop_noise
         %prop_spread is the SD of the gaussian update function relative to the width of the interval (i.e., ranges 0..1)
@@ -35,7 +35,7 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
         prop_spread=params(3);
         if (length(params) == 4), prop_noise=params(4);
         else prop_noise = .04; end
-        %override rand_sig for gauss_auc for now
+        %override rand_sig input parameter for gauss_auc for now
         rand_sig=prop_noise*range(tvec);
     else        
         if length(params) == 1
@@ -72,11 +72,14 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     c_bounded = c;
 
     %basis function matrix (extend range to lowest and highest bounds for extreme basis functions)
-    %t_all=round(tmin-4*sig):round(tmax+4*sig);
-    %gaussmat = zeros(nbasis,length(t_all));
-    %for j = 1:nbasis
-    %   gaussmat(j,:) = gaussmf(t_all,[sig c(j)]);
-    %end
+    t_all=round(tmin-4*sig):round(tmax+4*sig);
+    gaussmat_extend = zeros(nbasis,length(t_all));
+    for j = 1:nbasis
+       gaussmat_extend(j,:) = gaussmf(t_all,[sig c(j)]);
+    end
+    maxauc=sum(gaussmat_extend,2)*ones(1,length(t_all));
+    
+    gaussmat_extend=gaussmat_extend./maxauc;
     t_all=tvec;
     
     %gaussmat within observed interval for testing truncated gaussian update
@@ -86,15 +89,23 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     end
     
     %normalize gauss functions to have AUC = 1.0
-    %maxauc=max(sum(gaussmat,2));
-    %gaussmat=gaussmat./maxauc;
+    maxauc=max(sum(gaussmat,2));
+    gaussmat_auc1=gaussmat./maxauc;
         
     %normalize gauss functions to have AUC = 1.0 within observed time interval
     %this is essentially a truncated Gaussian basis such that AUC = 1.0 for basis functions within interval
     maxauc=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
-    gaussmat=gaussmat./maxauc;
+    gaussmat_trunc=gaussmat./maxauc;
 
-    figure(10); plot(t_all, gaussmat');
+    %equalize the AUC across gaussians
+    %[~,indmid]=min(abs(c - median(tvec)));
+    %trunc_adjust=max(gaussmat(indmid,:))/max(gaussmat_trunc(indmid,:));
+    %gaussmat_trunc=gaussmat_trunc*trunc_adjust;
+    
+    %figure(10); plot(tvec, gaussmat');
+    %figure(11); plot(tvec, gaussmat_trunc');
+    %figure(12); plot(tvec, gaussmat_auc1');
+    %figure(12); plot(t_all, gaussmat_extend');
 
    
     %compute weight correction vector for radial basis functions to approximate a f(x) === 1.0 flat function 
@@ -113,7 +124,7 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     else
          weight_correct=ones(1,length(c));
     end
-    disp(weight_correct);
+    %disp(weight_correct);
     
     
     %interpolate eligibility trace to give weight to basis functions outside of interval 
@@ -136,6 +147,12 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     %fprintf('nbasis: %d, rbfsigma: %.3f\n', nbasis, sig);
     %fprintf('basis centers: %s\n', num2str(c_bounded));
     fprintf('params: %s\n', num2str(params));
+    
+    if strcmpi(func, 'gauss_auc') || strcmpi(func, 'gauss_mult')
+        %compute sum under the curve of a non-truncated gaussian for use in normalizing temporal spread
+        sig_update = prop_spread*range(tvec); %sigma as a fraction of the range of the interval
+        refspread = sum(gaussmf([min(tvec)-range(tvec):max(tvec)+range(tvec)], [sig_update, median(tvec)]));
+    end
     
     for i = 1:ntrials
         %compute generalization function
@@ -180,8 +197,8 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
             end
             
             w_update(i,:) = w_temp;
-        elseif strcmpi(func, 'gauss_auc')
-            sig_update = prop_spread*range(tvec); %sigma as a fraction of the range of the interval
+        elseif strcmpi(func, 'gauss_mult')
+            
             %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
             elig = gaussmf(tvec, [sig_update, rts(i)]);
             %compute sum of area under the curve of the gaussian function
@@ -190,21 +207,59 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
             %divide gaussian update function by its sum so that AUC=1.0
             %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
             %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
-            elig=elig/auc;
+            elig=elig/auc*refspread;
+            %elig=elig/auc;
             
-            %compute the intersection of the Gaussian spread function with the truncated Gaussian basis
-            %this is essentially summing the area under the curve of each truncated RBF weighted by the truncated
-            %Gaussian spread function.
-            w_temp = sum(repmat(elig,nbasis,1).*gaussmat, 2);
+            %N.B.: The multiplication step here works better
             
+            %to find the area under the curve of the intersection of two Gaussians, need to take the min of each 
+            %PDF (AUC = 1.0) and integrate that over the interval. Here, for the moment, both gaussmat_trunc and
+            %elig are PDFs (AUC=1.0) and we sum the mins over all timesteps for the comparison of each basis PDF with
+            %the elig PDF. This then represents the proportion overlap between the RBF Gaussian and the spread Gaussian,
+            %which will necessarily vary from 0..1.
+            %w_temp = arrayfun(@(x) sum(min(gaussmat_trunc(x,:), elig)), 1:size(gaussmat_trunc,1));
+            
+            %w_basis = repmat(elig,nbasis,1).*gaussmat_auc1;
+            w_basis = repmat(elig,nbasis,1).*gaussmat_trunc;
+            w_temp = sum(w_basis, 2); %sum area under each basis function's eligibility trace
+                        
             if ismember(edge_correct, [1 2])
                 %use weights of minimum and maximum basis functions within observed interval
                 w_temp(c < min(tvec),:) = w_temp(min(find(c >= min(tvec))), :);
                 w_temp(c > max(tvec),:) = w_temp(max(find(c <= max(tvec))), :);
             end
             w_update(i,:) = w_temp;
+        elseif strcmpi(func, 'gauss_auc')
+            %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
+            %elig = gaussmf(tvec, [sig_update, rts(i)]);
+            elig = gaussmf(t_all, [sig_update, rts(i)]);
+            %compute sum of area under the curve of the gaussian function
+            auc=sum(elig); %*ones(1,length(elig)); %outer product of vectors to allow for col-wise division below
+            
+            %divide gaussian update function by its sum so that AUC=1.0
+            %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
+            %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
+            elig=elig/auc;
+            
+            %to find the area under the curve of the intersection of two Gaussians, need to take the min of each 
+            %PDF (AUC = 1.0) and integrate that over the interval. Here, for the moment, both gaussmat_trunc and
+            %elig are PDFs (AUC=1.0) and we sum the mins over all timesteps for the comparison of each basis PDF with
+            %the elig PDF. This then represents the proportion overlap between the RBF Gaussian and the spread Gaussian,
+            %which will necessarily vary from 0..1.
+            %w_temp = arrayfun(@(x) sum(min(gaussmat_trunc(x,:), elig)), 1:size(gaussmat_trunc,1));
+            %w_temp = arrayfun(@(x) sum(min(gaussmat_auc1(x,:), elig)), 1:size(gaussmat_auc1,1));
+            
+            w_temp = arrayfun(@(x) sum(min(gaussmat_extend(x,:), elig)), 1:size(gaussmat_extend,1));
+                        
+            if ismember(edge_correct, [1 2])
+                %use weights of minimum and maximum basis functions within observed interval
+                w_temp(c < min(tvec)) = w_temp(min(find(c >= min(tvec))));
+                w_temp(c > max(tvec)) = w_temp(max(find(c <= max(tvec))));
+            end
+            w_update(i,:) = w_temp;
+
         elseif strcmpi(func, 'gauss_point')
-            w_temp = gaussmat(:,find(t_all == rts(i)));
+            w_temp = gaussmat_trunc(:,find(t_all == rts(i)));
             if ismember(edge_correct, [1 2])
                 %use weights of minimum and maximum basis functions within observed interval
                 w_temp(c < min(tvec),:) = w_temp(min(find(c >= min(tvec))), :);
@@ -233,8 +288,9 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
         
         %choose next rt
         %scurve = rbfeval(tvec, w(i+1,:), c, ones(1,nbasis).*sig); %sampling curve
-        scurve = rbfeval(t_all, w(i+1,:), c, ones(1,nbasis).*sig); %sampling curve using non-truncated basis
-        %scurve = sum(w(i+1,:)'*ones(1,length(tvec)).*gaussmat);
+        %scurve = rbfeval(t_all, w(i+1,:), c, ones(1,nbasis).*sig); %sampling curve using non-truncated basis
+        %scurve = sum(w(i+1,:)'*ones(1,length(tvec)).*gaussmat_trunc);
+        scurve = sum(w(i+1,:)'*ones(1,length(tvec)).*gaussmat_auc1);
         %scurve = rbfeval(t_all, w(i+1,:), c, ones(1,nbasis).*sig, [min(tvec), max(tvec)]); %sampling curve
         scurve_inbounds = scurve(ismember(t_all, tvec));
         rt_uncertainty = find(scurve_inbounds==min(scurve_inbounds), 1) + round(rand_sig*randn(1,1));
@@ -255,9 +311,15 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
             drawnow update;
             figure(2);
             %plot(c, w_update(i,:));
-            plot(t_all, elig);
+            plot(tvec, elig);
             
-            pause(0.2); %slow down plotting
+            %figure(3);
+            %plot(t_all, w_basis);
+            
+            figure(4);
+            plot(c, w_update(i,:));
+            
+            pause(0.1); %slow down plotting
         end
     end
 
@@ -273,9 +335,15 @@ function [cost, rts, w, w_update, u_all] = weightfit(params, nbasis, ntrials, fu
     %[~,~,cost]=kstest(rts, [sort(rts) unifcdf(sort(rts), min(tvec), max(tvec))]);
     %[~,cost]=adtest(rts, 'Distribution', unif);%[rts unifcdf(rts, min(tvec), max(tvec))]);
     
+    %note that this will collapse bins if expected counts are less than 5, which can lead to identical
+    %chi-square values when the number of trials is too small.
+    
     %compute chi-square goodness of fit to expected rt counts in random uniform bins
     %divide time interval into 12 equal-sized bins and compute observed versus expected counts for each bin.
     [~,~,stats]=chi2gof(rts,'cdf', @(rts)unifcdf(rts,min(tvec),max(tvec)), 'nbins', 12);
+    
+    %nbins=12;
+    %[~,~,stats]=chi2gof(rts,'expected', ones(1,nbins)*length(rts)/nbins, 'nbins', nbins);
     cost=stats.chi2stat;
     %cost = -1*cost; %maximize p value
     disp(cost);

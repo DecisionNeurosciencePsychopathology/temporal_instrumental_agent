@@ -145,14 +145,107 @@ figure(2); hist(rts)
 figure(3); hist(rts)
 
 %having a relatively precise temporal generalization function, even without noise, does well
-[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 0], 30, 500, 'gauss_auc', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 0], 30, 5000, 'gauss_auc', tvec, 0, 0);
 figure(3); hist(rts)
 
 
 %having a relatively precise temporal generalization function, even without noise, does well if there are enough basis functions
-[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 0], 30, 500, 'gauss_auc', tvec, 0, 0); %cost=.91
-[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 .02], 30, 5000, 'gauss_auc', tvec, 0, 0); %cost=.82
-[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .05 .02], 25, 5000, 'gauss_auc', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 0], 30, 500, 'gauss_mult', tvec, 0, 0); %cost=.91
+[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .01 .02], 30, 500, 'gauss_mult', tvec, 0, 0); %cost=.82
+
+
+%conclusions: even though I thought the gauss_auc approach was conceptually better, it leads to lower weights
+%at the edges and consequent oversampling of the edges... seemingly even with a truncated basis. Need to
+%figure this out.
+
+
+
+
+[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .04 .00], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .04 .02], 30, 5000, 'gauss_mult', tvec, 0, 0);
+figure(5); hist(rts);
+
+%at these settings, RBFEVAL on AUC1 outperforms RBFEVAL on TRUNC with any level of noise
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .01 .00], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .01 .01], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .01 .02], 30, 5000, 'gauss_mult', tvec, 0, 0);
+
+%at these settings, RBFEVAL on AUC1 outperforms RBFEVAL on TRUNC with any level of noise
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .02 .00], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .02 .005], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .02 .01], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .02 .02], 30, 5000, 'gauss_mult', tvec, 0, 0);
+
+%at these settings, RBFEVAL on AUC1 outperforms RBFEVAL on TRUNC with any level of noise
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .04 .00], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .04 .01], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .04 .02], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .04 .04], 30, 5000, 'gauss_mult', tvec, 0, 0);
+
+%at these settings, RBFEVAL on AUC1 outperforms RBFEVAL on TRUNC with any level of noise
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .08 .00], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .08 .01], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .08 .02], 30, 5000, 'gauss_mult', tvec, 0, 0);
+[cost, rts, w, w_update, u_all] = weightfit([.05 1.5 .08 .04], 30, 5000, 'gauss_mult', tvec, 0, 0);
+
+
+
+
+%Apr2015: simulation matrix of potentially good approaches:
+%1) gauss_mult or gauss_auc
+%2) truncate eligibility to have AUC=1.0 (N.B. actually need to have AUC of a non-truncated RBF Gaussian membership for
+%the weight updates to run 0 ~ 1
+%3) multiply eligibility by regular or truncated RBF
+%4) evaluate weights on regular or truncated RBF
+
+%Incomplete testing above revealed the the winning combination is gauss_mult, truncated eligibility multiplied by
+%truncated RBF, then evaluate weights on regular RBF. (So, during weight update, squeeze everything inside observed
+%interval). And yes, Gaussian noise is helpful in overcoming uneven sampling! (Often with sigma of 50-100% of the
+%temporal generalization function sd).
+
+
+
+
+% GAUSS AUC MAX WEIGHT UPDATES
+% ans =
+% 
+%   Columns 1 through 8
+% 
+%     0.3794    0.4768    0.6400    0.9181    0.8713    0.8481    0.8439    0.8438
+% 
+%   Columns 9 through 16
+% 
+%     0.8438    0.8438    0.8438    0.8438    0.8437    0.8438    0.8438    0.8438
+% 
+%   Columns 17 through 24
+% 
+%     0.8438    0.8438    0.8439    0.8481    0.8796    0.9181    0.6400    0.4768
+% 
+%   Column 25
+% 
+%     0.3794
+
+
+% GAUSS MULT MAX WEIGHT UPDATES
+% 
+% ans =
+% 
+%   Columns 1 through 8
+% 
+%     1.9290    1.8921    1.7945    1.5097    0.9383    0.8172    0.8108    0.8106
+% 
+%   Columns 9 through 16
+% 
+%     0.8106    0.8106    0.8106    0.8106    0.8106    0.8106    0.8106    0.8106
+% 
+%   Columns 17 through 24
+% 
+%     0.8106    0.8106    0.8108    0.8172    0.9383    1.5097    1.7945    1.8921
+% 
+%   Column 25
+% 
+%     1.9290
+
 
 [cost, rts, w, w_update, u_all] = weightfit([.15 1.5 .05 .02], 25, 5000, 'gauss_auc', tvec, 3, 0);
 
