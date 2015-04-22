@@ -1,7 +1,6 @@
 %script to load in subjects' data and fit using the logistic operator
-
-cd('/Users/michael/Google_Drive/Data_Analysis/clock_analysis/fmri/behavior_files');
-behavfiles = dir(fullfile(pwd, '*.csv'));
+%behavfiles = dir( fullfile('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files', '*.csv'));
+behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
 
 %read header
 % fid = fopen(behavfiles(1).name, 'r');
@@ -10,15 +9,23 @@ behavfiles = dir(fullfile(pwd, '*.csv'));
 % m = csvread(behavfiles(1).name, 1, 0);
 
 %wow, matlab has a useful function for mixed data types!!
-data = readtable(behavfiles(1).name,'Delimiter',',','ReadVariableNames',true);
+data = readtable(behavfiles{7},'Delimiter',',','ReadVariableNames',true);
 
 %just example first run
 rts_obs = data.rt(1:50);
 rew_obs = data.score(1:50);
+cond = data.rewFunc(1);
 
+% rts_obs = data.rt(101:150);
+% rew_obs = data.score(101:150);
 
-params = [.02 .985 -.06]; %alpha, lambda, epsilon
-clock_logistic_fitsubject(params, rts_obs', rew_obs');
+%%
+params = [5 .05 1 .2]; %epsilon, prop_spread
+%clock_logistic_fitsubject(params, rts_obs', rew_obs');
+[cost, ret, mov] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, 1, cond, 25);
+
+%%
+%function [cost,mov,ret] = skeptic_fitsubject(params, rt_obs, rew_obs, rngseeds, nbasis, ntimesteps, trial_plots, cond, minrt)
 
 fmincon_options = optimoptions(@fmincon, 'UseParallel',false, 'Algorithm', 'active-set');%, 'DiffMinChange', 0.001);
 

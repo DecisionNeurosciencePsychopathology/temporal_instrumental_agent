@@ -56,8 +56,6 @@ trial_plots = 0; %whether to show trialwise graphics of parameters
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 
-constr = [];
-
 %Initialize time step vector and allocate for memory
 t=1:ntimesteps;
 
