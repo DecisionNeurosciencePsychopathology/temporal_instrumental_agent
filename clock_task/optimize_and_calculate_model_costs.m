@@ -67,15 +67,15 @@ for i=1:length(lookups)+1
                 vperm_run = randperm(length(mIEV.sample));
                 m.lookup = m.lookup(:,vperm_run); %permute here as well
                 fprintf('Computing costs with condition specific optimal params, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
-                s.(agents{1}).costs(i,o) = clock_logistic_operator_kalman_stats(s.(agents{1}).opt_params(i,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
-                s.(agents{2}).costs(i,o) = clock_logistic_operator_kalman_stats([s.(agents{2}).opt_params(i,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                s.(agents{3}).costs(i,o) = clock_logistic_operator_kalman_stats([s.(agents{3}).opt_params(i,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
+                s.(agents{1}).costs(i,o) = clock_logistic_operator_kalman_optimize(s.(agents{1}).opt_params(i,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
+                s.(agents{2}).costs(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{2}).opt_params(i,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
+                s.(agents{3}).costs(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{3}).opt_params(i,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
                 
                 %Specify agent
                 clock_options.agent = 'qlearning';
-                s.(agents{4}).costs(i,o) = ClockWalking_3D_discountedEv_stats(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(i,:));
+                s.(agents{4}).costs(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(i,:));
                 clock_options.agent = 'sarsa';
-                s.(agents{5}).costs(i,o) = ClockWalking_3D_discountedEv_stats(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(i,:));
+                s.(agents{5}).costs(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(i,:));
             end
         end
         
@@ -84,15 +84,15 @@ for i=1:length(lookups)+1
                 vperm_run = randperm(length(mIEV.sample));
                 m.lookup = m.lookup(:,vperm_run); %permute here as well
                 fprintf('Computing costs with All optimal params, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
-                s.(agents{1}).costsAll(i,o) = clock_logistic_operator_kalman_stats(s.(agents{1}).opt_params(4,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
-                s.(agents{2}).costsAll(i,o) = clock_logistic_operator_kalman_stats([s.(agents{2}).opt_params(4,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                s.(agents{3}).costsAll(i,o) = clock_logistic_operator_kalman_stats([s.(agents{3}).opt_params(4,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
+                s.(agents{1}).costsAll(i,o) = clock_logistic_operator_kalman_optimize(s.(agents{1}).opt_params(4,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
+                s.(agents{2}).costsAll(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{2}).opt_params(4,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
+                s.(agents{3}).costsAll(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{3}).opt_params(4,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
                 
                 %Specify agent
                 clock_options.agent = 'qlearning';
-                s.(agents{4}).costsAll(i,o) = ClockWalking_3D_discountedEv_stats(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(4,:));
+                s.(agents{4}).costsAll(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(4,:));
                 clock_options.agent = 'sarsa';
-                s.(agents{5}).costsAll(i,o) = ClockWalking_3D_discountedEv_stats(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(4,:));
+                s.(agents{5}).costsAll(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(4,:));
             end
         end
 end

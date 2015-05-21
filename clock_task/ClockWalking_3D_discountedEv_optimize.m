@@ -1,4 +1,4 @@
-function [maxReward, constr, quits,cumReward,Q_vi,SARSA_vi] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
+function [maxReward, constr, quits,cumReward,Q_vi,SARSA_vi,mov] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
 global episodesStruct;
 % CliffWalking: implements the cliff-walking problem using either the Q-Learning method or SARSA.
 
@@ -130,7 +130,7 @@ else
     smallreward = options.smallreward;
     
     cond = options.cond;
-    diagnos = 0; %No need for stats analysis
+    diagnos = options.diag; %No need for stats analysis
     decay_flag = options.decayflag;
     wait_punishment = options.waitflag;
     
@@ -501,6 +501,9 @@ end
                 %hold on
                 %axis([0 ntimesteps 0 200])
                 title('eligibility trace')
+                
+                mov(ei) = getframe(gcf);
+                
             elseif diagnos == 2
                 %plots q-learnfing first then sarsa
                 
