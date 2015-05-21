@@ -16,7 +16,7 @@ for i = 1:nruns
     args{1,9}.lookup = args{1,9}.lookup(:,vperm(i,:)); %Permute
     thiscall=args; %need to make a local version of args for parpool to work
     thiscall{2} = seeds(i,:); %second argument is seed
-    costs(i) = clock_logistic_operator_kalman_stats(thiscall{:});
+    costs(i) = clock_logistic_operator_kalman_optimize(thiscall{:});
 end
 
 totcost=sum(costs);

@@ -10,7 +10,7 @@ function [totcost, costs, seeds] = multirun_cliff_walker_optimize(nruns, runseed
         args{1,2}.lookup = args{1,2}.lookup(:,vperm(i,:)); %Permute
         thiscall=args; %need to make a local version of args for parpool to work
         thiscall{3} = seeds(i,:); %third argument is seed
-        costs(i) = ClockWalking_3D_discountedEv_stats(thiscall{:});
+        costs(i) = ClockWalking_3D_discountedEv_optimize(thiscall{:});
     end
     
     totcost=sum(costs);
