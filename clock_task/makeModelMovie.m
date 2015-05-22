@@ -7,7 +7,8 @@ s1 = name;
 s2 = '.avi';
 nameStr = [s1 s2];
 
-mov = getModelMovie(agent,s.(agent).opt_params,cond);
+%Only use the optimal parameters for the all condition right now
+mov = getModelMovie(agent,s.(agent).opt_params(4,:),cond);
 
 writerObj = VideoWriter(nameStr); % Name it.
 writerObj.FrameRate = 20; % How many frames per second.open(writerObj);

@@ -1,4 +1,8 @@
-function [maxReward, constr, quits,cumReward,Q_vi,SARSA_vi,mov] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
+function [maxReward, constr, quits,cumReward,mov] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
+
+
+%Old function header 5/22/15
+%[maxReward, constr, quits,cumReward,Q_vi,SARSA_vi,mov] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
 global episodesStruct;
 % CliffWalking: implements the cliff-walking problem using either the Q-Learning method or SARSA.
 
@@ -104,7 +108,7 @@ elseif nargin ==4
     episodesToTrack = options.snapshotEpisodes;
     smallreward = options.smallreward;
     cond = options.cond;
-    diagnos = 0; %No need for stats analysis
+    diagnos = options.diag; %Reverted to set it in options
     decay_flag = options.decayflag;
 
     
@@ -130,7 +134,7 @@ else
     smallreward = options.smallreward;
     
     cond = options.cond;
-    diagnos = options.diag; %No need for stats analysis
+    diagnos = options.diag; %Whether to make plots or not
     decay_flag = options.decayflag;
     wait_punishment = options.waitflag;
     
@@ -496,8 +500,9 @@ end
                 %                 title('rewards gained at rt')
                 
                 subplot(4,1,3)
-                plot(Q(1:ntimesteps,1,2)-Q(1:ntimesteps, 1,1))
+                %plot(Q(1:ntimesteps,1,2)-Q(1:ntimesteps, 1,1))
                 %plot(smooth(Q_quit_grt_wait))
+                plot(e(t,:))
                 %hold on
                 %axis([0 ntimesteps 0 200])
                 title('eligibility trace')
