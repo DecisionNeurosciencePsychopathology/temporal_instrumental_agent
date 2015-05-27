@@ -157,3 +157,9 @@ end
 % end
 
 
+%For perfect cost calculation you can just add this line to the cost for
+%loops pft_cost=sum(max(mIEV.lookup(:,1:200))); just replace mIEV with
+%m.lookup and 200 with ntrials easy peasy you should then get 100 data
+%points for each permuted run then you can average those???
+
+
