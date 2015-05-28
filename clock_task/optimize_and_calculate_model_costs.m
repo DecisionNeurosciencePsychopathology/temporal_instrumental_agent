@@ -15,9 +15,10 @@ load('mQUADUP.mat');
 lookups = {mIEV mDEV mQUADUP}; %replaces cond
 agents = fieldnames(s);
 optimize=0; %set to calc contingency indivisually
-optimizeAll=1; %set to 1 to calc 'all' contingencies
+optimizeAll=0; %set to 1 to calc 'all' contingencies
 calc_cost=0; %Set to 1 to calulate costs of nruns
 calc_cost_all=0;
+calc_cost_reversal=2;
 
 %Trial set up variables
 ntrials = 200;
@@ -31,6 +32,13 @@ nruns = 100;
 runseed = 55;
 rng(runseed);
 seeds=randi([1 500], nruns, 4);
+
+
+
+
+
+
+
 
 %Set up permutation of reward martic here
 global vperm 
@@ -61,41 +69,69 @@ for i=1:length(lookups)+1
         end
     end
     
-        %This loop will compute the costs of the agents
+        %Calculate the condition specific costs using condition specific
+        %params
         if(calc_cost) && i<=3 %indexing issue
             for o = 1:nruns
                 vperm_run = randperm(length(mIEV.sample));
                 m.lookup = m.lookup(:,vperm_run); %permute here as well
                 fprintf('Computing costs with condition specific optimal params, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
-                s.(agents{1}).costs(i,o) = clock_logistic_operator_kalman_optimize(s.(agents{1}).opt_params(i,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
-                s.(agents{2}).costs(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{2}).opt_params(i,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                s.(agents{3}).costs(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{3}).opt_params(i,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                
-                %Specify agent
-                clock_options.agent = 'qlearning';
-                s.(agents{4}).costs(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(i,:));
-                clock_options.agent = 'sarsa';
-                s.(agents{5}).costs(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(i,:));
+                s = calcCost(s,agents,seeds,i,m,o,ntrials,nbasis,ntimesteps,i,clock_options,'costs');
             end
         end
         
+        %Calculate the costs for the 'all conditions' optimal parameters
         if(calc_cost_all) && i<=3 %indexing issue 
             for o = 1:nruns
                 vperm_run = randperm(length(mIEV.sample));
                 m.lookup = m.lookup(:,vperm_run); %permute here as well
                 fprintf('Computing costs with All optimal params, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
-                s.(agents{1}).costsAll(i,o) = clock_logistic_operator_kalman_optimize(s.(agents{1}).opt_params(4,:),seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 1, m);
-                s.(agents{2}).costsAll(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{2}).opt_params(4,:) 0 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                s.(agents{3}).costsAll(i,o) = clock_logistic_operator_kalman_optimize([s.(agents{3}).opt_params(4,:) 0.9 0.2],seeds(o,:),m.name, ntrials, nbasis, ntimesteps, 0, 0, m);
-                
-                %Specify agent
-                clock_options.agent = 'qlearning';
-                s.(agents{4}).costsAll(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{4}).opt_params(4,:));
-                clock_options.agent = 'sarsa';
-                s.(agents{5}).costsAll(i,o) = ClockWalking_3D_discountedEv_optimize(clock_options,m, seeds(o,1:2),s.(agents{5}).opt_params(4,:));
+                  s = calcCost(s,agents,seeds,i,m,o,ntrials,nbasis,ntimesteps,4,clock_options,'costsAll');
             end
         end
+        
+        %Using the condition all optimal parmas calculate the cost with a
+        %reversal...see note below.
+        if(calc_cost_reversal==1) && i==1 %IEV only 
+            %Since I'm short on time I won't add in another params to the
+            %clock operator scripts, just manually go into the 2 scrtips
+            %and turn reversal on or off...
+            for o = 1:nruns
+                vperm_run = randperm(length(mIEV.sample));
+                m.vperm_run = vperm_run;
+                m.lookup = m.lookup(:,vperm_run); %permute here as well
+                fprintf('Computing costs with All optimal params, and reversal, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
+                s = calcCost(s,agents,seeds,i,m,o,ntrials,nbasis,ntimesteps,4,clock_options,'costsIevtoDev');
+                                    %s.kalmanUV.costsIevtoDev(i,o) %debug check
+            end
+        end
+        
+         if(calc_cost_reversal==2) && i==2 %IEV only 
+            %Since I'm short on time I won't add in another params to the
+            %clock operator scripts, just manually go into the 2 scrtips
+            %and turn reversal on or off...
+            for o = 1:nruns
+                vperm_run = randperm(length(mIEV.sample));
+                m.vperm_run = vperm_run;
+                m.lookup = m.lookup(:,vperm_run); %permute here as well
+                fprintf('Computing costs with All optimal params, and reversal, run number %d and rngseeds: %s \n', o, num2str(seeds(o,:)));
+                s = calcCost(s,agents,seeds,i,m,o,ntrials,nbasis,ntimesteps,4,clock_options,'costsDevtoIev');
+                                    %s.kalmanUV.costsIevtoDev(i,o) %debug check
+            end
+        end
+        
 end
+
+
+
+
+
+
+
+
+
+                
+
 
 
 % for p=1:5

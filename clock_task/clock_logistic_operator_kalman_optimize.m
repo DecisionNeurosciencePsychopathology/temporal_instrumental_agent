@@ -25,7 +25,9 @@ epsilon = params(1); %NB, this is really c (u-v tradeoff) in uvsum model
 %exploration versus exploitation become equally probable in the sigmoid. Need to have a nicer choice rule that
 %integrates time-varying information about value and uncertainty.
 
+%For reversal and initial default params
 load('mDEV.mat');
+load('mIEV.mat');
 
 %note: Kalman filter does not have a free learning rate parameter.
 if length(params) < 2
@@ -73,6 +75,11 @@ rng(grw_step_rng_seed);
 grw_step_rng_state=rng;
 rng(exptype_rng_seed);
 exptype_rng_seed=rng;
+
+
+%Reversal 1 is true 0 is false
+reversal=1;
+
 
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
@@ -269,11 +276,28 @@ for i = 1:ntrials
     
     %Reversal HERE
     %[rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-    %if (i < 100) 
-    %    cond='IEV';
-    %else
-    %    cond='DEV';
-    %end
+%     if (i < ntrials/2) 
+%     %    cond='IEV';
+%         m = 1;
+%     else
+%     %    cond='DEV';
+%         m = 1;
+%     end
+
+if reversal==1 && i==ntrials/2+1
+    %Optimal param reversal hack
+    vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
+    if strcmp(m.name, 'IEV')
+        m=mDEV; %if it is IEV after x trials switch
+        m.lookup = m.lookup(:,vperm_run);
+    else
+        m=mIEV; %else it is DEV after x traisl switch to IEV
+        m.lookup = m.lookup(:,vperm_run);
+    end
+    
+end
+    
+    
     %[rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     [rew_i(i), m] = getNextRew(rts(i), m); %multiply by 10 because underlying functions range 0-5000ms
     

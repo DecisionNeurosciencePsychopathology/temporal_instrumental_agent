@@ -267,16 +267,21 @@ end
         %Initalize dot sizes based on rts
         dot_size = 30*(ones(length(quits),2));
         
+        %Reversal hack for switching from IEV to DEV
+        options.reversal_go=1;
+        
         
         for ei = 1:episodeCount,
             
-            %Reversal hack for switching from IEV to DEV
-            options.reversal_go=0;
-            if (options.reversal_go ==1)
-                if (ei < (episodeCount/2))
-                    cond='DEV';
+            %Reversal hack
+            if (options.reversal_go ==1) && ei == episodeCount/2+1
+                vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
+                if strcmp(m.name, 'IEV')
+                    m=mDEV; %if it is IEV after x trials switch
+                    m.lookup = m.lookup(:,vperm_run);
                 else
-                    cond='IEV';
+                    m=mIEV; %else it is DEV after x traisl switch to IEV
+                    m.lookup = m.lookup(:,vperm_run);
                 end
             end
             
@@ -314,7 +319,6 @@ end
                     [r, m] = getNextRew(nextpos.row.*10, m);
                     %fprintf('harvested rew: %.2f ', r);
                     quits(ei)=curpos.row;
-                    
                 else %wait
                     r = 0;
                     %             curpos = curpos + 1;
