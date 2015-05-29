@@ -1,4 +1,4 @@
-function [maxReward, constr, quits,cumReward,mov] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
+function [maxReward, constr, quits,cumReward,mov, ret] = ClockWalking_3D_discountedEv_optimize(options,m,rngseeds,params,plot_index,gra_options)
 
 
 %Old function header 5/22/15
@@ -28,6 +28,13 @@ global episodesStruct;
 
 % simps won't run without constr
 constr=[];
+
+
+%quick hack!
+quits=[];
+cumReward=[];
+mov=[];
+
 
 %This is for master plots
 % load('s_DEV.mat')
@@ -139,6 +146,10 @@ else
     wait_punishment = options.waitflag;
     
 end
+
+load('mIEV.mat')
+load('mDEV.mat')
+
 % agents = {'qlearning', 'sarsa'};
 % epiCount = [50, 400];
 % for ii=1:length(epiCount)
@@ -268,7 +279,7 @@ end
         dot_size = 30*(ones(length(quits),2));
         
         %Reversal hack for switching from IEV to DEV
-        options.reversal_go=1;
+        options.reversal_go=0;
         
         
         for ei = 1:episodeCount,
@@ -279,9 +290,11 @@ end
                 if strcmp(m.name, 'IEV')
                     m=mDEV; %if it is IEV after x trials switch
                     m.lookup = m.lookup(:,vperm_run);
+                    cond = m.name;
                 else
                     m=mIEV; %else it is DEV after x traisl switch to IEV
                     m.lookup = m.lookup(:,vperm_run);
+                    cond = m.name;
                 end
             end
             
@@ -317,6 +330,8 @@ end
                     episodeFinished = 1;
                     %r = RewFunction(nextpos.row.*factor, cond);
                     [r, m] = getNextRew(nextpos.row.*10, m);
+                    [~,ev_i(ei)] = RewFunction(nextpos.row.*factor, cond);
+                    
                     %fprintf('harvested rew: %.2f ', r);
                     quits(ei)=curpos.row;
                 else %wait
@@ -662,6 +677,8 @@ end
         
         maxReward = -sum(cumReward);
         %update plot index
+        
+        ret.ev_i = ev_i;
         
     end
     %     plot_index(1)=plot_index(1)+(cols*2);

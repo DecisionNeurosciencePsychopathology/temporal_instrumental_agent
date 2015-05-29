@@ -78,7 +78,7 @@ exptype_rng_seed=rng;
 
 
 %Reversal 1 is true 0 is false
-reversal=1;
+reversal=0;
 
 
 %initialize movie storage
@@ -290,9 +290,11 @@ if reversal==1 && i==ntrials/2+1
     if strcmp(m.name, 'IEV')
         m=mDEV; %if it is IEV after x trials switch
         m.lookup = m.lookup(:,vperm_run);
+        cond = m.name;
     else
         m=mIEV; %else it is DEV after x traisl switch to IEV
         m.lookup = m.lookup(:,vperm_run);
+        cond = m.name;
     end
     
 end
@@ -300,7 +302,7 @@ end
     
     %[rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     [rew_i(i), m] = getNextRew(rts(i), m); %multiply by 10 because underlying functions range 0-5000ms
-    
+    [~, ev_i(i)] = RewFunction(rts(i).*10, cond);
     %Changing Kalman variance a posteriori should also use the elig*gain approach: [1 - k(ij)*elig(ij)]*sigma(ij)
     %this would only allow a 1.0 update*kalman gain for basis functions solidly in the window and a decay in diminishing
     %variance as the basis deviates from the timing of the obtained reward.
@@ -553,14 +555,14 @@ end
 cost = -sum(rew_i);
 %cost = -sum(ev_i);
 
-ret.mu_ij = mu_ij;
-ret.sigma_ij = sigma_ij;
-ret.k_ij = k_ij;
-ret.delta_ij = delta_ij;
-ret.e_ij = e_ij;
-ret.v_it = v_it;
-ret.u_it = u_it;
-ret.rew_i = rew_i;
-%ret.ev_i = ev_i;
+%ret.mu_ij = mu_ij;
+%ret.sigma_ij = sigma_ij;
+%ret.k_ij = k_ij;
+%ret.delta_ij = delta_ij;
+%ret.e_ij = e_ij;
+%ret.v_it = v_it;
+%ret.u_it = u_it;
+%ret.rew_i = rew_i;
+ret.ev_i = ev_i;
 
 

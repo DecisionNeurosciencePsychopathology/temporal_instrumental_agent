@@ -1,4 +1,4 @@
-%Script to optimize parameterds of RL models and calculate costs over a
+%Script to optimize parameters of RL models and calculate costs over a
 %given amount of runs
 
 %Load in main struct s
@@ -17,8 +17,8 @@ agents = fieldnames(s);
 optimize=0; %set to calc contingency indivisually
 optimizeAll=0; %set to 1 to calc 'all' contingencies
 calc_cost=0; %Set to 1 to calulate costs of nruns
-calc_cost_all=0;
-calc_cost_reversal=2;
+calc_cost_all=1; %1 = find cost using 'all condition' optimal params
+calc_cost_reversal=0; %0 = off; 1 = IEV to DEV; 2 = DEV to IEV
 
 %Trial set up variables
 ntrials = 200;
@@ -47,7 +47,8 @@ for i = 1:GAnruns
     vperm(i,:) = randperm(length(mIEV.lookup));
 end
 
-for i=1:length(lookups)+1
+for 1:length(lookups)+1
+    
     if i<=3
         m = lookups{i};
         mAll{1,i} = m;
@@ -126,14 +127,6 @@ end
 
 
 
-
-
-
-
-                
-
-
-
 % for p=1:5
 %     s.(agents{p}).costsAll =0;
 % end
@@ -174,22 +167,31 @@ end
 
 
 %Used this to set up stats for models
-% agents = {'kalmanUV' 'kalmanLogistic' 'kalmanGRW' 'qlearning' 'sarsa'};
-% for i = 1:length(agents)
-%     for w = 1:3 %For each condition
-%         s.(agents{i}).mean_cost(w,:)=mean(s.(agents{i}).costs(w,:),2);
-%         s.(agents{i}).sum_cost(w,:)=sum(s.(agents{i}).costs(w,:),2);
-%         s.(agents{i}).std_cost(w,:)=std(s.(agents{i}).costs(w,:),0,2);
-%         s.(agents{i}).max_cost(w,:)=max(s.(agents{i}).costs(w,:));
-%         s.(agents{i}).min_cost(w,:)=min(s.(agents{i}).costs(w,:));
+%  agents = {'kalmanUV' 'kalmanLogistic' 'kalmanGRW' 'qlearning' 'sarsa'};
+%  for i = 4:length(agents)
+%      for w = 1:3 %For each condition
+% % % %         s.(agents{i}).mean_cost(w,:)=mean(s.(agents{i}).costs(w,:),2);
+% % % %         s.(agents{i}).sum_cost(w,:)=sum(s.(agents{i}).costs(w,:),2);
+% % % %         s.(agents{i}).std_cost(w,:)=std(s.(agents{i}).costs(w,:),0,2);
+% % % %         s.(agents{i}).max_cost(w,:)=max(s.(agents{i}).costs(w,:));
+% % % %         s.(agents{i}).min_cost(w,:)=min(s.(agents{i}).costs(w,:));
+% % % % 
+% % %          %Compute costs stats using 'All' optimal params
+%          s.(agents{i}).mean_costAll(w,:)=mean(s.(agents{i}).costsAll(w,:),2);
+%          s.(agents{i}).sum_costAll(w,:)=sum(s.(agents{i}).costsAll(w,:),2);
+%          s.(agents{i}).std_costAll(w,:)=std(s.(agents{i}).costsAll(w,:),0,2);
+%          s.(agents{i}).max_costAll(w,:)=max(s.(agents{i}).costsAll(w,:));
+%          s.(agents{i}).min_costAll(w,:)=min(s.(agents{i}).costsAll(w,:));
 % 
-%         %Compute costs stats using 'All' optimal params
-%         s.(agents{i}).mean_costAll(w,:)=mean(s.(agents{i}).costsAll(w,:),2);
-%         s.(agents{i}).sum_costAll(w,:)=sum(s.(agents{i}).costsAll(w,:),2);
-%         s.(agents{i}).std_costAll(w,:)=std(s.(agents{i}).costsAll(w,:),0,2);
-%         s.(agents{i}).max_costAll(w,:)=max(s.(agents{i}).costsAll(w,:));
-%         s.(agents{i}).min_costAll(w,:)=min(s.(agents{i}).costsAll(w,:));
-%     end
+% 
+%          s.(agents{i}).mean_costIevtoDev(1,:)=mean(s.(agents{i}).costsIevtoDev(1,:));
+% 
+% 
+%          s.(agents{i}).mean_costDevtoIev(1,:)=mean(s.(agents{i}).costsDevtoIev(2,:));
+% 
+% 
+% 
+%      end
 % end
 
 
