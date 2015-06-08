@@ -55,9 +55,21 @@ model_cost = s.(model).(val)(idx);
 aic_stat = log(((perfect_cost.(condition) - model_cost).^2)/n)+2*k;
 
 for i = 1:runs %num of runs
+    difference = zeros(1,n); %initialize diff for every run
     model_cost_trialwise = s.(model).eV(trial_idx,i).ev_i;
-    diff = model_cost_trialwise-perfect_cost.([condition '_pertrial']);
-    aic_stat_trialwise(1,i) = log(sum((diff.^2))/n) + 2*k;
+    len  = length(model_cost_trialwise);
+    
+   if trial_idx ==4 %Going from IEV to DEV
+       difference(1,1:(len/2)) = model_cost_trialwise(1,1:(len/2)) - perfect_cost.('IEV_pertrial');
+       difference(1,(len/2+1):end) = model_cost_trialwise(1,(len/2+1):end) - perfect_cost.('DEV_pertrial');
+   elseif trial_idx==5 %Going from DEV to IEV
+       difference(1,1:(len/2)) = model_cost_trialwise(1,1:(len/2)) - perfect_cost.('DEV_pertrial');
+       difference(1,(len/2+1):end) = model_cost_trialwise(1,(len/2+1):end) - perfect_cost.('IEV_pertrial');
+   else
+       difference = model_cost_trialwise-perfect_cost.([condition '_pertrial']);
+   end
+    
+    aic_stat_trialwise(1,i) = log(sum((difference.^2))/n) + 2*k;
 end
 
 aic_stat_trialwise = mean(aic_stat_trialwise);

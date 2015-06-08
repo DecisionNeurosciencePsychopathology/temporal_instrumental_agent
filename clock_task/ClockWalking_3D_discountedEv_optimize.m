@@ -33,7 +33,7 @@ constr=[];
 %quick hack!
 quits=[];
 cumReward=[];
-mov=[];
+
 
 
 %This is for master plots
@@ -146,6 +146,9 @@ else
     wait_punishment = options.waitflag;
     
 end
+
+%initialize movie storage
+mov=repmat(struct('cdata', [], 'colormap', []), episodeCount,1);
 
 load('mIEV.mat')
 load('mDEV.mat')
@@ -279,20 +282,23 @@ load('mDEV.mat')
         dot_size = 30*(ones(length(quits),2));
         
         %Reversal hack for switching from IEV to DEV
-        options.reversal_go=0;
+        rev_go=options.reversal_go;
+        
+        %Expected value
+        ev_i = zeros(1, episodeCount);
         
         
         for ei = 1:episodeCount,
             
             %Reversal hack
-            if (options.reversal_go ==1) && ei == episodeCount/2+1
+            if (rev_go ==1) && ei == episodeCount/2+1
                 vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
                 if strcmp(m.name, 'IEV')
                     m=mDEV; %if it is IEV after x trials switch
                     m.lookup = m.lookup(:,vperm_run);
                     cond = m.name;
                 else
-                    m=mIEV; %else it is DEV after x traisl switch to IEV
+                    m=mIEV; %else it is DEV after x trials switch to IEV
                     m.lookup = m.lookup(:,vperm_run);
                     cond = m.name;
                 end

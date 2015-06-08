@@ -17,8 +17,8 @@ agents = fieldnames(s);
 optimize=0; %set to calc contingency indivisually
 optimizeAll=0; %set to 1 to calc 'all' contingencies
 calc_cost=0; %Set to 1 to calulate costs of nruns
-calc_cost_all=1; %1 = find cost using 'all condition' optimal params
-calc_cost_reversal=0; %0 = off; 1 = IEV to DEV; 2 = DEV to IEV
+calc_cost_all=0; %1 = find cost using 'all condition' optimal params
+calc_cost_reversal=2; %0 = off; 1 = IEV to DEV; 2 = DEV to IEV
 
 %Trial set up variables
 ntrials = 200;
@@ -47,7 +47,7 @@ for i = 1:GAnruns
     vperm(i,:) = randperm(length(mIEV.lookup));
 end
 
-for 1:length(lookups)+1
+for i=1:length(lookups)+1
     
     if i<=3
         m = lookups{i};
@@ -92,11 +92,8 @@ for 1:length(lookups)+1
         end
         
         %Using the condition all optimal parmas calculate the cost with a
-        %reversal...see note below.
-        if(calc_cost_reversal==1) && i==1 %IEV only 
-            %Since I'm short on time I won't add in another params to the
-            %clock operator scripts, just manually go into the 2 scrtips
-            %and turn reversal on or off...
+        %reversal, IEV to DEV
+        if(calc_cost_reversal==1) && i==1  
             for o = 1:nruns
                 vperm_run = randperm(length(mIEV.sample));
                 m.vperm_run = vperm_run;
@@ -107,10 +104,8 @@ for 1:length(lookups)+1
             end
         end
         
-         if(calc_cost_reversal==2) && i==2 %IEV only 
-            %Since I'm short on time I won't add in another params to the
-            %clock operator scripts, just manually go into the 2 scrtips
-            %and turn reversal on or off...
+        %DEV to IEV
+         if(calc_cost_reversal==2) && i==2  
             for o = 1:nruns
                 vperm_run = randperm(length(mIEV.sample));
                 m.vperm_run = vperm_run;

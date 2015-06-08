@@ -2,11 +2,18 @@
 load('s.mat');
 agents = fieldnames(s);
 conds = {'IEV' 'DEV' 'QUADUP'};
-for i = 4:length(agents)
-    for j = 1:length(conds)
+reversal = 1;
+for i = 1:length(agents)
+    for j = 1 %1:length(conds)
         clf;
-        name = [agents{i} '_' conds{j}];
-        fprintf('Making movie for %s', name);
-        makeModelMovie(s,agents{i},conds{j},name)
+        if reversal
+            name = [agents{i} '_' conds{j} '_Reversal'];
+        else
+            name = [agents{i} '_' conds{j}];
+        end
+        fprintf('Making movie for %s', name, ' ');
+        makeModelMovie(s,agents{i},conds{j},name,reversal)
     end
 end
+
+close all;

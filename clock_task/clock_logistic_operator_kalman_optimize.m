@@ -9,7 +9,7 @@
 %choice rule: stochastic continuous RT weighted by value
 %calls on RewFunction.m (Frank lab code)
 
-function [cost,v_it,rts,mov,ret] = clock_logistic_operator_kalman_optimize(params, rngseeds, cond, ntrials, nbasis, ntimesteps, trial_plots, uvsum, m)
+function [cost,v_it,rts,mov,ret] = clock_logistic_operator_kalman_optimize(params, rngseeds, cond, ntrials, nbasis, ntimesteps, trial_plots, uvsum, m, reversal)
 %params is the vector of parameters used to fit
 %   params(1): alpha
 %cond is the character string of the reward contingency
@@ -57,6 +57,7 @@ if nargin < 6, ntimesteps=500; end
 if nargin < 7, trial_plots = 1; end
 if nargin < 8, uvsum = 0; end %whether to use uv sum for choice
 if nargin < 9, m = mDEV; end
+if nargin <10, reversal = 0; end %No reversal by default
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -78,7 +79,7 @@ exptype_rng_seed=rng;
 
 
 %Reversal 1 is true 0 is false
-reversal=0;
+%reversal=1;
 
 
 %initialize movie storage
@@ -301,8 +302,8 @@ end
     
     
     %[rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-    [rew_i(i), m] = getNextRew(rts(i), m); %multiply by 10 because underlying functions range 0-5000ms
-    [~, ev_i(i)] = RewFunction(rts(i).*10, cond);
+    [rew_i(i), m] = getNextRew(rts(i), m); 
+    [~, ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     %Changing Kalman variance a posteriori should also use the elig*gain approach: [1 - k(ij)*elig(ij)]*sigma(ij)
     %this would only allow a 1.0 update*kalman gain for basis functions solidly in the window and a decay in diminishing
     %variance as the basis deviates from the timing of the obtained reward.
@@ -427,17 +428,22 @@ end
     if uvsum == 1
         %new approach: use epsilon (actually c!) to scale relative contribution of u and v to bivariate choice
         %have left code above intact so that logistic model works as usual when uvsum==0
+        temp=.9;
+        %uv=epsilon*v_func + (1-epsilon)*u_func;
         uv=epsilon*v_func + (1-epsilon)*u_func;
         %uv=(epsilon*v_func) .* ((1-epsilon)*u_func);
-        [~, rts(i+1)] = max(uv);
+        [~, rts(i+1)] = max(uv); %This needs to be a softmax not just the max of the uv
+        uv_softmax = (exp(uv)/temp)/(sum(exp(uv)/temp)); %Divide by temperature?
+        rts(i+1) = (find(rand<cumsum(uv_softmax),1,'first'));
+        
     end
     
     verbose=0;
     if verbose == 1
        fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew_i(i), rts(i));
-       fprintf('w_i,k:    '); fprintf('%.2f ', mu_ij(i,:)); fprintf('\n');
-       fprintf('delta_ij:   '); fprintf('%.2f ', delta_ij(i,:)); fprintf('\n');
-       fprintf('w_i+1,k:  '); fprintf('%.2f ', mu_ij(i+1,:)); fprintf('\n');
+       %fprintf('w_i,k:    '); fprintf('%.2f ', mu_ij(i,:)); fprintf('\n');
+       %fprintf('delta_ij:   '); fprintf('%.2f ', delta_ij(i,:)); fprintf('\n');
+       %fprintf('w_i+1,k:  '); fprintf('%.2f ', mu_ij(i+1,:)); fprintf('\n');
        fprintf('\n');
        
     end
@@ -542,7 +548,8 @@ end
         if uvsum==1
             subplot(3,2,6);
             title('UV');
-            plot(tvec,uv); xlim([-1 ntimesteps+1]);
+           % plot(tvec,uv); xlim([-1 ntimesteps+1]);
+           plot(tvec,cumsum(uv_softmax)); xlim([-1 ntimesteps+1]);
             ylabel('UV')
         end
 
