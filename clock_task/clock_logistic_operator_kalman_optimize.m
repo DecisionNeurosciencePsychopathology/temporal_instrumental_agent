@@ -428,13 +428,20 @@ end
     if uvsum == 1
         %new approach: use epsilon (actually c!) to scale relative contribution of u and v to bivariate choice
         %have left code above intact so that logistic model works as usual when uvsum==0
-        temp=.9;
-        %uv=epsilon*v_func + (1-epsilon)*u_func;
         uv=epsilon*v_func + (1-epsilon)*u_func;
         %uv=(epsilon*v_func) .* ((1-epsilon)*u_func);
         [~, rts(i+1)] = max(uv); %This needs to be a softmax not just the max of the uv
-        uv_softmax = (exp(uv)/temp)/(sum(exp(uv)/temp)); %Divide by temperature?
-        rts(i+1) = (find(rand<cumsum(uv_softmax),1,'first'));
+        temp=.9;
+        %uv_softmax = (exp(uv)/temp)/(sum(exp(uv)/temp)); %Divide by temperature?
+        uv_softmax = uv/sum(uv);
+        uv_norm = uv/sum(uv);
+        uv_weighted = (uv.*uv_norm);
+        %rts(i+1) = (find(rand<cumsum(uv_softmax),1,'first'));
+        rts(i+1) = randsample(1:ntimesteps, 1, true, uv_weighted);
+        %var_uvh(1,i) = var(uv_softmax);
+        %x = cumsum(uv_softmax(:).'/sum(uv_softmax(:))); %Different approach
+        %x(end) = 1e3*eps + x(end);
+        %rts(i+1) = (find(rand<cumsum(x),1,'first'));
         
     end
     
@@ -497,7 +504,7 @@ end
         
         figure(1); clf;
         set(gca,'FontSize',18);
-        subplot(3,2,1);
+        subplot(4,2,1);
         title('Choice history');
         %plot(tvec,v_func);
         scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
@@ -505,11 +512,11 @@ end
         hold on;
         plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
         hold off;
-        subplot(3,2,2)
+        subplot(4,2,2)
         title('Learned value');
         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
         ylabel('expected value')
-        subplot(3,2,3);
+        subplot(4,2,3);
         
         %eligibility trace
         title('eligibility trace');
@@ -525,7 +532,7 @@ end
         xlabel('time(centiseconds)')
         ylabel('eligibility')
         
-        subplot(3,2,4);
+        subplot(4,2,4);
         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
         xlabel('time (centiseconds)')
         ylabel('uncertainty')
@@ -537,7 +544,7 @@ end
         %plot(c, e_ij(1:i,:)')
         %bar(c, sigma_ij(i,:))
 
-        subplot(3,2,5);
+        subplot(4,2,5);
         title('RT history');
         plot(1:ntrials, rts(1:ntrials));
         xlim([0 ntrials]);
@@ -546,11 +553,29 @@ end
         
         
         if uvsum==1
-            subplot(3,2,6);
+            subplot(4,2,6);
             title('UV');
-           % plot(tvec,uv); xlim([-1 ntimesteps+1]);
-           plot(tvec,cumsum(uv_softmax)); xlim([-1 ntimesteps+1]);
-            ylabel('UV')
+            plot(tvec,uv); xlim([-1 ntimesteps+1]);
+            ylabel('UV');
+            
+            subplot(4,2,7);
+            title('UV-Softmax');
+            plot(uv_softmax); xlim([-1 ntimesteps+1]);
+            ylabel('UV-Softmax');
+            
+            
+            %             subplot(4,2,8);
+            %             title('UV-Norm');
+            %             plot(scaled_uv); xlim([-1 ntimesteps+1]);
+            %             ylabel('UV-Norm')
+            %             ylim([-0.1 1.1]);
+            
+            
+            subplot(4,2,8);
+            title('UV-Cumsum');
+            plot(cumsum(uv_softmax)); xlim([-1 ntimesteps+1]);
+            ylabel('UV-Cumsum')
+            ylim([-0.1 1.1]);
         end
 
         
