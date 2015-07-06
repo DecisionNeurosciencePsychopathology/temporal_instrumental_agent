@@ -3,14 +3,12 @@ function [totcost, costs, seeds] = multirun_clock_logistic_operator_kalman_optim
 %operator.
 rng(runseed);
 seeds=randi([1 500], nruns, 4);
-
 costs=zeros(nruns, 1);
 
 
 
-%execute runs in parallel --unfortunately I had to change this to add 
-%since I'm guessing matlab can't split assignment operations in paralell,
-%or atleast that's my gut feeling 
+%execute runs in parallel --unfortunately I had to change this 
+%since I'm guessing matlab can't split assignment operations in parallel
 
 for i = 1:nruns
     args{1,9}.lookup = args{1,9}.lookup(:,vperm(i,:)); %Permute

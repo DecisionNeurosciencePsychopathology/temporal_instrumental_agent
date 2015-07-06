@@ -59,3 +59,30 @@ for i = 1:5
         end
     end
 end
+
+
+
+%Just run the kalman guys and look at them...
+load('s.mat');
+seeds = [98 83 66 10];
+ntrials=200;
+load('mIEV.mat')
+load('mDEV.mat')
+
+%Just run Skeptic
+[cost,v_it,rts,mov,ret]=clock_logistic_operator_kalman_optimize(s.kalmanSKEPTIC.opt_params(4,:), seeds, 'IEV', 200, 24, 500, 0, 1);
+
+%Just run Logistic
+clock_logistic_operator_kalman_optimize([s.kalmanLogistic.opt_params(4,:) 0 .2], seeds, 'IEV', 200, 24, 500, 1, 0);
+
+%Just run GRW
+clock_logistic_operator_kalman_optimize([s.kalmanGRW.opt_params(4,:) .9 .2], seeds, 'IEV', 200, 24, 500, 1, 0);
+
+%Just run the kalman guy to get HGF inputs
+
+[cost,v_it,rts,mov,ret]=clock_logistic_operator_kalman_bayesian(s.kalmanUV.opt_params(4,:), seeds, 'IEV', ntrials, 24, 500, 1, 1, mIEV,1); 
+
+%DEV to IEV
+
+[cost,v_it,rts,mov,ret]=clock_logistic_operator_kalman_bayesian(s.kalmanUV.opt_params(4,:), seeds, 'DEV', ntrials, 24, 500, 1, 1, mDEV,1);
+

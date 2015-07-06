@@ -77,11 +77,6 @@ grw_step_rng_state=rng;
 rng(exptype_rng_seed);
 exptype_rng_seed=rng;
 
-
-%Reversal 1 is true 0 is false
-%reversal=1;
-
-
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 
@@ -112,10 +107,6 @@ sig = (c(2) - c(1))/1.52; %cohen's d of 1.52 between basis functions
 
 %% initialize RTs chosen by agent as a nan vector;
 rts = nan(1,ntrials);
-%rts(1) = rand(1)*5000; %initial random rt?
-
-%Have initial rts by random
-%rts(1) = ceil(rand(1)*ntrials); %Changed!!! from 5000 previously
 
 %Have initial rts be constant for cost function
 rts(1) = ceil(.5*ntimesteps);
@@ -132,6 +123,8 @@ rew_i =         nan(1, ntrials);            % actual reward for each trial
 ev_i =          nan(1, ntrials);            % expected value of choice for each trial (used for cost function)
 u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each timestep
 u_it =          zeros(ntrials,ntimesteps);  % history of uncertainty by trial at each timestep
+delta_func =    zeros(1,ntrials);
+v_max_to_plot=    zeros(1,ntrials);
 
 %kalman setup
 mu_ij =         nan(ntrials, nbasis);       %means of Gaussians for Kalman
@@ -139,6 +132,8 @@ k_ij =          zeros(ntrials, nbasis);     %Kalman gain (learning rate)
 sigma_ij =      zeros(ntrials, nbasis);     %Standard deviations of Gaussians (uncertainty)
 
 mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all Gaussians.
+
+despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
 
 %noise in the reward signal: sigma_rew. In the Frank model, the squared SD of the Reward vector represents the noise in
 %the reward signal, which is part of the Kalman gain. This provides a non-arbitrary initialization for sigma_rew, such
@@ -149,9 +144,9 @@ mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all G
 %just use the variance of the returns (ala Frank). But for the generative agent, this is not known up front -- so sample
 %from the chosen contingency for each timestep as a guess.
 
-% sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
-sigma_noise = repmat(std(m.lookup(:,1))^2, 1, nbasis); %parfor couldn't find the funciton above??
-%IS THIS OKAY!?^^^^
+sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
+%sigma_noise = repmat(std(m.lookup(:,1))^2, 1, nbasis); %parfor couldn't find the function above??
+
 
 
 u_threshold = (1-epsilon) * sigma_noise(1); %proportion reduction in variance from initial
@@ -200,52 +195,13 @@ gaussmat_trunc=gaussmat./maxauc_each;
 %figure(20); plot(tvec,gaussmat); title('Regular RBF');
 %figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
 
-%NB: The working combination is: Regular Gaussian RBF for function evaluation, but weight update proceed by truncated
-%Gaussian basis and truncated Gaussian spread function. Conceptually, this is like squeezing in all of the variance of
-%the update inside the finite interval but then evaluating the function on the regular RBF... to be developed further
-%since this remains a bit of a mystery. :)
-
-%note: with truncated gaussian basis (which functions properly), the idea of extending the basis representation outside
-%of the finite interval of interest does not apply (i.e., the functions are not defined outside of the bounds).
-%gauss mat for all possible timesteps
-%lowest_t = tmin - 4*sig; %3 SDs below lowest center.
-%highest_t = tmax + 4*sig;
-
-%t_all = round(lowest_t):round(highest_t);
-
-%gaussmat_all = zeros(nbasis,length(t_all));
-
-%for j = 1:nbasis
-%    gaussmat_all(j,:) = gaussmf(t_all,[sig c(j)]);
-%end
-%plot(t_all, gaussmat_all);
-
-%fprintf('updating value by alpha: %.4f\n', alpha);
-%fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
 fprintf('running agent with sigs: %.3f, epsilon: %.3f and rngseeds: %s \n', sig_spread, epsilon, num2str(rngseeds));
-
-%10/16/2014 NB: Even though some matrices such as v_it have columns for discrete timesteps, the
-%agent now learns entirely on a continuous time basis by maximizing the value and uncertainty curves over the
-%radial basis set and estimating total uncertainty as the definite integral of the uncertainty function over the
-%time window of the trial.
-
-%rng('shuffle');
 
 %determine the AUC of a non-truncated eligilibity function
 %use this to rescale elibility below to maintain constant AUC equivalent to a standard Gaussian membership function
 %this leads to eligibility 0-1.0 for eligibility functions within the interval, and > 1.0 max for truncated functions.
 %in testing (weightfit.m), this gives the best sampling behavior
 refspread = sum(gaussmf([min(tvec)-range(tvec):max(tvec)+range(tvec)], [sig_spread, median(tvec)]));
-
-%objective expected value for this function
-%I commented this out is that alirght???
-% ev=[];
-% for val = 1:length(tvec)
-%     [~,ev(val)] = RewFunction(tvec(val).*10, cond);
-% end
-
-%figure(6); plot(tvec, ev);
-%title('Expected value of contingency');
 
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials
@@ -275,16 +231,6 @@ for i = 1:ntrials
 
     % estimate reward assigned to each stimulus h
     
-    %Reversal HERE
-    %[rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-%     if (i < ntrials/2) 
-%     %    cond='IEV';
-%         m = 1;
-%     else
-%     %    cond='DEV';
-%         m = 1;
-%     end
-
 if reversal==1 && i==ntrials/2+1
     %Optimal param reversal hack
     vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
@@ -315,6 +261,9 @@ end
     sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*sigma_ij(i,:);
     
     %3) update reward expectation
+    %  AD: let's check this learning rule. Would it be better for the delta
+    %  to be the difference between the reward and the point value estimate
+    %  at the RT(i)?
     delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
     mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
     
@@ -331,6 +280,21 @@ end
 
     v_it(i+1,:) = v_func;
     u_it(i+1,:) = u_func;
+    
+    %% How does the agent detect a reversal?  E.g. by seeing a lot of PE-.  These, in turn, inflate a
+    %  'despair' parameter (analogous to Behrens's volatility [2005]). 
+    
+    % first get the PE-(i)
+    mean_delta(i) = mean(delta_ij(i,:));
+    mean_delta_minus(i) = mean_delta(i)*(mean_delta(i)<0);
+    despair(i+1) = .95*despair(i) - mean_delta_minus(i); 
+    
+    %Prediction errors
+    delta_func(i)=sum(delta_ij(i,:));
+    v_max_to_plot(i) = max(v_func)*50;
+    k_top_plot(i) = sum(k_ij(i,:));
+    
+    
     
     %% CHOICE RULE
     % find the RT corresponding to exploitative choice (choose randomly if value unknown)
@@ -372,10 +336,12 @@ end
         rt_explore = find(u_func==max(u_func), 1);%return position of first max and add gaussian noise
         %rt_explore = max(round(find(u_func==max(u_func(20:500)))));        
         
+        %Testing
         %rt_explore=500; %always choose max for testing
         %rt_explore = randi([400,500],1);
     end
-
+    
+    %Output the rt explore and exploit from choice rule per trial
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
     
     discrim = 0.1;
@@ -430,18 +396,16 @@ end
         %have left code above intact so that logistic model works as usual when uvsum==0
         uv=epsilon*v_func + (1-epsilon)*u_func;
         %uv=(epsilon*v_func) .* ((1-epsilon)*u_func);
-        [~, rts(i+1)] = max(uv); %This needs to be a softmax not just the max of the uv
+        
+        %Greedy approach
+        %[~, rts(i+1)] = max(uv); 
+        
+        %Softmax approach
         temp=.9;
-        %uv_softmax = (exp(uv)/temp)/(sum(exp(uv)/temp)); %Divide by temperature?
-        uv_softmax = uv/sum(uv);
-        uv_norm = uv/sum(uv);
-        uv_weighted = (uv.*uv_norm);
-        %rts(i+1) = (find(rand<cumsum(uv_softmax),1,'first'));
-        rts(i+1) = randsample(1:ntimesteps, 1, true, uv_weighted);
-        %var_uvh(1,i) = var(uv_softmax);
-        %x = cumsum(uv_softmax(:).'/sum(uv_softmax(:))); %Different approach
-        %x(end) = 1e3*eps + x(end);
-        %rts(i+1) = (find(rand<cumsum(x),1,'first'));
+        %To deal with the overflow error subtract the max of uv from uv_sum
+        uv_softmax = (exp((uv-max(uv)))/temp)/(sum(exp((uv-max(uv)))/temp)); %Divide by temperature
+        rts(i+1) = randsample(1:ntimesteps, 1, true, uv_softmax); 
+        
         
     end
     
@@ -456,51 +420,6 @@ end
     end
     
     if trial_plots == 1
-%         figure(1); clf;
-%         subplot(5,2,1)
-%         %plot(tvec,v_func);
-%         scatter(rts(1:i),rew_i(1:i)); axis([1 500 0 350]);
-%         hold on;
-%         plot(rts(i),rew_i(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
-%         hold off;
-%         subplot(5,2,2)
-%         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-%         ylabel('value')
-%         subplot(5,2,3)
-%         
-% %         bar(c, mu_ij(i,:));
-% %         ylabel('basis function heights');
-%         plot(tvec,v_jt);
-%         ylabel('temporal basis function')
-% %         title(sprintf('trial # = %i', h)); %
-%                 xlabel('time(ms)')
-%                 ylabel('reward value')
-%         
-%         subplot(5,2,4)
-%         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-%         xlabel('time (centiseconds)')
-%         ylabel('uncertainty')
-%         
-%         subplot(5,2,5)
-%         barh(sigmoid);
-%         xlabel('p(explore)'); axis([-.1 1.1 0 2]);
-%         subplot(5,2,6)
-%         %barh(alpha), axis([0 .2 0 2]);
-%         %xlabel('learning rate')
-%         subplot(5,2,7)
-%         barh(sig_spread), axis([0.0 0.5 0 2]);
-%         xlabel('decay')
-%         subplot(5,2,8)
-%         barh(epsilon), axis([-0.5 0 0 2]);
-%         xlabel('strategic exploration')
-%         
-%         subplot(5,2,9)
-%         barh(u) %, axis([0 1000 0 2]);
-%         xlabel('mean uncertainty')
-%         %         pause(0.1);
-%         subplot(5,2,10)
-%         plot(1:ntrials,rts, 'k');
-%         ylabel('rt by trial'); axis([1 ntrials -5 505]);
         
         figure(1); clf;
         set(gca,'FontSize',18);
@@ -518,19 +437,31 @@ end
         ylabel('expected value')
         subplot(4,2,3);
         
-        %eligibility trace
-        title('eligibility trace');
-        %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
-        %plot(tvec, elig_plot);
-        plot(tvec, elig);
-%         bar(c, mu_ij(i,:));
-%         ylabel('basis function heights');
-        %title('basis function values');
-        %plot(tvec,v_jt);
-        %ylabel('temporal basis function')
-%         title(sprintf('trial # = %i', h)); %
-        xlabel('time(centiseconds)')
-        ylabel('eligibility')
+%         %eligibility trace
+%         title('eligibility trace');
+%         %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
+%         %plot(tvec, elig_plot);
+%         plot(tvec, elig);
+% %         bar(c, mu_ij(i,:));
+% %         ylabel('basis function heights');
+%         %title('basis function values');
+%         %plot(tvec,v_jt);
+%         %ylabel('temporal basis function')
+% %         title(sprintf('trial # = %i', h)); %
+%         xlabel('time(centiseconds)')
+%         ylabel('eligibility')
+        
+        
+        subplot(4,2,3);
+        title('Decay')
+        plot(k_top_plot)
+        ylabel('Decay, despair(red)');
+        hold on;
+        plot(despair, 'r');
+        hold off
+        
+        
+        
         
         subplot(4,2,4);
         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
@@ -548,7 +479,6 @@ end
         title('RT history');
         plot(1:ntrials, rts(1:ntrials));
         xlim([0 ntrials]);
-        %plot(rts);
         ylabel('RT(ms)');
         
         
@@ -558,24 +488,18 @@ end
             plot(tvec,uv); xlim([-1 ntimesteps+1]);
             ylabel('UV');
             
+            
             subplot(4,2,7);
+            title('Prediction Error');
+            plot(delta_func); xlim([1 ntrials]);
+            hold on
+            plot(v_max_to_plot, 'r');
+            ylabel('Prediction error');
+            
+            subplot(4,2,8);
             title('UV-Softmax');
             plot(uv_softmax); xlim([-1 ntimesteps+1]);
             ylabel('UV-Softmax');
-            
-            
-            %             subplot(4,2,8);
-            %             title('UV-Norm');
-            %             plot(scaled_uv); xlim([-1 ntimesteps+1]);
-            %             ylabel('UV-Norm')
-            %             ylim([-0.1 1.1]);
-            
-            
-            subplot(4,2,8);
-            title('UV-Cumsum');
-            plot(cumsum(uv_softmax)); xlim([-1 ntimesteps+1]);
-            ylabel('UV-Cumsum')
-            ylim([-0.1 1.1]);
         end
 
         
@@ -584,8 +508,10 @@ end
     end
     %     disp([i rts(i) rew_i(i) sum(v_func)])
 end
-cost = -sum(rew_i);
-%cost = -sum(ev_i);
+
+%Cost function
+%cost = -sum(rew_i);
+cost = -sum(ev_i);
 
 %ret.mu_ij = mu_ij;
 %ret.sigma_ij = sigma_ij;

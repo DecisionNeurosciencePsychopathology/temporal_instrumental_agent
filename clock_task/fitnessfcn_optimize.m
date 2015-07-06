@@ -12,9 +12,9 @@ function [cost] = fitnessfcn_optimize(params)
     %3 = QUADUP
     %4 = ALL
     
-    global agentNOW
-    global conditionNOW
-    global vperm 
+    global agentNOW %which agent is being optimized
+    global conditionNOW %which lookup table is being used
+    global vperm %load in the permuted matrix
     
     m=conditionNOW; %grab lookup
     nruns = 15;
@@ -37,7 +37,7 @@ function [cost] = fitnessfcn_optimize(params)
     end
    
 
-    %Meat and potastoes
+    %Meat and potatoes i.e. optimize specific model for specific condition
     if isstruct(m)
         if agentNOW ==1
             cost = multirun_clock_logistic_operator_kalman_optimize(nruns, seed, {params, 0, m.name, ntrials, nbasis, ntimesteps, 0, 1, m},vperm);
@@ -55,8 +55,7 @@ function [cost] = fitnessfcn_optimize(params)
     else %Whenever conditionNOW is set to 'all'
         
         %I hate breaking the DRY principle, and I probably could just make
-        %the above portion a modified for loop, but this works for now I
-        %believe
+        %the above portion a modified for loop, but this works for now 
         
         cost=0; %Initialize cost
         

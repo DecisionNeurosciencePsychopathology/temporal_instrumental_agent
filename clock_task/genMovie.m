@@ -4,7 +4,7 @@ agents = fieldnames(s);
 conds = {'IEV' 'DEV' 'QUADUP'};
 reversal = 1;
 for i = 1:length(agents)
-    for j = 2 %1:length(conds)
+    for j = 1 %1:length(conds)
         clf;
         if reversal
             name = [agents{i} '_' conds{j} '_Reversal'];
