@@ -220,7 +220,8 @@ fprintf('alpha=%3f, lambda=%3f, epsilon=%3f,cost=%3f\n', s.alpha, s.lambda, s.ep
 
 %% FRANK TC MODEL SECTION
 %lambda, epsilon, alphaG, alphaN, K, nu, rho
-init_params = [ 0.3 ; 2000 ; 0.2 ; 0.2 ; 1000 ; 0.1 ; 300 ];
+%init_params = [ 0.3 ; 2000 ; 0.2 ; 0.2 ; 1000 ; 0.1 ; 300 ];
+init_params = [ 0.2 ; 3000 ; 0.3 ; 0.3 ; 1500 ; 0.25 ; 1000 ];
 lower_limits = [ 0 ; 0 ; 0.01 ; 0.01 ; .1 ; 0 ; 0 ];
 upper_limits = [1 ; 100000 ; 5 ; 5 ; 5000 ; 5000 ; 10000 ];
 
@@ -228,7 +229,7 @@ priors = [];
 priors.V = 0;
 priors.Go = 0;
 priors.NoGo = 0;
-[cost, RTpred, ret]=TC_Alg_forward(init_params, priors, 'IEV', 50);
+[cost, RTpred, ret]=TC_Alg_forward(init_params, priors, 'IEV', 2000);
 
 
 
