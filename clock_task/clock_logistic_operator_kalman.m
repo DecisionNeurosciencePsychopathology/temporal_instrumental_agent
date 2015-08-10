@@ -138,7 +138,11 @@ mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all G
 %just use the variance of the returns (ala Frank). But for the generative agent, this is not known up front -- so sample
 %from the chosen contingency for each timestep as a guess.
 
+%measurement noise
 sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
+
+%process noise should be some fixed proportion of measurement noise because
+%k = U + 
 
 u_threshold = (1-epsilon) * sigma_noise(1); %proportion reduction in variance from initial
 
@@ -270,7 +274,7 @@ for i = 1:ntrials
     %Changing Kalman variance a posteriori should also use the elig*gain approach: [1 - k(ij)*elig(ij)]*sigma(ij)
     %this would only allow a 1.0 update*kalman gain for basis functions solidly in the window and a decay in diminishing
     %variance as the basis deviates from the timing of the obtained reward.
-       
+
     %1) compute the Kalman gains for the current trial
     k_ij(i,:) = sigma_ij(i,:)./(sigma_ij(i,:) + sigma_noise);
 

@@ -34,6 +34,28 @@ elseif strcmpi(cond, 'QUADUP')
     frq = 1 - .62.*rt./5000;
     mag = 0.00002*(rt-1800).^2+20;
     
+elseif strcmpi(cond, 'IEVLINPROB')
+    %for 0-500ms, use the min probability of 0.2
+    %for 3750-4000ms, use the max probability of 0.8
+    if rt < 500
+        rt = 500;
+    elseif rt > 3750
+        rt = 3750;
+    end
+    frq = (rt - 500)/5416.667 + 0.2; %5416.667 is 3750 - 500 / 0.6
+    mag = 1; %1 or 0 outcome
+    
+elseif strcmpi(cond, 'DEVLINPROB')
+    %for 0-500ms, use the max probability of 0.8
+    %for 3750-4000ms, use the min probability of 0.2
+    if rt < 500
+        rt = 500;
+    elseif rt > 3750
+        rt = 3750;
+    end
+    
+    frq = (4000 - 250 - rt)/5416.667 + 0.2;
+    mag = 1; %1 or 0 outcome
 else
     error(['Unknown function: ' cond]);
 end
