@@ -30,12 +30,13 @@ behav{sub}.id = fname(idchars);
 end
 
 
-%just example first run, single subject
-sub = 7;
-rts_obs = behav{sub}.data.rt(1:50);
-rew_obs = behav{sub}.data.score(1:50);
-cond = behav{sub}.data.rewFunc(sub);
+%just example first run
+rts_obs = data.rt(1:50);
+rew_obs = data.score(1:50);
+cond = data.rewFunc(1);
 
+% rts_obs = data.rt(101:150);
+% rew_obs = data.score(101:150);
 
 %%
 params = [5 .05 1 .2]; %epsilon, prop_spread

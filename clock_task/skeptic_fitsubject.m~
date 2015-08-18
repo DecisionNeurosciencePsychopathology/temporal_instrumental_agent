@@ -364,12 +364,12 @@ for i = 1:ntrials
     choice_rand=rand;
     explore_rng_state=rng; %save state after random draw above
     
-    %% AD: the GRW exploration leads agent to repeat subject's RT
+    %% the GRW exploration leads agent to repeat subject's RT
     %   solution: skip it for now 
     
     %determine whether to strategic explore versus GRW
     rng(exptype_rng_seed);
-%     explore_type_rand=rand;
+    explore_type_rand=rand;
     exptype_rng_seed=rng;
     
     
@@ -378,28 +378,26 @@ for i = 1:ntrials
     rng(grw_step_rng_state); %draw from GRW rng
     grw_step=round(s_grw*randn(1,1));
     grw_step_rng_state=rng; %save state after draw 
-
-    %% AD: NB grw exploration is commented out here to avoid circularity with subject's choices
     
     %rng('shuffle');
     if i < ntrials
         if choice_rand < p_explore_i(i)
-%             if (explore_type_rand > k)
+            if (explore_type_rand > k)
                 %strategic
                 exptxt='strategic explore';
                 rt_pred_i(i+1) = rt_explore;
-%             else
-%                 %grw
-%                 exptxt='grw explore';
-%                 rt_grw = rt_obs(i) + grw_step; %use GRW around prior *observed* RT
-%                 
-%                 %N.B.: Need to have more reasonable GRW near the edge such that it doesn't just oversample min/max
-%                 %e.g., perhaps reflect the GRW if rt(t-1) was already very close to edge and GRW samples in that
-%                 %direction again.                
-%                 if rt_grw > max(tvec), rt_grw = max(tvec);
-%                 elseif rt_grw < min(tvec), rt_grw = min(tvec); end
-%                 rt_pred_i(i+1) = rt_grw;
-%             end
+            else
+                %grw
+                exptxt='grw explore';
+                rt_grw = rt_obs(i) + grw_step; %use GRW around prior *observed* RT
+                
+                %N.B.: Need to have more reasonable GRW near the edge such that it doesn't just oversample min/max
+                %e.g., perhaps reflect the GRW if rt(t-1) was already very close to edge and GRW samples in that
+                %direction again.                
+                if rt_grw > max(tvec), rt_grw = max(tvec);
+                elseif rt_grw < min(tvec), rt_grw = min(tvec); end
+                rt_pred_i(i+1) = rt_grw;
+            end
             explore_trials = [explore_trials i+1];
         else
             exptxt='exploit';%for graph annotation
@@ -568,8 +566,7 @@ for i = 1:ntrials
         subplot(3,2,6);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
-        plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
-        plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
+        plot(1:length(rt_pred_i), rt_pred_i, 'b');
         hold off;
         
         %figure(2); clf;
