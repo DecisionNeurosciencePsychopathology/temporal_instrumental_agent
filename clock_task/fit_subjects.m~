@@ -83,44 +83,23 @@ end
 end
 
 %% let's see if R2 improves for limited vs. full range
-%% more importantly, are betas for RT_pred(explore, exploit) different from 0?
+%% more importantly, are betas for RT_pred(explore, exploit) significant?
 for sub=1:length(behavfiles)
     conds = fields(behav{sub}.stats_full);
 for run = 1:length(conds)
 r2full(sub,run) = behav{sub}.stats_full.(conds{run}).stats(1);
 r2lim_range(sub,run) = behav{sub}.stats_lim.(conds{run}).stats(1);
-
 b_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(1);
-
-b_L_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,1);
-b_U_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,2);
-
 b_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(2);
-
-b_L_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,1);
-b_U_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,2);
-
-
 b_exploit_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(1);
 b_explore_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(2);
 end
 end
 
-%% sanity check plots
-% clf
-% figure(99);
-% errorbar(1:length(behavfiles),b_exploit_full(:,2),b_exploit_full(:,2)-b_L_CI_exploit_full(:,2),b_U_CI_exploit_full(:,2)-b_exploit_full(:,2));hold on;
-% errorbar(1:length(behavfiles),b_explore_full(:,2),b_explore_full(:,2)-b_L_CI_explore_full(:,2),b_U_CI_explore_full(:,2)-b_explore_full(:,2),'r');hold off;
-% 
-% figure(98)
-% scatter(b_exploit_full(:,2),b_explore_full(:,2));
-%% testing range limitation
-
+errorbar(1:length(behavfiles),b_exploit_full(:,1)
 [h,p,CI,stats] = ttest(r2full,r2lim_range);
 %no, R2 does not seem to improve
 
-%% are betas different from 0?
-% this should really be done using CIs stored above!!!
 [h,p,CI,stats] = ttest(b_exploit_lim,0);
 [h,p,CI,stats] = ttest(b_explore_lim,0);
 % strangely, 
