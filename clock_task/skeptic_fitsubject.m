@@ -12,7 +12,7 @@
 
 
 %%
-function [cost,ret,mov] = skeptic_fitsubject(params, rt_obs, rew_obs, rngseeds, nbasis, ntimesteps, trial_plots, cond, minrt)
+function [cost,ret,mov] = skeptic_fitsubject(params, rt_obs, rew_obs, rngseeds, nbasis, ntimesteps, trial_plots, cond, minrt, maxrt)
 %params is the vector of parameters used to fit
 %   params(1): epsilon -- tradeoff point for exploration/exploitation
 %   params(2): prop_spread -- width of temporal generalization Gaussian as a proportion of the time interval (0..1)
@@ -59,15 +59,21 @@ if nargin < 5, nbasis = 24; end
 if nargin < 6, ntimesteps=400; end
 if nargin < 7, trial_plots = 1; end
 if nargin < 9, minrt=25; end %minimum 250ms RT
+if nargin <10, maxrt=400; end
+
 
 %treats time steps and max time as synonymous
 fprintf('Downsampling rt_obs by a factor of 10 to to 0..%d\n', ntimesteps);
 rt_obs = round(rt_obs/10);
 
-%subtract off minimum rt so that 25 (250ms) is now treated as 0
-%also need to shift the basis by the corresponding amount so that ntimesteps = 375
-rt_obs = rt_obs - minrt;
-ntimesteps = ntimesteps - minrt;
+%subtract off minimum rt so that subject's min RT or 25 (250ms) is now treated as 0
+%also need to shift the basis by the corresponding amount so that
+%ntimesteps = 375 if min RT = 250ms; also truncate basis on the right (late)
+%end to reflect subject's max RT
+rt_obs = rt_obs - minrt+1;
+%occasional subjects are very fast, so
+rt_obs(rt_obs<1) = 1;
+ntimesteps = ntimesteps - minrt+1 - (400-maxrt);
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -209,9 +215,10 @@ gaussmat_trunc=gaussmat./maxauc_each;
 %trunc_adjust=max(gaussmat(indmid,:))/max(gaussmat_trunc(indmid,:));
 %gaussmat_trunc=gaussmat_trunc*trunc_adjust;
 
+if trial_plots == 1
 figure(20); plot(tvec,gaussmat); title('Regular RBF');
 figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
-
+end
 %NB: The working combination is: Regular Gaussian RBF for function evaluation, but weight update proceed by truncated
 %Gaussian basis and truncated Gaussian spread function. Conceptually, this is like squeezing in all of the variance of
 %the update inside the finite interval but then evaluating the function on the regular RBF... to be developed further
@@ -328,6 +335,9 @@ for i = 1:ntrials
         elseif rt_exploit < minrt
             rt_exploit = minrt; %do not allow choice below earliest possible response
         end
+        if rt_exploit > ntimesteps
+            rt_exploit = ntimesteps;
+        end
     end
         
     % find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
@@ -351,6 +361,9 @@ for i = 1:ntrials
         
         if rt_explore < minrt
             rt_explore = minrt;  %do not allow choice below earliest possible response
+        end
+        if rt_explore > ntimesteps
+            rt_explore = ntimesteps;
         end
     end
 
@@ -454,8 +467,9 @@ for i = 1:ntrials
         
     end
     
+    extra_plots = 0;
     figure(11);
-    if(~all(v_it(i,:)) == 0)
+    if(extra_plots == 1 && ~all(v_it(i,:)) == 0)
         gkde2(vertcat(v_it(i,:), u_it(i,:)));
         %gkde2(vertcat(vnorm, unorm))
     end

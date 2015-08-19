@@ -11,6 +11,8 @@ if strcmp(me,'Alex')==1
 else    
   behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
 end
+
+
 %%
 %read header
 % fid = fopen(behavfiles(1).name, 'r');
@@ -18,7 +20,12 @@ end
 % fclose(fid);
 % m = csvread(behavfiles(1).name, 1, 0);
 
+%% settings
+trialplots = 0;
+%%
+
 %wow, matlab has a useful function for mixed data types!!
+
 %% write struct array of behavioral data with ids
 for sub = 1:length(behavfiles)
     % write data
@@ -27,21 +34,98 @@ behav{sub}.data = readtable(behavfiles{sub},'Delimiter',',','ReadVariableNames',
 fname = behavfiles{sub};
 idchars = regexp(fname,'\d');
 behav{sub}.id = fname(idchars);
+
+%% fit SKEPTIC RL model to each subject, using fixed 'optimal' parameters, with both
+% a full RT range and subject's actual (limited) RT range
+runs=unique(behav{sub}.data.run);
+for run=1:length(runs);
+cond = unique(behav{sub}.data.rewFunc(behav{sub}.data.run==runs(run)));
+fprintf('\r%s subject#%d\r',char(cond),sub);
+block = sprintf('%s_%d',char(cond),run);
+rts_obs = behav{sub}.data.rt(behav{sub}.data.run==runs(run));
+% apparently some RTs > 4000ms are recorded in the data: round them down to
+% 4000ms
+rts_obs(rts_obs>4000) = 4000;
+rew_obs = behav{sub}.data.score(1:50);
+% cond = behav{sub}.data.rewFunc(sub);
+%% fit the model with a full range of RTs
+params = [5 .05 1 .2]; %epsilon, prop_spread
+%clock_logistic_fitsubject(params, rts_obs', rew_obs');
+range = 'full';
+[~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
+
+% %% write predicted RTs -explore and -exploit
+% behav{sub}.data.full_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
+% behav{sub}.data.full_rtpred_exploit(behav{sub}.data.run==runs(run)) = ret.rts_pred_exploit(1:50)';
+% 
+%% test fits with regression
+fprintf('\r**************\r%s range\r',range);
+behav{sub}.stats_full.(block)=test_reg(rts_obs,ret);
+fprintf('**************\r');
+
+%% Let's also try with a representational basis restricted to the subject's RT range
+range = 'limited';
+minrt = round(min(rts_obs(rts_obs>0))./10);
+maxrt = round(max(rts_obs)./10);
+[~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond, minrt, maxrt);
+
+% %% write predicted RTs for representational range limited to subject's RT range
+% behav{sub}.data.lim_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
+% behav{sub}.data.lim_rtpred_exploit(behav{sub}.data.run==runs(run)) = ret.rts_pred_exploit(1:50)';
+
+%% test with regression
+fprintf('\r**************\r%s range\r',range);
+behav{sub}.stats_lim.(block)=test_reg(rts_obs,ret);
+fprintf('**************\r');
 end
 
 
-%just example first run, single subject
-sub = 7;
-rts_obs = behav{sub}.data.rt(1:50);
-rew_obs = behav{sub}.data.score(1:50);
-cond = behav{sub}.data.rewFunc(sub);
+end
+
+%% let's see if R2 improves for limited vs. full range
+%% more importantly, are betas for RT_pred(explore, exploit) different from 0?
+for sub=1:length(behavfiles)
+    conds = fields(behav{sub}.stats_full);
+for run = 1:length(conds)
+r2full(sub,run) = behav{sub}.stats_full.(conds{run}).stats(1);
+r2lim_range(sub,run) = behav{sub}.stats_lim.(conds{run}).stats(1);
+
+b_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(1);
+
+b_L_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,1);
+b_U_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,2);
+
+b_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(2);
+
+b_L_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,1);
+b_U_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,2);
 
 
+b_exploit_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(1);
+b_explore_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(2);
+end
+end
+
+%% sanity check plots
+% clf
+% figure(99);
+% errorbar(1:length(behavfiles),b_exploit_full(:,2),b_exploit_full(:,2)-b_L_CI_exploit_full(:,2),b_U_CI_exploit_full(:,2)-b_exploit_full(:,2));hold on;
+% errorbar(1:length(behavfiles),b_explore_full(:,2),b_explore_full(:,2)-b_L_CI_explore_full(:,2),b_U_CI_explore_full(:,2)-b_explore_full(:,2),'r');hold off;
+% 
+% figure(98)
+% scatter(b_exploit_full(:,2),b_explore_full(:,2));
 %%
-params = [5 .05 1 .2]; %epsilon, prop_spread
-%clock_logistic_fitsubject(params, rts_obs', rew_obs');
-[cost, ret, mov] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, 1, cond, 25);
 
+
+[h,p,CI,stats] = ttest(r2full,r2lim_range);
+%no, R2 does not seem to improve
+
+[h,p,CI,stats] = ttest(b_exploit_lim,0);
+[h,p,CI,stats] = ttest(b_explore_lim,0);
+% strangely, 
+
+%just example first run, single subject
+%sub = 53;
 %%
 %function [cost,mov,ret] = skeptic_fitsubject(params, rt_obs, rew_obs, rngseeds, nbasis, ntimesteps, trial_plots, cond, minrt)
 
