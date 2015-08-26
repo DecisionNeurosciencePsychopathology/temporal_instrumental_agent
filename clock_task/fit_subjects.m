@@ -157,6 +157,11 @@ ylabel('Subject count')
 title('Limited RT range results WITHOUT OUTLIERS');
 
 
+%% export data to R
+
+for sub=1:length(behavfiles)
+    writetable(behav{sub}.data,sprintf('%s.csv',behav{sub}.id));
+end
 %just example first run, single subject
 %sub = 53;
 %%
