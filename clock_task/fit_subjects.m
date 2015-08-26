@@ -71,6 +71,11 @@ minrt = round(min(rts_obs(rts_obs>0))./10);
 maxrt = round(max(rts_obs)./10);
 [~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond, minrt, maxrt);
 
+ behav{sub}.data.limited_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
+ behav{sub}.data.limited_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
+
+
+
 % %% write predicted RTs for representational range limited to subject's RT range
 % behav{sub}.data.lim_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
 % behav{sub}.data.lim_rtpred_exploit(behav{sub}.data.run==runs(run)) = ret.rts_pred_exploit(1:50)';
@@ -83,7 +88,7 @@ end
 
 
 end
-
+save behav
 %% let's see if R2 improves for limited vs. full range
 %% more importantly, are betas for RT_pred(explore, exploit) different from 0?
 for sub=1:length(behavfiles)
