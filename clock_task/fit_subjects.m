@@ -46,18 +46,20 @@ rts_obs = behav{sub}.data.rt(behav{sub}.data.run==runs(run));
 % apparently some RTs > 4000ms are recorded in the data: round them down to
 % 4000ms
 rts_obs(rts_obs>4000) = 4000;
-rew_obs = behav{sub}.data.score(1:50);
+rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 % cond = behav{sub}.data.rewFunc(sub);
 %% fit the model with a full range of RTs
-params = [5 .05 1 .2]; %epsilon, prop_spread
+params = [.9165 .2261]; %epsilon, prop_spread
+
 %clock_logistic_fitsubject(params, rts_obs', rew_obs');
 range = 'full';
 [~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
 
 % %% write predicted RTs -explore and -exploit
-% behav{sub}.data.full_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
-% behav{sub}.data.full_rtpred_exploit(behav{sub}.data.run==runs(run)) = ret.rts_pred_exploit(1:50)';
-% 
+ behav{sub}.data.full_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
+ behav{sub}.data.full_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
+
+
 %% test fits with regression
 fprintf('\r**************\r%s range\r',range);
 behav{sub}.stats_full.(block)=test_reg(rts_obs,ret);
@@ -124,6 +126,31 @@ end
 [h,p,CI,stats] = ttest(b_exploit_lim,0);
 [h,p,CI,stats] = ttest(b_explore_lim,0);
 % strangely, 
+figure(1);clf;
+subplot(4,1,1);
+hist(b_explore_full,40);
+xlabel('RTexploRE regression coefficients; color: run')
+ylabel('Subject count')
+title('Full RT range results');
+subplot(4,1,2)
+hist(b_exploit_full,200)
+axis([-5 5 0 200])
+xlabel('RTexploIT regression coefficients; color: run')
+ylabel('Subject count')
+title('Full RT range results WITHOUT OUTLIERS');
+
+subplot(4,1,3);
+hist(b_explore_full,40);
+xlabel('RTexploRE regression coefficients; color: run')
+ylabel('Subject count')
+title('Limited RT range results');
+subplot(4,1,4)
+hist(b_exploit_full,200)
+ axis([-5 5 0 200])
+xlabel('RTexploIT regression coefficients; color: run')
+ylabel('Subject count')
+title('Limited RT range results WITHOUT OUTLIERS');
+
 
 %just example first run, single subject
 %sub = 53;

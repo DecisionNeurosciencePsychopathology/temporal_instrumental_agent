@@ -28,6 +28,9 @@ ntrials=length(rew_obs);
 
 %% free parameters: exploration tradeoff (epsilon), temporal decay (sd of Gaussian temporal spread)
 epsilon = params(1);
+if epsilon<0 || epsilon>1
+    error('Epsilon outside of bounds');
+end
 
 %for now, setup the hack (just for prototype) that epsilon is the proportion reduction in variance at which
 %exploration versus exploitation become equally probable in the sigmoid. Need to have a nicer choice rule that
