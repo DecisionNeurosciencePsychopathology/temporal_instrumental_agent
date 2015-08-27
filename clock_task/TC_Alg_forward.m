@@ -1,6 +1,7 @@
-function [cost, RTpred, ret]=TC_Alg_forward(params, priors, cond, rngseeds, ntrials)
+function [cost, RTpred, ret]=TC_Alg_forward(params, priors, cond, rngseeds, ntrials, rtbounds)
 % Time clock R-L algorithm developed by Michael Frank
 % adapted to be generative/forward agent only for testing
+% only the beta distribution version here (not Kalman)
 %
 %
 % inputs:
@@ -14,6 +15,7 @@ function [cost, RTpred, ret]=TC_Alg_forward(params, priors, cond, rngseeds, ntri
 
 if nargin < 4, rngseeds=31; end
 if nargin < 5, ntrials=50; end
+if nargin < 6, rtbounds=[0 5000]; end
 
 global rew_rng_state;
 
@@ -31,6 +33,7 @@ Go = NaN(ntrials, 1);
 NoGo = NaN(ntrials, 1);
 
 RTpred(1) = 2500; %start in middle
+[Reward(1) ev(1)] = RewFunction(RTpred(1), cond);
 
 V(1) = priors.V; %initialize expected value for first trial to prior (possibly from previous run)
 Go(1) = priors.Go; %initialize Go for first trial
@@ -86,16 +89,9 @@ NoGo(1) = priors.NoGo; %initialize NoGo for first trial
 
 %vary params 
 
-Q = 0;
-
 Noise=0;
 
 dist_type = 'beta';
-
-mean_s = 0; mean_f = 0;
-%initial variances of fast/slow resps for kalman filter
-%just init to rewvar so initial lr = 0.5
-%vars = (std(Reward))^2;varf = (std(Reward))^2;
 
 %initialize algorithm parameters
 exp=0;
@@ -149,14 +145,6 @@ for i = 2:ntrials
     bestRT_last=bestRT;
     %avg_RT_last = avg_RT;
     
-    if strcmp(dist_type,'Gauss')
-        % add process noise to kalman variances (only for kalman filter model)
-        vars = vars + Q; varf = varf + Q;
-    end
-    
-    %I would like to move this below the RT calculation.
-    [Reward(i-1) ev(i-1)] = RewFunction(RTpred(i-1), cond); % calculate reward if model generating own rt's
-    
     V(i) = V(i-1) +alphaV*(Reward(i-1) - V(i-1)); % update critic value
     
     rew_max = max(Reward(1:i-1)); % max reward received in block thus far -- used for v scaling v[RT_best - RT_locavg]
@@ -182,21 +170,45 @@ for i = 2:ntrials
        
     %CALCULATE STRATEGIC EXPLORATION
     if(RTpred(i-1) > RT_locavg) % last response was slow/long
-               
-        if strcmp(dist_type,'beta')
+            
+        if(Reward(i-1)> V(i-1))
+            alph_long = alph_long +1; % increment count for beta distribution
+        else
+            b_long = b_long+1;
+        end
+        
+        alph_long=decay*alph_long; % if decay <1 then this decays counts, making beta dists less confident
+        b_long=decay*b_long;
+        alph_short=decay*alph_short;
+        b_short=decay*b_short;
+        
+        % these are mode and variances of beta dists
+        var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
+        var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
+        mode_long = (alph_long -1) / (alph_long + b_long -2);
+        mode_short = (alph_short -1) / (alph_short + b_short -2);
+        mean_long = (alph_long) / (alph_long + b_long);
+        mean_short = (alph_short) / (alph_short + b_short);
+        
+        exp1 = - explore*(sqrt(var_short) - sqrt(var_long));  % speed up if more uncertain about fast responses
+        
+    elseif (RTpred(i-1)<= RT_locavg)  % last resp was fast/short
+        
+        % only update rew statistics if subject actually responded
+        % non-response is counted as 0 in e-prime version
+        if(RTpred(i-1) > 0)
             
             if(Reward(i-1)> V(i-1))
-                alph_long = alph_long +1; % increment count for beta distribution
+                alph_short = alph_short +1;
             else
-                b_long = b_long+1;
+                b_short = b_short +1;
             end
-            
-            alph_long=decay*alph_long; % if decay <1 then this decays counts, making beta dists less confident
+            alph_long=decay*alph_long;
             b_long=decay*b_long;
             alph_short=decay*alph_short;
             b_short=decay*b_short;
             
-            % these are mode and variances of beta dists
+            % mode and variances of beta distribution
             var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
             var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
             mode_long = (alph_long -1) / (alph_long + b_long -2);
@@ -204,65 +216,7 @@ for i = 2:ntrials
             mean_long = (alph_long) / (alph_long + b_long);
             mean_short = (alph_short) / (alph_short + b_short);
             
-            exp1 = - explore*(sqrt(var_short) - sqrt(var_long));  % speed up if more uncertain about fast responses
-            
-        elseif strcmp(dist_type,'Gauss')
-            
-            rewvar = (std(Reward))^2;
-            
-            alphaKs = vars/(vars+rewvar); % Kalman gain for slow responses
-            vars = (1 - alphaKs)*vars; % Kalaman variance for slow resps
-            
-            mean_s = mean_s + alphaKs*((Reward(i-1) - 0*V(i-1)) - mean_s); ...
-                % kalman mean
-            
-            mean_long = mean_s; mean_short=mean_f;
-            var_short =varf; var_long = vars;
-            
-            exp1 = - explore*(sqrt(varf) - sqrt(vars));  % using kalman filter gaussian distributions.
-            
-        end
-        
-    elseif (RTpred(i-1)<= RT_locavg)  % last resp was fast/short
-        
-         % only update rew statistics if subject actually responded
-         % non-response is counted as 0 in e-prime version
-        if(RTpred(i-1) > 0)
-                        
-            if strcmp(dist_type,'beta')
-                
-                if(Reward(i-1)> V(i-1))
-                    alph_short = alph_short +1;
-                else
-                    b_short = b_short +1;
-                end
-                alph_long=decay*alph_long;
-                b_long=decay*b_long;
-                alph_short=decay*alph_short;
-                b_short=decay*b_short;
-                
-                % mode and variances of beta distribution
-                var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
-                var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
-                mode_long = (alph_long -1) / (alph_long + b_long -2);
-                mode_short = (alph_short -1) / (alph_short + b_short -2);
-                mean_long = (alph_long) / (alph_long + b_long);
-                mean_short = (alph_short) / (alph_short + b_short);
-                
-                exp1 = + explore*(sqrt(var_long) - sqrt(var_short));
-                
-            elseif strcmp(dist_type,'Gauss') % for kalman filter model
-                
-                rewvar = (std(Reward))^2;
-                alphaKf = varf / (varf +rewvar);
-                varf = (1 - alphaKf)*varf;
-                mean_f = mean_f + alphaKf*((Reward(i-1) - 0*V(i-1)) - mean_f);
-                mean_short = mean_f; mean_long = mean_s;
-                var_short =varf; var_long = vars;
-                
-                exp1 = + explore*(sqrt(vars) - sqrt(varf));  % using kalman filter normal distributions.
-            end
-            
+            exp1 = + explore*(sqrt(var_long) - sqrt(var_short));
             
         end;
     end;
@@ -276,8 +230,6 @@ for i = 2:ntrials
             exp1=0;
         end
     end
-    
-
     
     % if last trial there was no response, use trial before that for updating RT avg and autocorrelation effects (otherwise counted as 0)
     %if RTpred(i-1)==0, RTpred(i-1) = RT_last2; end; 
@@ -293,13 +245,16 @@ for i = 2:ntrials
         RTpred(i) = K + lambda*RTpred(i-1) - Go(i) + NoGo(i)  +exp1 ...
             + meandiff*(mean_long-mean_short) + scale*(bestRT-2500) + Noise*(rand-0.5); %scale*(bestRT-RT_locavg)
     end
-    
-    rtvar = (std(RTpred))^2; %N.B. This is problematic because we need to feed a constant RT variance for all trials to Kalman gain process noise
-    
-    if strcmp(dist_type,'Gauss')
-        alphaK = varK/(varK+rtvar); % alphaK = kalman gain;
-        varK = (1 - alphaK)*varK;
+       
+    %make sure agent doesn't sample outside of valid interval
+    if RTpred(i) > rtbounds(2)
+        RTpred(i) = rtbounds(2);
+    elseif RTpred(i) < rtbounds(1)
+        RTpred(i) = rtbounds(1);
     end
+       
+    %Enact predicted RT to obtain reward
+    [Reward(i) ev(i)] = RewFunction(RTpred(i), cond);
     
     ret.rew(i-1) = Reward(i-1);             %rewards
     ret.rpe(i-1) = Reward(i-1) - V(i-1);    %prediction error
@@ -357,5 +312,6 @@ for i = 2:ntrials
     end
     
 end
-cost = -sum(ev)
+cost = -sum(ev);
 ret.rtpred = RTpred; %copy predicted RTs to return struct (e.g., used for plotting)
+ret.ev = ev;

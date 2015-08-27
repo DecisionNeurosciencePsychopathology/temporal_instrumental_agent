@@ -44,15 +44,23 @@ else
     prop_spread = params(2);
 end
 
-if (length(params)) < 3
+if length(params) == 3    
+    spotlight = params(3); %proportion of the total interval over which subject evaluates U (bouncing around value max)
+    disp(['spotlight enabled with prop: ', num2str(spotlight)]);
+else
+    disp('spotlight disabled');
+    spotlight = 2; %max over full interval (since spotlight is proportion/2
+end
+
+%if (length(params)) < 3
     disp('defaulting to no Gaussian random walk: k=0, s_grw=0');
     k=0;
     s_grw=0;
-else
-    k=params(3);
-    s_grw=params(4);    
-    %for now, don't link sigma for GRW to uncertainty (but could so that GRW decays with uncertainty)
-end
+%else
+%    k=params(3);
+%    s_grw=params(4);    
+%    %for now, don't link sigma for GRW to uncertainty (but could so that GRW decays with uncertainty)
+%end
 
 if nargin < 4
     rngseeds=[98 83 66 10];
@@ -360,7 +368,16 @@ for i = 1:ntrials
         %rt_explore = fminbnd(@(x) -rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
         %leave out any gaussian noise from RT explore because we can't expect subject's data to fit with
         %random additive noise here.
-        rt_explore = find(u_func==max(u_func), 1); + round(sig_expnoise*randn(1,1)); %return position of first max and add gaussian noise
+        
+        %u_func_spotlight = u_func;
+        spotlight_min = max(minrt, round(rt_exploit - spotlight*ntimesteps/2));
+        spotlight_max = min(ntimesteps, round(rt_exploit + spotlight*ntimesteps/2));
+        look = zeros(1,ntimesteps);
+        look(spotlight_min:spotlight_max) = 1;
+        u_func_spotlight = u_func.*look;
+                
+        %rt_explore = find(u_func==max(u_func), 1); + round(sig_expnoise*randn(1,1)); %return position of first max and add gaussian noise
+        rt_explore = find(u_func_spotlight==max(u_func_spotlight), 1); + round(sig_expnoise*randn(1,1)); %return position of first max and add gaussian noise       
         
         if rt_explore < minrt
             rt_explore = minrt;  %do not allow choice below earliest possible response

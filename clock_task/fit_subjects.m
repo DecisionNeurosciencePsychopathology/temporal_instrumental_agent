@@ -21,7 +21,7 @@ end
 % m = csvread(behavfiles(1).name, 1, 0);
 
 %% settings
-trialplots = 0;
+trialplots = 1;
 %%
 
 %wow, matlab has a useful function for mixed data types!!
@@ -49,11 +49,15 @@ rts_obs(rts_obs>4000) = 4000;
 rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 % cond = behav{sub}.data.rewFunc(sub);
 %% fit the model with a full range of RTs
-params = [.9165 .2261]; %epsilon, prop_spread
+params = [.9165 .2261 .5]; %epsilon, prop_spread, spotlight
 
 %clock_logistic_fitsubject(params, rts_obs', rew_obs');
 range = 'full';
-[~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
+[~, ret, ~] = skeptic_fitsubject(params(1:2), rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
+
+%version with spotlight
+[~, ret, ~] = skeptic_fitsubject(params(1:3), rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
+
 
 % %% write predicted RTs -explore and -exploit
  behav{sub}.data.full_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
@@ -66,15 +70,13 @@ behav{sub}.stats_full.(block)=test_reg(rts_obs,ret);
 fprintf('**************\r');
 
 %% Let's also try with a representational basis restricted to the subject's RT range
-range = 'limited';
-minrt = round(min(rts_obs(rts_obs>0))./10);
-maxrt = round(max(rts_obs)./10);
-[~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond, minrt, maxrt);
-
- behav{sub}.data.limited_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
- behav{sub}.data.limited_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
-
-
+% range = 'limited';
+% minrt = round(min(rts_obs(rts_obs>0))./10);
+% maxrt = round(max(rts_obs)./10);
+% [~, ret, ~] = skeptic_fitsubject(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond, minrt, maxrt);
+% 
+%  behav{sub}.data.limited_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
+%  behav{sub}.data.limited_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
 
 % %% write predicted RTs for representational range limited to subject's RT range
 % behav{sub}.data.lim_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
