@@ -58,7 +58,6 @@ range = 'full';
 %version with spotlight
 [~, ret, ~] = skeptic_fitsubject(params(1:3), rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
 
-
 % %% write predicted RTs -explore and -exploit
  behav{sub}.data.full_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
  behav{sub}.data.full_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
