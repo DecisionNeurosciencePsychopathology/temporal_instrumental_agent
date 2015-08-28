@@ -338,6 +338,7 @@ ret.d_i = d_i;
 ret.p_explore_i = p_explore_i;
 ret.p_choice = p_choice;
 ret.rt_uv_pred = rts_uv_pred;
+ret.p_chosen = p_chosen;
 
     
 
@@ -390,54 +391,68 @@ ret.rt_uv_pred = rts_uv_pred;
         
         figure(1); clf;
         set(gca,'FontSize',18);
-        subplot(3,2,1);
-        title('Choice history');
-        %plot(tvec,v_func);
-        scatter(rt_obs(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-        hold on;
-        plot(rt_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-        hold off;
-        subplot(3,2,2)
-        title('Learned value');
-        plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-        ylabel('expected value')
-%         bar(c, mu_ij(i,:));
-%         ylabel('basis function heights');
-        %title('basis function values');
-        %plot(tvec,v_jt);
-        %ylabel('temporal basis function')
-%         title(sprintf('trial # = %i', h)); %
+%         subplot(3,2,1);
+%         title('Choice history');
+%         %plot(tvec,v_func);
+%         scatter(rt_obs(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
+%         hold on;
+%         plot(rt_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
+%         hold off;
+%         subplot(3,2,2)
+%         title('Learned value');
+%         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
+%         ylabel('expected value')
+% %         bar(c, mu_ij(i,:));
+% %         ylabel('basis function heights');
+%         %title('basis function values');
+%         %plot(tvec,v_jt);
+%         %ylabel('temporal basis function')
+% %         title(sprintf('trial # = %i', h)); %
+%         
+%         subplot(3,2,3);        
+%         scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
+% %         text(20, max(rew_obs), exptxt);
+%         hold on;
+%         plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
+%         hold off;
+%         
+%         subplot(3,2,4);
+%         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
+%         xlabel('time (centiseconds)')
+%         ylabel('uncertainty')
+%         
+%         subplot(3,2,5);      
+%         %eligibility trace
+%         title('eligibility trace');
+%         %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
+%         %plot(tvec, elig_plot);
+%         plot(tvec, elig);
+%         xlabel('time(centiseconds)')
+%         ylabel('eligibility')
+%         
+%         
+%         subplot(3,2,6);
+%         plot(1:length(rt_obs), rt_obs, 'r');
+%         hold on;
+%         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
+% %        plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
+% %        plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
+%         hold off;
+% 
+%              
         
-        subplot(3,2,3);        
-        scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-%         text(20, max(rew_obs), exptxt);
-        hold on;
-        plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-        hold off;
-        
-        subplot(3,2,4);
-        plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-        xlabel('time (centiseconds)')
-        ylabel('uncertainty')
-        
-        subplot(3,2,5);      
-        %eligibility trace
-        title('eligibility trace');
-        %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
-        %plot(tvec, elig_plot);
-        plot(tvec, elig);
-        xlabel('time(centiseconds)')
-        ylabel('eligibility')
-        
-        
-        subplot(3,2,6);
+        subplot(2,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
 %        plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
 %        plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
         hold off;
-        
+        subplot(2,1,2);
+        contourf(1:ntrials, 1:ntimesteps, p_choice'); hold on;
+        scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
+        pause(1);
+
         %figure(2); clf;
         %plot(tvec, u_func);
         %hold on;
@@ -450,6 +465,14 @@ ret.rt_uv_pred = rts_uv_pred;
     end
 
 
+    if trial_plots
+        figure(2); clf;
+%         mesh(1:ntimesteps, 1:ntrials, p_choice);
+%         xlabel('Response time'); ylabel('Trial'); zlabel('Response probability');hold on;
+%         scatter3(rt_obs,1:ntrials,  p_chosen,'r*')
+    end
+    
+    
 %     %choice rule
 %     
 %     % find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
@@ -643,67 +666,67 @@ ret.rt_uv_pred = rts_uv_pred;
 %         subplot(5,2,10)
 %         plot(1:ntrials,rt_pred_i, 'k');
 %         ylabel('rt by trial'); axis([1 ntrials -5 505]);
-        
-        figure(1); clf;
-        set(gca,'FontSize',18);
-        subplot(3,2,1);
-        title('Choice history');
-        %plot(tvec,v_func);
-        scatter(rt_obs(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-        hold on;
-        plot(rt_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-        hold off;
-        subplot(3,2,2)
-        title('Learned value');
-        plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-        ylabel('expected value')
-%         bar(c, mu_ij(i,:));
-%         ylabel('basis function heights');
-        %title('basis function values');
-        %plot(tvec,v_jt);
-        %ylabel('temporal basis function')
-%         title(sprintf('trial # = %i', h)); %
-        
-        subplot(3,2,3);        
-        scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-        %         text(20, max(rew_obs), exptxt);
-        hold on;
-        plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-        hold off;
-        
-        subplot(3,2,4);
-        plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-        xlabel('time (centiseconds)')
-        ylabel('uncertainty')
-        
-        subplot(3,2,5);      
-        %eligibility trace
-        title('eligibility trace');
-        %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
-        %plot(tvec, elig_plot);
-        plot(tvec, elig);
-        xlabel('time(centiseconds)')
-        ylabel('eligibility')
-        
-        
-        subplot(3,2,6);
-        plot(1:length(rt_obs), rt_obs, 'r');
-        hold on;
-        plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
-%         plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
-%         plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
-        hold off;
-        
-        %figure(2); clf;
-        %plot(tvec, u_func);
-        %hold on;
-        %plot(c, e_ij(i,:))
-        %plot(c, e_ij(1:i,:)')
-        %bar(c, sigma_ij(i,:))
-
-        drawnow update;
-        mov(i) = getframe(gcf);
-    end
+%         
+%         figure(1); clf;
+%         set(gca,'FontSize',18);
+%         subplot(3,2,1);
+%         title('Choice history');
+%         %plot(tvec,v_func);
+%         scatter(rt_obs(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
+%         hold on;
+%         plot(rt_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
+%         hold off;
+%         subplot(3,2,2)
+%         title('Learned value');
+%         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
+%         ylabel('expected value')
+% %         bar(c, mu_ij(i,:));
+% %         ylabel('basis function heights');
+%         %title('basis function values');
+%         %plot(tvec,v_jt);
+%         %ylabel('temporal basis function')
+% %         title(sprintf('trial # = %i', h)); %
+%         
+%         subplot(3,2,3);        
+%         scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
+%         %         text(20, max(rew_obs), exptxt);
+%         hold on;
+%         plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
+%         hold off;
+%         
+%         subplot(3,2,4);
+%         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
+%         xlabel('time (centiseconds)')
+%         ylabel('uncertainty')
+%         
+%         subplot(3,2,5);      
+%         %eligibility trace
+%         title('eligibility trace');
+%         %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
+%         %plot(tvec, elig_plot);
+%         plot(tvec, elig);
+%         xlabel('time(centiseconds)')
+%         ylabel('eligibility')
+%         
+%         
+%         subplot(3,2,6);
+%         plot(1:length(rt_obs), rt_obs, 'r');
+%         hold on;
+%         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
+% %         plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
+% %         plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
+%         hold off;
+%         
+%         %figure(2); clf;
+%         %plot(tvec, u_func);
+%         %hold on;
+%         %plot(c, e_ij(i,:))
+%         %plot(c, e_ij(1:i,:)')
+%         %bar(c, sigma_ij(i,:))
+% 
+%         drawnow update;
+%         mov(i) = getframe(gcf);
+%     end
     %     disp([i rt_pred_i(i) rew_obs(i) sum(v_func)])
 end
 
