@@ -22,6 +22,7 @@ end
 
 %% settings
 trialplots = 1;
+fit_params = 0;
 %%
 
 %wow, matlab has a useful function for mixed data types!!
@@ -54,6 +55,9 @@ rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 
 modelnames = {'value_softmax' 'uv'};
 
+if fit_params
+continue
+else
 for modelnum = 1:length(modelnames)
     modelname = char(modelnames(modelnum));
     if strcmpi(modelname,'value_softmax')
@@ -68,6 +72,7 @@ for modelnum = 1:length(modelnames)
     
     %% write p_choice fit statistics
     behav{sub}.data.(sprintf('%s_p_chosen',modelname))(behav{sub}.data.run==runs(run),1) = ret.p_chosen';
+end
 end
 %%
 %version with spotlight

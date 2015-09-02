@@ -267,24 +267,6 @@ for i = 1:ntrials
     v_it(i+1,:) = v_func;
     u_it(i+1,:) = u_func;
     
-    %
-    %     if ~strcmpi(modelname, 'value_softmax')
-    %         %new approach: use epsilon (actually c!) to scale relative contribution of u and v to bivariate choice
-    %         %have left code above intact so that logistic model works as usual when uvsum==0
-    %         %%uv=epsilon*v_func + (1-epsilon)*u_func; RENAME PARAMETER!
-    %         %uv=(epsilon*v_func) .* ((1-epsilon)*u_func);
-    %
-    %         %Greedy approach
-    %         %[~, rts(i+1)] = max(uv);
-    %
-    %         %Softmax approach
-    %         temp=.9;
-    %         %To deal with the overflow error subtract the max of uv from uv_sum
-    %         uv_softmax = (exp((uv-max(uv)))/temp)/(sum(exp((uv-max(uv)))/temp)); %Divide by temperature
-    %         rts_uv_pred(i+1) = randsample(1:ntimesteps, 1, true, uv_softmax);
-    %
-    %     end
-    
     %compute rt_exploit
     if sum(v_func) == 0
         rt_exploit = rt_obs(1); %feed RT exploit the first observed RT
@@ -300,8 +282,6 @@ for i = 1:ntrials
     
     %% compute final value function used for decision
     if strcmpi(modelname, 'value_softmax')
-        %for fitting subjects, the inverse temperature should set subjects' indifferences among RTs, so if indifference
-        %is high, subjects are predicted to be highly variable in RTs.
         %rt_explore = rt_exploit + grw_step;
         v_final = v_func;
         
@@ -395,7 +375,7 @@ if trial_plots
     %         ylabel('rt by trial'); axis([1 ntrials -5 505]);
     
     figure(1); clf;
-    set(gca,'FontSize',18);
+    set(gca,'FontSize',24);
     %         subplot(3,2,1);
     %         title('Choice history');
     %         %plot(tvec,v_func);
@@ -444,34 +424,42 @@ if trial_plots
     % %        plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
     %         hold off;
     %
-    %
+    
+    %% find unrewarded RTs 
+    unrew_rts = NaN(size(rt_obs));
+    unrew_rts(rew_obs==0) = rt_obs(rew_obs==0);
+    
     if strcmpi(modelname, 'value_softmax')
-        subplot(2,1,1);
-        plot(1:length(rt_obs), rt_obs, 'r');
-        hold on;
-        plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
-        hold off;
-        subplot(2,1,2);
-        contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
-        scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
-        title('Value map');
-%         pause(1);
+%         subplot(2,1,1);
+%         plot(1:length(rt_obs), rt_obs, 'r');
+%         hold on;
+%         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
+%         hold off;
+%         subplot(2,1,2);
+%         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
+%         scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
+%         title('Value map');
+% %         pause(1);
     elseif strcmpi(modelname, 'uv')
         subplot(3,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
         hold off;
-        subplot(3,1,2);
+        title('Red: actual RT, Blue: predicted RT');
+        ax2 = subplot(3,1,2);
         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
-        scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
-        title('Value map');
-        subplot(3,1,3);
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled'); 
+        scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
+        title('Value map;   red: rewards,   blue: ommissions');
+        colormap(ax2,summer);
+        ax3 = subplot(3,1,3);
         contourf(1:ntrials, 1:ntimesteps, ret.uv(1:ntrials,:)'); hold on;
-        scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
-        title('UV map');
-        
-        pause(3);
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r', 'Filled'); 
+        scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
+        title('UV map; red: rewards,   blue: ommissions');
+        colormap(ax3,summer);
+        k = waitforbuttonpress;
     end
     %figure(2); clf;
     %plot(tvec, u_func);
