@@ -12,6 +12,12 @@ else
   behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
 end
 
+%% chose models to run
+
+%modelnames = {'value_softmax' 'uv' 'v_discounted'};
+% modelnames = {'v_discounted'};
+modelnames = {'uv_discounted'};
+
 
 %%
 %read header
@@ -53,11 +59,6 @@ rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 % params = [.9165 .2261 .5]; %epsilon, prop_spread, spotlight
 
 
-%modelnames = {'value_softmax' 'uv' 'v_discounted'};
-
-
-modelnames = {'v_discounted'};
-
 % if fit_params
 
 for modelnum = 1:length(modelnames)
@@ -68,6 +69,12 @@ for modelnum = 1:length(modelnames)
         params = [.2261 .9165 .01]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
     elseif strcmpi(modelname,'v_discounted')
         params = [.2261 .01 .005]; %prop_spread, beta (temperature), kappa (discount factor)
+    elseif strcmpi(modelname,'uv_discounted')
+%         params = [.2261 .01 .005 .9165]; %prop_spread, beta (temperature), kappa (discount factor), tau (V vs. U
+%         weight)
+%% NB -- higher than 'optimal' tau here
+        params = [.2261 .01 .005 .95]; %prop_spread, beta (temperature), kappa (discount factor), tau
+
     end
     
     %clock_logistic_fitsubject(params, rts_obs', rew_obs');
