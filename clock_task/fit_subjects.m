@@ -65,7 +65,7 @@ for modelnum = 1:length(modelnames)
     modelname = char(modelnames(modelnum));
     if strcmpi(modelname,'value_softmax')
         params = [.2261 .01]; %prop_spread, beta (temperature)
-    elseif strcmpi(modelname,'uv')
+    elseif strcmpi(modelname,'uv') %% don't like this one anymore, don't use for parameter fitting
         params = [.2261 .9165 .01]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
     elseif strcmpi(modelname,'v_discounted')
         params = [.2261 .01 .005]; %prop_spread, beta (temperature), kappa (discount factor)
