@@ -53,17 +53,21 @@ rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 % params = [.9165 .2261 .5]; %epsilon, prop_spread, spotlight
 
 
-modelnames = {'value_softmax' 'uv'};
+%modelnames = {'value_softmax' 'uv' 'v_discounted'};
 
-if fit_params
-continue
-else
+
+modelnames = {'v_discounted'};
+
+% if fit_params
+
 for modelnum = 1:length(modelnames)
     modelname = char(modelnames(modelnum));
     if strcmpi(modelname,'value_softmax')
         params = [.2261 .01]; %prop_spread, beta (temperature)
     elseif strcmpi(modelname,'uv')
         params = [.2261 .9165 .01]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
+    elseif strcmpi(modelname,'v_discounted')
+        params = [.2261 .01 .005]; %prop_spread, beta (temperature), kappa (discount factor)
     end
     
     %clock_logistic_fitsubject(params, rts_obs', rew_obs');
@@ -108,7 +112,7 @@ end
 end
 
 
-end
+
 save behav behav
 %% let's see if R2 improves for limited vs. full range
 %% more importantly, are betas for RT_pred(explore, exploit) different from 0?

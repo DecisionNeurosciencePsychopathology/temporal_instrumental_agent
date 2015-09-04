@@ -44,17 +44,21 @@ if strcmpi(modelname, 'value_softmax')
     prop_spread = params(1);
     beta = params(2);
     
-    if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
     
 elseif strcmpi(modelname, 'uv')
     %% free params
     prop_spread = params(1);
     tau = params(2); % tau from Greek ???? -- value, price, cf ???? as trophys in Homer
     beta = params(3);
-
-elseif strcmpi(modelname, 'uv_tilt')
     
+elseif strcmpi(modelname, 'v_discounted')
+    prop_spread = params(1);
+    beta = params(2);
+    kappa = params(3);
 end
+
+if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
+
 
 %treats time steps and max time as synonymous
 fprintf('Downsampling rt_obs by a factor of 10 to to 0..%d\n', ntimesteps);
@@ -133,6 +137,8 @@ precision_i =   nan(1, ntrials);            % model-predicted certainty about ch
 p_choice    =   nan(ntrials,ntimesteps);    % model-predicted probabilities of choosing each possible rt according to softmax
 p_chosen    =   nan(1, ntrials);            % model-predicted probabilities of the chosen option
 uv_it =         zeros(ntrials,ntimesteps);  % history of UV (value incorporating exploration bonus) by trial at each timestep
+v_it_undisc =   zeros(ntrials, ntimesteps); % history of value function by trial, undiscounted for opportunity cost (for v_discounted model)
+
 
 %kalman setup
 mu_ij =         nan(ntrials, nbasis);       %means of Gaussians for Kalman
@@ -148,6 +154,8 @@ exploit_trials =     [];                         %vector of trials where model p
 explore_trials =     [];                         %vector of trials where model predicts exploration
 p_explore_i =        nan(1, ntrials);            %model-predicted probability of exploration
 rts_uv_pred =         nan(1, ntrials);            % predicted UV reaction times
+rts_pred_exploit_disc =   nan(1, ntrials);            % predicted discounted exploitative reaction times
+
 
 rt_pred_i(1) = rt_obs(1); %first choice is exogenous to model
 rts_pred_explore(1) = rt_obs(1); %first choice is exogenous to model
@@ -279,7 +287,9 @@ for i = 1:ntrials
             rt_exploit = minrt; %do not allow choice below earliest possible response
         end
     end
-    
+    %% just for plotting
+    rts_pred_exploit(i+1) = rt_exploit;
+
     %% compute final value function used for decision
     if strcmpi(modelname, 'value_softmax')
         %rt_explore = rt_exploit + grw_step;
@@ -289,15 +299,31 @@ for i = 1:ntrials
         uv_func=tau*v_func + (1-tau)*u_func;
         v_final = uv_func;
         uv_it(i+1,:) = uv_func;
+    elseif strcmpi(modelname, 'v_discounted')
+        vec = 1:ntimesteps;
+        discount = kappa*(mean(delta_ij(i,:)))*vec;
+        v_final = v_func + discount;
+        v_it_undisc(i+1,:) = v_func;
+        v_it(i+1,:) = v_final;
+        if sum(v_func) == 0
+            rt_exploit_disc = rt_obs(1); %feed RT exploit the first observed RT
+        else
+            rt_exploit_disc = find(v_final==max(v_final));
+            
+            if rt_exploit_disc > max(tvec)
+                rt_exploit_disc = max(tvec);
+            elseif rt_exploit_disc < minrt
+                rt_exploit_disc = minrt; %do not allow choice below earliest possible response
+            end
+        end
+        rts_pred_exploit_disc(i+1) = rt_exploit_disc;
+
     end
     
     p_choice(i,:) = (exp((v_final-max(v_final)))/beta)/(sum(exp((v_final-max(v_final)))/beta)); %Divide by temperature
     
     p_chosen(i) = p_choice(i,rt_obs(i));
-    %
-    %     rts_pred_explore(i+1) = rt_explore;
-    %% just for plotting
-    rts_pred_exploit(i+1) = rt_exploit;
+    
     
 end
 
@@ -324,7 +350,8 @@ ret.p_choice = p_choice;
 ret.rt_uv_pred = rts_uv_pred;
 ret.p_chosen = p_chosen;
 ret.uv = uv_it;
-
+ret.v_it_undisc = v_it_undisc;
+ret.rts_pred_exploit_disc = rts_pred_exploit_disc;
 
 
 if trial_plots
@@ -425,21 +452,21 @@ if trial_plots
     %         hold off;
     %
     
-    %% find unrewarded RTs 
+    %% find unrewarded RTs
     unrew_rts = NaN(size(rt_obs));
     unrew_rts(rew_obs==0) = rt_obs(rew_obs==0);
     
     if strcmpi(modelname, 'value_softmax')
-%         subplot(2,1,1);
-%         plot(1:length(rt_obs), rt_obs, 'r');
-%         hold on;
-%         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
-%         hold off;
-%         subplot(2,1,2);
-%         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
-%         scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
-%         title('Value map');
-% %         pause(1);
+        %         subplot(2,1,1);
+        %         plot(1:length(rt_obs), rt_obs, 'r');
+        %         hold on;
+        %         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
+        %         hold off;
+        %         subplot(2,1,2);
+        %         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
+        %         scatter(1:ntrials, rt_obs, 'r', 'Filled'); hold off;
+        %         title('Value map');
+        % %         pause(1);
     elseif strcmpi(modelname, 'uv')
         subplot(3,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
@@ -449,17 +476,39 @@ if trial_plots
         title('Red: actual RT, Blue: predicted RT');
         ax2 = subplot(3,1,2);
         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
-        scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled'); 
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled');
         scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
         title('Value map;   red: rewards,   blue: ommissions');
         colormap(ax2,summer);
         ax3 = subplot(3,1,3);
         contourf(1:ntrials, 1:ntimesteps, ret.uv(1:ntrials,:)'); hold on;
-        scatter(1:ntrials, rt_obs,rew_obs+10, 'r', 'Filled'); 
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r', 'Filled');
         scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
         title('UV map; red: rewards,   blue: ommissions');
         colormap(ax3,summer);
+    elseif strcmpi(modelname, 'v_discounted')
+        subplot(3,1,1);
+        plot(1:length(rt_obs), rt_obs, 'r');
+        hold on;
+        plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
+        plot(1:length(rts_pred_exploit_disc), rts_pred_exploit_disc, 'g');
+        hold off;
+        title('Red: actual RT, Blue: predicted RT');
+        ax2 = subplot(3,1,2);
+        contourf(1:ntrials, 1:ntimesteps, ret.v_it_undisc(1:ntrials,:)'); hold on;
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled');
+        scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
+        title('Value map;   red: rewards,   blue: ommissions');
+        colormap(ax2,summer);
+        ax3 = subplot(3,1,3);
+        contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
+        scatter(1:ntrials, rt_obs,rew_obs+10, 'r', 'Filled');
+        scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
+        title('Discounted value map; red: rewards,   blue: ommissions');
+        colormap(ax3,summer);
         k = waitforbuttonpress;
+        
+        %         pause(3);
     end
     %figure(2); clf;
     %plot(tvec, u_func);
@@ -472,274 +521,4 @@ if trial_plots
     mov(i) = getframe(gcf);
 end
 
-% 
-% if trial_plots
-%     figure(2); clf;
-%     %         mesh(1:ntimesteps, 1:ntrials, p_choice);
-%     %         xlabel('Response time'); ylabel('Trial'); zlabel('Response probability');hold on;
-%     %         scatter3(rt_obs,1:ntrials,  p_chosen,'r*')
-% end
-
-
-%     %choice rule
 %
-%     % find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
-%
-%     % u -- total amount of uncertainty on this trial (starts at 0 and decreases)
-%     % u = mean(u_func);
-%
-%     %use integration to get area under curve of uncertainty
-%     %otherwise, our estimate of u is discretized, affecting cost function
-%
-%     total_u = integral(@(x)rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), min(tvec), max(tvec));
-%     u = total_u/max(tvec); %make scaling similar to original sum? (come back)...
-%
-%     if u == 0
-%         rt_explore = rt_obs(1); %%FEED RTOBS(1) on the first trial so that the fit is not penalized by misfit on first choice
-%     else
-%         %rt_explore = fminbnd(@(x) -rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
-%         %leave out any gaussian noise from RT explore because we can't expect subject's data to fit with
-%         %random additive noise here.
-%         rt_explore = find(u_func==max(u_func), 1); + round(sig_expnoise*randn(1,1)); %return position of first max and add gaussian noise
-%
-%         if rt_explore < minrt
-%             rt_explore = minrt;  %do not allow choice below earliest possible response
-%         end
-%         if rt_explore > ntimesteps
-%             rt_explore = ntimesteps;
-%         end
-%     end
-%
-%     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
-%
-%     discrim = 0.1;
-%
-%     %p_explore_i(i) = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with epsilon as difficulty (location) parameter
-%
-%     %soft classification (explore in proportion to uncertainty)
-%     rng(explore_rng_state); %draw from explore/exploit rng
-%     choice_rand=rand;
-%     explore_rng_state=rng; %save state after random draw above
-%
-%     %% AD: the GRW exploration leads agent to repeat subject's RT
-%     %   solution: skip it for now
-%
-%     %determine whether to strategic explore versus GRW
-%     rng(exptype_rng_seed);
-% %     explore_type_rand=rand;
-%     exptype_rng_seed=rng;
-%
-%
-%
-%
-%     %% AD: NB grw exploration is commented out here to avoid circularity with subject's choices
-%
-%     %rng('shuffle');
-%     if i < ntrials
-%         if choice_rand < p_explore_i(i)
-% %             if (explore_type_rand > k)
-%                 %strategic
-%                 exptxt='strategic explore';
-%                 rt_pred_i(i+1) = rt_explore;
-% %             else
-% %                 %grw
-% %                 exptxt='grw explore';
-% %                 rt_grw = rt_obs(i) + grw_step; %use GRW around prior *observed* RT
-% %
-% %                 %N.B.: Need to have more reasonable GRW near the edge such that it doesn't just oversample min/max
-% %                 %e.g., perhaps reflect the GRW if rt(t-1) was already very close to edge and GRW samples in that
-% %                 %direction again.
-% %                 if rt_grw > max(tvec), rt_grw = max(tvec);
-% %                 elseif rt_grw < min(tvec), rt_grw = min(tvec); end
-% %                 rt_pred_i(i+1) = rt_grw;
-% %             end
-%             explore_trials = [explore_trials i+1];
-%         else
-%             exptxt='exploit';%for graph annotation
-%             rt_pred_i(i+1) = rt_exploit;
-%             exploit_trials = [exploit_trials i+1]; %predict next RT on the basis of explore/exploit
-%         end
-%
-%         %playing with basis update at the edge
-%         %rt_pred_i(i+1) = randi([400,500],1); %force to late times
-%
-%     end
-%%
-%
-%     %don't compute distance on first trial
-%     if (i > 1)
-%         %compute deviation between next observed RT and model-predicted RT
-%         %use the 2-D Euclidean distance between RT_obs and RT_pred in U and Q space (roughly related to the idea
-%         %of bivariate kernel density).
-%
-%         %normalize V and U vector to unit lengths so that costs do not scale with changes in the absolute
-%         %magnitude of these functions... I believe this is right: discuss with AD.
-%
-%         vnorm=v_it(i,:)/sqrt(sum(v_it(i,:))^2);
-%         unorm=u_it(i,:)/sqrt(sum(u_it(i,:))^2);
-%
-%         %I believe we should use i for this, not i+1 so that we are always comparing the current RT with the
-%         %predicted current RT. Technically, the predicted RT was computed on the prior iteration of the loop, but
-%         %in trial space, both are current/i.
-%         %place RTs into U and Q space
-%         d_i(i) = sqrt( (v_it(i, rt_obs(i)) - v_it(i, rt_pred_i(i))).^2 + (u_it(i, rt_obs(i)) - u_it(i, rt_pred_i(i))).^2);
-%
-%         %d_i(i) = sqrt( (vnorm(rt_obs(i)) - vnorm(rt_pred_i(i))).^2 + (unorm(rt_obs(i)) - unorm(rt_pred_i(i))).^2)
-%
-%         %weight cost by model-predicted probability of exploration. Use absolute deviation from 0.5 as measure of
-%         %uncertainty about exploration/exploitation, and use the deviation as the power (0..1) to which the
-%         %distance is exponentiated.
-%
-%         %.1 power is a hack for now to make the falloff in cost slower near the edges (not just inverted triangle)
-%         precision_i(i) = (abs(p_explore_i(i) - 0.5)/0.5)^.1; %absolute symmetric deviation from complete uncertainty
-%
-%         %r=100;
-%         %probs=0:0.01:1;
-%         %precision=arrayfun(@(p) abs(p - 0.5)/0.5, probs).^.1;
-%         %dr=r.^precision;
-%         %plot(probs, dr)
-%
-%         %note that this multiplying d_i by precision_i gives an inverted triangle where cost = 0 at 0.5
-%         %probably want something steeper so that only costs ~0.4-0.6 are severely downweighted
-%         d_i(i) = d_i(i)^precision_i(i); %downweight costs where model is ambivalent about explore/exploit
-%
-%     end
-%
-%     extra_plots = 0;
-%     figure(11);
-%     if(extra_plots == 1 && ~all(v_it(i,:)) == 0)
-%         gkde2(vertcat(v_it(i,:), u_it(i,:)));
-%         %gkde2(vertcat(vnorm, unorm))
-%     end
-%
-%     %compute the expected returns for the observed and predicted choices
-%     if (nargin >= 8)
-%         [~, ev_obs_i(i)] = RewFunction(rt_obs(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-%         [~, ev_pred_i(i)] = RewFunction(rt_obs(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-%     end
-%
-%     verbose=0;
-%     if verbose == 1
-%        fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew_obs(i), rt_obs(i));
-%        fprintf('w_i,k:    '); fprintf('%.2f ', mu_ij(i,:)); fprintf('\n');
-%        fprintf('delta_ij:   '); fprintf('%.2f ', delta_ij(i,:)); fprintf('\n');
-%        fprintf('w_i+1,k:  '); fprintf('%.2f ', mu_ij(i+1,:)); fprintf('\n');
-%        fprintf('\n');
-%
-%     end
-
-if trial_plots == 1
-    %         figure(1); clf;
-    %         subplot(5,2,1)
-    %         %plot(tvec,v_func);
-    %         scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 500 0 350]);
-    %         hold on;
-    %         plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 500 0 350]);
-    %         hold off;
-    %         subplot(5,2,2)
-    %         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-    %         ylabel('value')
-    %         subplot(5,2,3)
-    %
-    % %         bar(c, mu_ij(i,:));
-    % %         ylabel('basis function heights');
-    %         plot(tvec,v_jt);
-    %         ylabel('temporal basis function')
-    % %         title(sprintf('trial # = %i', h)); %
-    %                 xlabel('time(ms)')
-    %                 ylabel('reward value')
-    %
-    %         subplot(5,2,4)
-    %         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-    %         xlabel('time (centiseconds)')
-    %         ylabel('uncertainty')
-    %
-    %         subplot(5,2,5)
-    %         barh(sigmoid);
-    %         xlabel('p(explore)'); axis([-.1 1.1 0 2]);
-    %         subplot(5,2,6)
-    %         %barh(alpha), axis([0 .2 0 2]);
-    %         %xlabel('learning rate')
-    %         subplot(5,2,7)
-    %         barh(sig_spread), axis([0.0 0.5 0 2]);
-    %         xlabel('decay')
-    %         subplot(5,2,8)
-    %         barh(epsilon), axis([-0.5 0 0 2]);
-    %         xlabel('strategic exploration')
-    %
-    %         subplot(5,2,9)
-    %         barh(u) %, axis([0 1000 0 2]);
-    %         xlabel('mean uncertainty')
-    %         %         pause(0.1);
-    %         subplot(5,2,10)
-    %         plot(1:ntrials,rt_pred_i, 'k');
-    %         ylabel('rt by trial'); axis([1 ntrials -5 505]);
-    %
-    %         figure(1); clf;
-    %         set(gca,'FontSize',18);
-    %         subplot(3,2,1);
-    %         title('Choice history');
-    %         %plot(tvec,v_func);
-    %         scatter(rt_obs(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-    %         hold on;
-    %         plot(rt_obs(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-    %         hold off;
-    %         subplot(3,2,2)
-    %         title('Learned value');
-    %         plot(tvec,v_func); xlim([-1 ntimesteps+1]);
-    %         ylabel('expected value')
-    % %         bar(c, mu_ij(i,:));
-    % %         ylabel('basis function heights');
-    %         %title('basis function values');
-    %         %plot(tvec,v_jt);
-    %         %ylabel('temporal basis function')
-    % %         title(sprintf('trial # = %i', h)); %
-    %
-    %         subplot(3,2,3);
-    %         scatter(rt_pred_i(1:i),rew_obs(1:i)); axis([1 ntimesteps 0 350]);
-    %         %         text(20, max(rew_obs), exptxt);
-    %         hold on;
-    %         plot(rt_pred_i(i),rew_obs(i),'r*','MarkerSize',20);  axis([1 ntimesteps 0 350]);
-    %         hold off;
-    %
-    %         subplot(3,2,4);
-    %         plot(tvec, u_func, 'r'); xlim([-1 ntimesteps+1]);
-    %         xlabel('time (centiseconds)')
-    %         ylabel('uncertainty')
-    %
-    %         subplot(3,2,5);
-    %         %eligibility trace
-    %         title('eligibility trace');
-    %         %elig_plot = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 1);
-    %         %plot(tvec, elig_plot);
-    %         plot(tvec, elig);
-    %         xlabel('time(centiseconds)')
-    %         ylabel('eligibility')
-    %
-    %
-    %         subplot(3,2,6);
-    %         plot(1:length(rt_obs), rt_obs, 'r');
-    %         hold on;
-    %         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
-    % %         plot(1:length(rts_pred_explore), rts_pred_explore, 'k');
-    % %         plot(1:length(rts_pred_explore), rts_uv_pred, 'g');
-    %         hold off;
-    %
-    %         %figure(2); clf;
-    %         %plot(tvec, u_func);
-    %         %hold on;
-    %         %plot(c, e_ij(i,:))
-    %         %plot(c, e_ij(1:i,:)')
-    %         %bar(c, sigma_ij(i,:))
-    %
-    %         drawnow update;
-    %         mov(i) = getframe(gcf);
-    %     end
-    %     disp([i rt_pred_i(i) rew_obs(i) sum(v_func)])
-end
-
-%ret.cost_explore = -sum((rt_pred_i(explore_trials) - rt_obs(explore_trials)).^2);
-%ret.cost_exploit = -sum((rt_pred_i(exploit_trials) - rt_obs(exploit_trials)).^2);
-
-
-
