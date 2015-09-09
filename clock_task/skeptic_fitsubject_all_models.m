@@ -521,6 +521,7 @@ if trial_plots
         scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled');
         scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
         title('Value map; red: rewards, blue: omissions');
+        colormap(summer);
         k = waitforbuttonpress;
     elseif strcmpi(modelname, 'uv')
         subplot(3,1,1);

@@ -17,7 +17,7 @@ end
 %modelnames = {'value_softmax' 'uv' 'v_discounted'};
 % modelnames = {'v_discounted'};
 %modelnames = {'uv_discounted'};
-modelnames = {'v_processnoise'};
+modelnames = {'v_discounted' 'v_processnoise'};
 
 
 %%
