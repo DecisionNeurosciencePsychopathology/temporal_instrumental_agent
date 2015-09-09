@@ -55,7 +55,7 @@ elseif strcmpi(modelname, 'uv')
     %% free params
     prop_spread = params(1);
     tau = params(2); % tau from Greek ???? -- value, price, cf ???? as trophys in Homer
-    beta = params(3);    
+    beta = params(3);
     
 elseif strcmpi(modelname, 'v_discounted')
     prop_spread = params(1);
@@ -173,7 +173,8 @@ rt_pred_i(1) = rt_obs(1); %first choice is exogenous to model
 rts_pred_explore(1) = rt_obs(1); %first choice is exogenous to model
 rts_pred_exploit(1) = rt_obs(1); %first choice is exogenous to model
 rts_uv_pred(1) = rt_obs(1); %first choice is exogenous to model
-
+rts_pred_exploit_disc = rt_obs(1);
+rts_pred_uv_disc = rt_obs(1);
 %noise in the reward signal: sigma_rew. In the Frank model, the squared SD of the Reward vector represents the noise in
 %the reward signal, which is part of the Kalman gain. This provides a non-arbitrary initialization for sigma_rew, such
 %that the variability in returns is known up front... This is implausible from an R-L perspective, but not a bad idea
@@ -269,9 +270,9 @@ for i = 1:ntrials
     delta_ij(i,:) = e_ij(i,:).*(rew_obs(i) - mu_ij(i,:));
     
     %2) %MH 8Sep2015: At the moment, we assume zero process noise in the estimated posterior error covariances, sigma_ij.
-    %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.   
+    %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.
     Q_ij(i,:) = omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
-        
+    
     %3) compute the Kalman gains for the current trial (potentially adding process noise)
     k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);
     
@@ -319,7 +320,7 @@ for i = 1:ntrials
         uv_it(i+1,:) = uv_func;
     elseif strcmpi(modelname, 'v_discounted')
         vec = 1:ntimesteps;
-        discount = kappa*(mean(delta_ij(i,:)))*vec;
+        discount = kappa*(mean(delta_ij(i,:)))*vec; %% also add valence-dependent parameters: kappa for PE+, lambda for PE-
         v_final = v_func + discount;
         v_it_undisc(i+1,:) = v_func;
         v_it(i+1,:) = v_final;
@@ -560,8 +561,11 @@ if trial_plots
         scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
         title('Discounted value map; red: rewards,   blue: ommissions');
         colormap(ax3,summer);
-        k = waitforbuttonpress;
+        k = waitforbuttonpress;        
     elseif strcmpi(modelname, 'uv_discounted')
+        rtexplcorr = corr(rts_obs, ret.rts_pred_exploit(1:50)');
+        rtexpldisccorr = corr(rts_obs, ret.rts_pred_exploit_disc(1:50)');
+        rtexplcorr = corr(rts_obs, ret.rts_pred_uv_disc(1:50)');
         subplot(4,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
@@ -569,7 +573,8 @@ if trial_plots
         plot(1:length(rts_pred_exploit_disc), rts_pred_exploit_disc, 'g*-');
         plot(1:length(rts_pred_uv_disc), rts_pred_uv_disc, 'k*-');
         hold off;
-        title('Red: actual RT, Blue: predicted RT_exploit, Green: predicted discounted RT_exploit, Black: discounted RT exploit with uncertainty premium');
+        title('Red: actual RT, Blue: RTexploit, Green: discounted RTexploit, Black: RTexploit with uncertainty premium', 'FontSize',10);
+        %             legend(sprintf('RTexploit correlation: %2f
         ax2 = subplot(4,1,2);
         contourf(1:ntrials, 1:ntimesteps, ret.v_it_undisc(1:ntrials,:)'); hold on;
         scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled');
@@ -593,6 +598,7 @@ if trial_plots
         
         %         pause(3);
     end
+    
     %figure(2); clf;
     %plot(tvec, u_func);
     %hold on;
