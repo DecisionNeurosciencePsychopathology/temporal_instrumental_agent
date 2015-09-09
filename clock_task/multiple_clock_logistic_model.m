@@ -219,21 +219,49 @@ fprintf('alpha=%3f, lambda=%3f, epsilon=%3f,cost=%3f\n', s.alpha, s.lambda, s.ep
 
 
 %% FRANK TC MODEL SECTION
-%lambda, epsilon, alphaG, alphaN, K, nu, rho
+
+
+    init_params = [ 0.3 ; 2000 ; 0.2 ; 0.2 ; 1000 ; 0.1 ; 0.5 ; 300 ];
+    lower_limits = [ 0 ; 0 ; 0.01 ; 0.01 ; .1 ; 0 ; .1 ; 0 ];
+    upper_limits = [1 ; 100000 ; 5 ; 5 ; 5000 ; 5000 ; 5000 ; 10000 ]; % for rmsearch set min/max to 0 for unused params (otherwise spits out weird values that aren't used)
+    hdr = {'Subject','Session','lambda','explore','alphaG','alphaN','K','nu','ignore','rho','SSE'};
+
+%lambda, epsilon, alphaG, alphaN, K, nu (go for gold), rho
 %init_params = [ 0.3 ; 2000 ; 0.2 ; 0.2 ; 1000 ; 0.1 ; 300 ];
-init_params = [ 0.2 ; 3000 ; 0.3 ; 0.3 ; 1500 ; 0.25 ; 1000 ];
-lower_bounds = [ 0 ; 0 ; 0.01 ; 0.01 ; .1 ; 0 ; 0 ];
+init_params = [ 0.2 ; 3000 ; 0.3 ; 0.3 ; 1000 ; 0.1 ; 300 ];
+lower_bounds = [ 0 ; 0 ; 0.01 ; 0.01 ; 1 ; 0 ; 0 ];
 upper_bounds = [1 ; 100000 ; 5 ; 5 ; 5000 ; 5000 ; 10000 ];
 
 priors = [];
 priors.V = 0;
 priors.Go = 0;
 priors.NoGo = 0;
-[cost, RTpred, ret]=TC_Alg_forward(init_params, priors, 'DEV', 2000, 500);
+[cost, RTpred, ret]=TC_Alg_forward(init_params, priors, 'DEV', 32, 500);
 
 
-fmincon_options = optimoptions(@fmincon, 'UseParallel',false, 'Algorithm', 'active-set');
-[par, cost, exitflag] = fmincon(@(params) TC_Alg_forward(params, priors, 'DEV', 52, 50), init_params, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+fmincon_options = optimoptions(@fmincon, 'UseParallel',false, 'Algorithm', 'active-set', 'MaxFunEvals', 20000, 'TolFun', 1e-4, 'MaxIter', 2000);
+[par, cost, exitflag] = fmincon(@(params) TC_Alg_forward(params, priors, 'DEV', 32, 100), init_params, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+
+fprintf('%.3f, ', par); fprintf('\n');
+
+
+[recost, RTpred, ret]=TC_Alg_forward(par, priors, 'DEV', 32, 100);
+
+figure(1); plot(RTpred);
+
+%try same parameters for IEV
+[recost, RTpred, ret]=TC_Alg_forward(par, priors, 'IEV', 32, 100);
+
+figure(2); plot(RTpred);
+
+(params, priors, cond, rngseeds, ntrials, rtbounds)
+
+%see whether we can get reasonable params across multiple runs of each condition
+%poolobj = parpool('local', 4);
+[test, totcost, costs] = fmincon(@(params) multirun_TC_alg_forward({'IEV', 'DEV', 'IEV', 'QUADUP'}, 999, {params, priors, 'COND', 50}), init_params, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
+%delete(poolobj);
+
+fprintf('%.3f, ', test); fprintf('\n');
 
 
 %from TC_Alg.m

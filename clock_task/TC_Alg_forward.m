@@ -17,6 +17,8 @@ if nargin < 4, rngseeds=31; end
 if nargin < 5, ntrials=50; end
 if nargin < 6, rtbounds=[0 5000]; end
 
+%fprintf('Fitting cond %s\n', cond);
+
 global rew_rng_state;
 
 %initialize states for two repeatable random number generators using different seeds

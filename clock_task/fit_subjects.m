@@ -16,7 +16,8 @@ end
 
 %modelnames = {'value_softmax' 'uv' 'v_discounted'};
 % modelnames = {'v_discounted'};
-modelnames = {'uv_discounted'};
+%modelnames = {'uv_discounted'};
+modelnames = {'v_processnoise'};
 
 
 %%
@@ -67,6 +68,8 @@ for modelnum = 1:length(modelnames)
         params = [.2261 .01]; %prop_spread, beta (temperature)
     elseif strcmpi(modelname,'uv') %% don't like this one anymore, don't use for parameter fitting
         params = [.2261 .9165 .01]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
+    elseif strcmpi(modelname,'v_processnoise') %scale process noise (learning rate) by abs(PE).
+        params = [.2261 .01 10]; %prop_spread, temperature, scaling of PE into process noise
     elseif strcmpi(modelname,'v_discounted')
         params = [.2261 .01 .005]; %prop_spread, beta (temperature), kappa (discount factor)
     elseif strcmpi(modelname,'uv_discounted')
