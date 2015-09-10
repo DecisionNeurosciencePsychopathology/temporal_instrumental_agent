@@ -511,20 +511,25 @@ if trial_plots
     unrew_rts(rew_obs==0) = rt_obs(rew_obs==0);
     
     if strcmpi(modelname, 'value_softmax') || strcmpi(modelname, 'v_processnoise')
-        subplot(2,1,1);
+        subplot(3,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
         hold off;
-        subplot(2,1,2);
+        subplot(3,1,2);
         contourf(1:ntrials, 1:ntimesteps, ret.v_it(1:ntrials,:)'); hold on;
         scatter(1:ntrials, rt_obs,rew_obs+10, 'r','Filled');
         scatter(1:ntrials, unrew_rts,'b', 'Filled'); hold off;
         title('Value map; red: rewards, blue: omissions');
         colormap(summer);
+        ax3 = subplot(3,1,3);
+        contourf(1:ntrials, 1:nbasis, ret.Q_ij(1:ntrials,:)'); hold on;
+        title('Process noise map');
+        colormap(ax3,summer);
         k = waitforbuttonpress;
     elseif strcmpi(modelname, 'uv')
         subplot(3,1,1);
+        
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;
         plot(1:length(rts_pred_exploit), rts_pred_exploit, 'b');
@@ -543,6 +548,7 @@ if trial_plots
         title('UV map; red: rewards,   blue: ommissions');
         colormap(ax3,summer);
     elseif strcmpi(modelname, 'v_discounted')
+        figure(2);
         subplot(3,1,1);
         plot(1:length(rt_obs), rt_obs, 'r');
         hold on;

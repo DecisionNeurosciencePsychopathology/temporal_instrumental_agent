@@ -65,13 +65,13 @@ rew_obs = behav{sub}.data.score(behav{sub}.data.run==runs(run));
 for modelnum = 1:length(modelnames)
     modelname = char(modelnames(modelnum));
     if strcmpi(modelname,'value_softmax')
-        params = [.2261 .01]; %prop_spread, beta (temperature)
+        params = [.2261 100]; %prop_spread, beta (temperature)
     elseif strcmpi(modelname,'uv') %% don't like this one anymore, don't use for parameter fitting
-        params = [.2261 .9165 .01]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
+        params = [.2261 .9165 100]; %prop_spread, tau (relative weight of value vs. uncertainty), temperature
     elseif strcmpi(modelname,'v_processnoise') %scale process noise (learning rate) by abs(PE).
-        params = [.2261 .01 10]; %prop_spread, temperature, scaling of PE into process noise
+        params = [.2261 .01 100]; %prop_spread, temperature, scaling of PE into process noise
     elseif strcmpi(modelname,'v_discounted')
-        params = [.2261 .01 .005]; %prop_spread, beta (temperature), kappa (discount factor)
+        params = [.2261 .01 100]; %prop_spread, beta (temperature), kappa (discount factor)
     elseif strcmpi(modelname,'uv_discounted')
 %         params = [.2261 .01 .005 .9165]; %prop_spread, beta (temperature), kappa (discount factor), tau (V vs. U
 %         weight)
