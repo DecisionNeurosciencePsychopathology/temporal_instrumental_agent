@@ -19,7 +19,11 @@ trialplots=0;
 modelname = model_names{i};
 
 %9/9/15 JW: fix prop spread see what happens
-params = [.2261 params];
+if strcmpi(modelname,'v_processnoise') || strcmpi(modelname,'fixed')
+    params = [.2261 100 params]; %Fix prop_spread and beta
+else
+    params = [.2261 params]; %Fix prop_spread
+end
 
 %Sub loop code, does the heavy lifting
 runs=unique(behav{sub}.data.run);

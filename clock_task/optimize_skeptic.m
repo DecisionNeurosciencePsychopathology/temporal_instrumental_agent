@@ -22,21 +22,24 @@ end
 
 %To start let's use table to create the data hub for softmax, v-discounted,
 %and uv-discounted, to store our variables, initials values, and bounds.
-model_names = {'value_softmax'; 'v_discounted'; 'uv_discounted'};
+model_names = {'value_softmax'; 'v_discounted'; 'uv_discounted'; 'v_processnoise'; 'fixed'};
 %Initial paramters
 %1-value_softmax prop_spread, beta (temperature)
 %2-v_discounted prop_spread, beta (temperature), kappa (discount factor), lambda (Go NoGo influence factor)
 %3-uv_discounted prop_spread, beta (temperature), kappa (discount factor), tau (V vs. U weight)
+%4-v_processnoise prop_spread, beta (temperature), omega (Kalman filter noise adjusting parameter)
+%5-fixed prop_spread, beta (temperature), alpha (learning rate)
 if ~exist('default_info.mat','file')
-%     initial_params = { [.2261 .01]; [.2261 .01 .005 .01]; [.2261 .01 .005 .95] };
-%     lower_bounds = { [0.01 .001]; [0.01 .001 -.001 -.001]; [0.01 .001 -.001 .9] };
-%     upper_bounds = { [0.06 1]; [0.06 1 .01 .01]; [0.06 1 .01 1] };
-%JW: 9/10/15 changed betas, the small range was causing infs to appear
-    initial_params = { [1]; [1 .005 .005]; [1 .005 .95] };
-    lower_bounds = { [.01]; [.01 -.1 -.1]; [.01 -1 .5] };
-    upper_bounds = { [10000]; [10000 .1 .1]; [10000 1 1] };
+    %     initial_params = { [.2261 .01]; [.2261 .01 .005 .01]; [.2261 .01 .005 .95] };
+    %     lower_bounds = { [0.01 .001]; [0.01 .001 -.001 -.001]; [0.01 .001 -.001 .9] };
+    %     upper_bounds = { [0.06 1]; [0.06 1 .01 .01]; [0.06 1 .01 1] };
+    %JW: 9/10/15 changed betas, the small range was causing infs to appear also
+    %we added v_processnoise which we try to optimize the paramtere omega
+    initial_params = { [1]; [1 .005 .005]; [1 .005 .95]; [10]; [.1] };
+    lower_bounds = { [.01]; [.01 -.1 -.1]; [.01 -1 .5]; [0]; [0] };
+    upper_bounds = { [10000]; [10000 .1 .1]; [10000 1 1]; [100]; [.5] };
     %num_vars = [2; 4; 4];
-    num_vars = [1; 3; 3];
+    num_vars = [1; 3; 3; 1; 1];
     default_info= table(initial_params, lower_bounds, upper_bounds,...
         num_vars,'RowNames', model_names);
     save default_info default_info
@@ -56,16 +59,21 @@ if ~exist('subj_opt_vars.mat','file') && exist('default_info','var')
     v_discountedFga = zeros(length(ids),1);
     uv_discounted = zeros(length(ids),length(default_info.initial_params{3}));
     uv_discountedFga = zeros(length(ids),1);
+    v_processnoise = zeros(length(ids),length(default_info.initial_params{4}));
+    v_processnoiseFga = zeros(length(ids),1);
+    fixed = zeros(length(ids),length(default_info.initial_params{5}));
+    fixedFga = zeros(length(ids),1);
     subj_opt_vars=table(value_softmax, value_softmaxFga, v_discounted, v_discountedFga,...
-        uv_discounted, uv_discountedFga,'RowNames',ids);
-    save subj_opt_vars subj_opt_vars    
-    clear value_softmax v_discounted uv_discounted; %Remove vars if needed
+        uv_discounted, uv_discountedFga, v_processnoise, ...
+        v_processnoiseFga, fixed, fixedFga, 'RowNames',ids);
+    save subj_opt_vars subj_opt_vars
+    clear value_softmax v_discounted uv_discounted v_processnoise; %Remove vars if needed
 else
     load('subj_opt_vars.mat')
 end
 
 % main shell loop
-for i = 2:numel(model_names) %model loop...9/10/15 since prop spread is the major player in the softmax version let's come back to it.
+for i = 5:numel(model_names) %model loop...9/10/15 since prop spread is the major player in the softmax version let's come back to it.
     for sub = 1:height(subj_opt_vars) %subject loop
         [subj_opt_vars.(model_names{i})(sub,:), subj_opt_vars.([model_names{i} 'Fga'])(sub)] = GA_skeptic_optimize(default_info.initial_params{i},...
             default_info.lower_bounds{i},default_info.upper_bounds{i},default_info.num_vars(i));
