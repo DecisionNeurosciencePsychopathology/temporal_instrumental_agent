@@ -4,12 +4,19 @@
 
 %behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
 %%
-[~, me] = system('whoami');
-me = strtrim(me);
-if strcmp(me,'Alex')==1
-  behavfiles = glob('/Users/localadmin/clock_smoothoperator/clock_task/subjects/*.csv');
-else    
-  behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
+%Quick username check, and path setting, this may have to change depending
+%on the machine you are currently working on!
+os = computer;
+if strcmp(os(1:end-2),'PCWIN')
+    behavfiles = glob('C:\kod\temporal_instrumental_agent\clock_task\subjects\*.csv');
+else
+    [~, me] = system('whoami');
+    me = strtrim(me);
+    if strcmp(me,'Alex')==1
+        behavfiles = glob('/Users/localadmin/clock_smoothoperator/clock_task/subjects/*.csv');
+    else
+        behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
+    end
 end
 
 %% chose models to run
