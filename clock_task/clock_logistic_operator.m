@@ -59,25 +59,10 @@ trial_plots = 1; %whether to show trialwise graphics of parameters
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 
+%define radial basis
+[c, tvec, sig_spread, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
+
 constr = [];
-
-%Initialize time step vector and allocate for memory
-tvec=1:ntimesteps;
-sig_spread=prop_spread*range(tvec); %determine SD of spread function
-
-%setup centers (means) and sds of basis functions
-%based on testing in fix_rbf_basis.m, place the lowest center 12.5% below the first timestep and the last
-%center 12.5% above last timestep. We were giving the agent 14 basis functions previously, so keep that for
-%now (arg 6 above). SD should be calculated to give a Cohen's d of 1.52 between basis functions (~45% distribution overlap).
-
-%margin_offset=0;
-margin_offset = (max(tvec) - min(tvec))*.125; % 12.5% offset
-
-%define lowest and highest centers
-tmin = min(tvec) - margin_offset; tmax=max(tvec) + margin_offset;
-c=tmin:(tmax-tmin)/(nbasis-1):tmax;
-
-sig = (c(2) - c(1))/1.52; %cohen's d of 1.52 between basis functions
 
 %% initialize RTs chosen by agent as a nan vector;
 rts = nan(1,ntrials);
@@ -103,58 +88,6 @@ ev_i =          nan(1, ntrials);            % expected value of choice for each 
 u_ij =          zeros(ntrials, nbasis);     % uncertainty at each microstimulus over trials (history)
 u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each timestep
 u_it =          zeros(ntrials,ntimesteps);  % history of uncertainty by trial at each timestep
-
-%construct radial basis matrix using Gaussians
-gaussmat = zeros(nbasis,ntimesteps);
-
-for j = 1:nbasis
-    gaussmat(j,:) = gaussmf(tvec,[sig c(j)]);
-end
-
-%normalize gauss functions to each have AUC = 1.0 within observed time interval
-%this is essentially a truncated Gaussian basis such that AUC = 1.0 for basis functions within interval
-maxauc=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
-gaussmat_trunc=gaussmat./maxauc;
-
-%rescale the truncated basis so that the typical RBF (not truncated) has range 0..1. The current
-%implementation is leading to tiny eligibility traces once you multiply by learning rate.
-%technically, this needs to be computed for a given basis setup since the AUC=1.0 scaling will depend on the
-%number of timesteps. This correction still maintains greater weighting at the edge (i.e., it is proportionate
-%to the AUC=1.0) while giving the reasonable behavior of eligibility representing a "proportion of information
-%transfer possible" interpretation.
-
-%find the center that is closest to the midpoint of the time interval
-%use the value of the regular basis (0..1 scaling) divided by the truncated basis at the max as the adjustment factor
-%note that maxauc above will be equal to this correction factor for all RBFs that are not truncated! Thus, we
-%are "undoing" the rescaling of these RBFs, while maintaining the correction at the edge.
-[~,indmid]=min(abs(c - median(tvec)));
-trunc_adjust=max(gaussmat(indmid,:))/max(gaussmat_trunc(indmid,:));
-gaussmat_trunc=gaussmat_trunc*trunc_adjust;
-
-figure(20); plot(tvec,gaussmat); title('Regular RBF');
-figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
-
-%NB: The working combination is: Regular Gaussian RBF for function evaluation, but weight update proceed by truncated
-%Gaussian basis and truncated Gaussian spread function. Conceptually, this is like squeezing in all of the variance of
-%the update inside the finite interval but then evaluating the function on the regular RBF... to be developed further
-%since this remains a bit of a mystery. :)
-
-
-
-%note: with truncated gaussian basis (which functions properly), the idea of extending the basis representation outside
-%of the finite interval of interest does not apply (i.e., the functions are not defined outside of the bounds).
-%gauss mat for all possible timesteps
-%lowest_t = tmin - 4*sig; %3 SDs below lowest center.
-%highest_t = tmax + 4*sig;
-
-%t_all = round(lowest_t):round(highest_t);
-
-%gaussmat_all = zeros(nbasis,length(t_all));
-
-%for j = 1:nbasis
-%    gaussmat_all(j,:) = gaussmf(t_all,[sig c(j)]);
-%end
-%plot(t_all, gaussmat_all);
 
 %fprintf('updating value by alpha: %.4f\n', alpha);
 %fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));

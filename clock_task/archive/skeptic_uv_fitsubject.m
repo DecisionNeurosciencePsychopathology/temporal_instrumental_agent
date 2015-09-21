@@ -89,9 +89,8 @@ exptype_rng_seed=rng;
 %initialize movie storage
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 
-%Initialize time step vector and allocate for memory
-tvec=1:ntimesteps;
-sig_spread=prop_spread*range(tvec); %determine SD of spread function
+%define radial basis
+[c, tvec, sig_spread, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %rescale s_grw wrt the interval (not as a proportion)
 s_grw=s_grw*range(tvec); %determine SD of spread function
@@ -99,20 +98,6 @@ s_grw=s_grw*range(tvec); %determine SD of spread function
 %add Gaussian noise with sigma = 1% of the range of the time interval to rt_explore
 prop_expnoise=.01;
 sig_expnoise=prop_expnoise*range(tvec);
-
-%setup centers (means) and sds of basis functions
-%based on testing in fix_rbf_basis.m, place the lowest center 12.5% below the first timestep and the last
-%center 12.5% above last timestep. SD should be calculated to give a Cohen's d of 1.52 between 
-%basis functions (~45% distribution overlap).
-
-%margin_offset=0;
-margin_offset = (max(tvec) - min(tvec))*.125; % 12.5% offset
-
-%define lowest and highest centers
-tmin = min(tvec) - margin_offset; tmax=max(tvec) + margin_offset;
-c=tmin:(tmax-tmin)/(nbasis-1):tmax;
-
-sig = (c(2) - c(1))/1.52; %cohen's d of 1.52 between basis functions
 
 %setup matrices for tracking learning
 % i = trial
@@ -170,39 +155,9 @@ sigma_noise = repmat(var(rew_obs), 1, nbasis);
 %This leads to an effective learning rate of 0.5 since k = sigma_ij / sigma_ij + sigma_noise
 sigma_ij(1,:) = sigma_noise; 
 
-%so, Kalman Gaussians should be updated by the obtained reward (alternative: PE), spread in time as usual, which forms a
-%temporal eligibility trace... But how do we make sure that we don't get big PEs by gain*(Rew - mean)? Should be a
-%similar problem to the existing guy. In the current implementation we use the alpha*elig*Reward - Expected), such that
-%we only effectively update value representation for large values of the eligibility trace. Should be parallel here:
-%elig*gain*(Rew - mean).
-
-%construct radial basis matrix using Gaussians
-gaussmat = zeros(nbasis,ntimesteps);
-
-for j = 1:nbasis
-    gaussmat(j,:) = gaussmf(tvec,[sig c(j)]);
-end
-
-%version of gaussian where each function has AUC = 1.0 (PDF representation)
-maxauc_all=max(sum(gaussmat, 2));
-gaussmat_pdf=gaussmat./maxauc_all;
-
-%normalize gauss functions to each have AUC = 1.0 within observed time interval
-%this is essentially a truncated Gaussian basis such that AUC = 1.0 for basis functions within interval
-maxauc_each=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
-gaussmat_trunc=gaussmat./maxauc_each;
-
-if trial_plots == 1
-figure(20); plot(tvec,gaussmat); title('Regular RBF');
-figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
-end
-
 %fprintf('updating value by alpha: %.4f\n', alpha);
 %fprintf('updating value by epsilon: %.4f with rngseeds: %s \n', epsilon, num2str(rngseeds));
 %fprintf('running agent with sigs: %.3f, epsilon: %.3f and rngseeds: %s \n', sig_spread, epsilon, num2str(rngseeds));
-
-%determine the AUC of a non-truncated eligilibity function
-refspread = sum(gaussmf(min(tvec)-range(tvec):max(tvec)+range(tvec), [sig_spread, median(tvec)]));
 
 %objective expected value for this function
 %ev=[];
