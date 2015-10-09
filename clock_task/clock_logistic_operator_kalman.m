@@ -75,7 +75,7 @@ exptype_rng_seed=rng;
 mov=repmat(struct('cdata', [], 'colormap', []), ntrials,1);
 
 %define radial basis
-[c, tvec, sig_spread, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
+[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %rescale s_grw wrt the interval (not as a proportion)
 s_grw=s_grw*range(tvec); %determine SD of spread function

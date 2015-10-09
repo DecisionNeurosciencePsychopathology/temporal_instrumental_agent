@@ -1,4 +1,4 @@
-function [c, tvec, sig_spread, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread, margin_offset, basis_overlap, plot_rbf)
+function [c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread, margin_offset, basis_overlap, plot_rbf)
 % Shared function for setting up radial basis functions.
 %
 % Inputs:

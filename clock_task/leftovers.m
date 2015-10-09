@@ -316,4 +316,24 @@ end
 %ret.cost_exploit = -sum((rt_pred_i(exploit_trials) - rt_obs(exploit_trials)).^2);
 
 
+%%OLD APPROACH TO CHOOSING RT EXPLOIT WITH CONTINUOUS BASIS
 
+%DANGER: fminbnd is giving local minimum solution that clearly
+%misses the max value. Could switch to something more comprehensive
+%like rmsearch, but for now revert to discrete approximation
+%rt_exploit = fminbnd(@(x) -rbfeval(x, mu_ij(i+1,:), c, ones(1,nbasis).*sig), 0, 500);
+%figure(2);
+%vfunc = rbfeval(0:500, mu_ij(i+1,:), c, ones(1,nbasis).*sig);
+%plot(0:500, vfunc);
+
+% find the RT corresponding to uncertainty-driven exploration (try random exploration if uncertainty is uniform)
+
+
+%OLD APPROACH TO COMPUTING AUC OF UNCERTAINTY
+% u -- total amount of uncertainty on this trial (starts at 0 and decreases)
+% u = mean(u_func);
+
+%use integration to get area under curve of uncertainty
+%otherwise, our estimate of u is discretized, affecting cost function
+%total_u = integral(@(x)rbfeval(x, sigma_ij(i+1,:), c, ones(1,nbasis).*sig), min(tvec), max(tvec));
+%u = total_u/max(tvec); %make scaling closer to value per timestep

@@ -1,10 +1,11 @@
-function [rew, ev] = RewFunction(rt, cond, userngseed)
+function [rew, ev] = RewFunction(rt, cond, userngseed, maxrt)
 
 if nargin < 3
     userngseed=1; %whether to use global rew_rng_state for draws
 end
 
-global rew_rng_state;
+if nargin < 4, maxrt=4000; end %pertains to the linprob variants where the prob levels off the last 250ms.
+minrt=500; %early RT where probability levels off for linprob variants
 
 Shift = 700;
 rt_extended = 7000;
@@ -35,26 +36,30 @@ elseif strcmpi(cond, 'QUADUP')
     mag = 0.00002*(rt-1800).^2+20;
     
 elseif strcmpi(cond, 'IEVLINPROB')
+    rtuppershelf=250; %ms prior to maxrt at which probability levels off
+
     %for 0-500ms, use the min probability of 0.2
     %for 3750-4000ms, use the max probability of 0.8
-    if rt < 500
-        rt = 500;
-    elseif rt > 3750
-        rt = 3750;
+    if rt < minrt
+        rt = minrt;
+    elseif rt > (maxrt - rtuppershelf)
+        rt = maxrt - rtuppershelf;
     end
-    frq = (rt - 500)/5416.667 + 0.2; %5416.667 is 3750 - 500 / 0.6
+    frq = (rt - minrt)/((maxrt - rtuppershelf - minrt)/0.6) + 0.2; %5416.667 is 3750 - 500 / 0.6
     mag = 1; %1 or 0 outcome
     
 elseif strcmpi(cond, 'DEVLINPROB')
+    rtuppershelf=250; %ms prior to maxrt at which probability levels off
+        
     %for 0-500ms, use the max probability of 0.8
     %for 3750-4000ms, use the min probability of 0.2
-    if rt < 500
-        rt = 500;
-    elseif rt > 3750
-        rt = 3750;
+    if rt < minrt
+        rt = minrt;
+    elseif rt > (maxrt - rtuppershelf)
+        rt = (maxrt - rtuppershelf);
     end
     
-    frq = (4000 - 250 - rt)/5416.667 + 0.2;
+    frq = (maxrt - rtuppershelf - rt)/((maxrt - rtuppershelf - minrt)/0.6) + 0.2;
     mag = 1; %1 or 0 outcome
 else
     error(['Unknown function: ' cond]);
