@@ -1,4 +1,4 @@
-function [cost,v_it,rts,mov,ret] = clock_sceptic_agent(params, agent, rngseeds, cond, ntrials, nbasis, ntimesteps, reversal)
+function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond, ntrials, nbasis, ntimesteps, reversal)
 % This is the primary script that attempts to solve clock contingencies using variants of the sceptic agent.
 % Variants are described using the parameter agent, which determines the behavior of the forward model.
 % This script is used for testing the optimality of variants of sceptic for solving clock contingencies.
@@ -34,11 +34,11 @@ if nargin < 8, reversal = 0; end %No reversal by default
 omega=0;                    %if not a PE-enhanced process noise model, remove this influence
 gamma=0;                    %zero gamma and phi for all models except kalman_sigmavolatility
 phi=0;
-sig_grw=0;                  %default width of GRW for fixedLR_egreedy_grw
+tradeoff=0;                 %parameter only applies to kalman_uv_logistic
 prop_spread = params(1);    %proportion of discrete interval over which to spread reward (SD of Gaussian) (0..1)
 
 %define radial basis
-[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
+[~, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -60,7 +60,7 @@ explore_rng_state=rng;
 if strcmpi(agent, 'fixedLR_softmax')
     %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
     %Choice: softmax function of value to select among alternatives
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)
+    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)
     alpha = params(3);          %learning rate (0..1)
 elseif strcmpi(agent, 'fixedLR_egreedy')
     %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
@@ -87,24 +87,24 @@ elseif strcmpi(agent, 'fixedLR_egreedy_grw')
 elseif strcmpi(agent, 'asymfixedLR_softmax')
     %Learning: Bush-Mosteller separate fixed learning rates for PE+ and PE- according to radial basis; no representation of uncertainty
     %Choice: softmax function of value to select among alternatives
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)
+    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)
     alpha = params(3);          %learning rate for PE+ (0..1)
     rho = params(4);            %learning rate for PE- (0..1)
 elseif strcmpi(agent, 'kalman_softmax')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
     %Choice: softmax function of value to select among alternatives (no uncertainty)
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
 elseif strcmpi(agent, 'kalman_processnoise')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
     %Choice: softmax function of value to select among alternatives
     %Additional: PEs boost process noise (Q), effectively enhancing learning rate when surprising events occur.
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
     omega = params(3);          %scaling of process noise Q by PE.
 elseif strcmpi(agent, 'kalman_sigmavolatility')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); no representation of uncertainty
     %Choice: softmax function of value to select among alternatives
     %Additional: Prediction errors increase uncertainty (sigma) by a smooth function of PEs according to a second learning rate, phi.
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
     phi = params(3);            %scales additional noise added to sigma update according to smooth function of PEs.
     gamma = params(4);          %decay factor for volatility (0..1)
 elseif strcmpi(agent, 'kalman_uv_logistic')
@@ -147,8 +147,8 @@ if isstruct(cond)
 end
 
 %add Gaussian noise with sigma = 1% of the range of the time interval to rt_explore
-prop_expnoise=.01;
-sig_expnoise=prop_expnoise*range(tvec);
+%prop_expnoise=.01;
+%sig_expnoise=prop_expnoise*range(tvec);
 
 %% initialize RTs chosen by agent as a nan vector;
 rts = nan(1,ntrials);
@@ -170,8 +170,8 @@ u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each
 u_it =          zeros(ntrials,ntimesteps);  % history of uncertainty by trial at each timestep
 uv_it =         zeros(ntrials,ntimesteps);  % history of UV (value incorporating exploration bonus) by trial at each timestep
 z_i =           nan(1, ntrials);            % smooth volatility function in kalman_sigmavolatility model (not wrt basis function)
-delta_func =    zeros(1,ntrials);
-v_max_to_plot=  zeros(1,ntrials);
+%delta_func =    zeros(1,ntrials);
+%v_max_to_plot=  zeros(1,ntrials);
 p_choice    =   nan(ntrials,ntimesteps);    % model-predicted probabilities of choosing each possible rt according to softmax
 
 %kalman setup
@@ -183,7 +183,7 @@ Q_ij =          zeros(ntrials, nbasis);     %Process noise (i.e., noise/change i
 mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all Gaussians.
 z_i(1) = 0;        %no initial expected volatility. 
 
-despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
+%despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
 
 %noise in the reward signal: sigma_rew. In the Frank model, the squared SD of the Reward vector represents the noise in
 %the reward signal, which is part of the Kalman gain. This provides a non-arbitrary initialization for sigma_rew, such
@@ -202,7 +202,7 @@ else
     sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
 end
 
-%Define indifference point between explor and exploit (p = 0.5) as proportion reduction in variance from initial value
+%Define indifference point between explore and exploit (p = 0.5) as proportion reduction in variance from initial value
 u_threshold = (1-tradeoff) * sigma_noise(1);
 
 %As in Frank, initialize estimate of std of each Gaussian to the noise of returns on a sample of the whole contingency.
@@ -260,13 +260,13 @@ for i = 1:ntrials
 %     end
 
     if usestruct
-        [rew_i(i), ev(i), cstruct] = getNextRew(rts(i), cstruct);
+        [rew_i(i), ev_i(i), cstruct] = getNextRew(rts(i), cstruct);
         
         %The code below is slow due to rand/rng usage and computing functions, rather than struct pre-compute approach.
         %[~, ev_i(i)] = RewFunction(rts(i).*10, cond, 0); %multiply by 10 because underlying functions range 0-5000ms
         %don't use the reward function rng seed if already passed in master structure (since we're just looking up EV).
     else
-        [rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
+        [rew_i(i), ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     end
     
     %1) compute prediction error, scaled by eligibility trace
@@ -325,9 +325,9 @@ for i = 1:ntrials
     %despair(i+1) = .95*despair(i) - mean_delta_minus(i);
     
     %Prediction errors
-    delta_func(i)=sum(delta_ij(i,:));
-    v_max_to_plot(i) = max(v_func)*50;
-    k_top_plot(i) = sum(k_ij(i,:));
+    %delta_func(i)=sum(delta_ij(i,:));
+    %v_max_to_plot(i) = max(v_func)*50;
+    %k_top_plot(i) = sum(k_ij(i,:));
     
     if i == ntrials, break; end %do not compute i+1 choice on the final trial (invalid indexing problem)
     
@@ -367,9 +367,9 @@ for i = 1:ntrials
             %compute a "tilt" vector that linearly scales with timepoint according to PE size * parameter
             %use different parameters, kappa and lambda, to handle PE+ and PE-, respectively
             if max(delta_ij(i,:)) > 0
-                discount = kappa*(mean(delta_ij(i,:)))*tvec; %% also add valence-dependent parameters: kappa for PE+, lambda for PE-
+                discount = kappa*(max(delta_ij(i,:)))*tvec; %% also add valence-dependent parameters: kappa for PE+, lambda for PE-
             else
-                discount = lambda*(mean(delta_ij(i,:)))*tvec;
+                discount = lambda*(min(delta_ij(i,:)))*tvec;
             end
         end
         
@@ -413,8 +413,9 @@ for i = 1:ntrials
         else
             %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
-            p_choice(i,:) = (exp((v_final-max(v_final)))/beta)/(sum(exp((v_final-max(v_final)))/beta)); %Divide by temperature
-            rts(i+1) = randsample(tvec, 1, true, v_final);
+            p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
+            %if (all(v_final==0)), v_final=rand(1, length(v_final)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
+            rts(i+1) = randsample(tvec, 1, true, p_choice(i,:));
         end
         
     end
@@ -439,8 +440,11 @@ end
 %Cost function
 cost = -sum(ev_i);
 
+ret.agent=agent;
 ret.nbasis = nbasis;
 ret.ntimesteps = ntimesteps;
+ret.sigma_noise=sigma_noise;
+ret.rts=rts;
 ret.mu_ij = mu_ij;
 ret.sigma_ij = sigma_ij;
 ret.k_ij = k_ij;
@@ -449,6 +453,8 @@ ret.Q_ij = Q_ij;
 ret.e_ij = e_ij;
 ret.v_it = v_it;
 ret.u_it = u_it;
+ret.uv_it = uv_it;
 ret.rew_i = rew_i;
 ret.ev_i = ev_i;
 ret.z_i = z_i;
+ret.p_choice=p_choice;

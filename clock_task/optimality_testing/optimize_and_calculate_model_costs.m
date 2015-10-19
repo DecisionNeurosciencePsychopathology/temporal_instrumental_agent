@@ -72,8 +72,8 @@ clear mastersamp tmp row allcond i j;
 
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
-%parfor i = 1:noptim
-for i = 1:noptim
+parfor i = 1:noptim
+%for i = 1:noptim
     ipars=cell(nagents, ncond);
     icosts=NaN(nagents, ncond);
     
@@ -86,6 +86,8 @@ for i = 1:noptim
     costs(i, :, :) = icosts;
     pars(i, :, :) = ipars;
 end
+
+save('optimize_output.mat', 'costs', 'pars', 'agents', 'optmat');
 
 %assign pars and costs back into agents array?
 

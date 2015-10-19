@@ -1,21 +1,4 @@
 function [cost] = fitnessfcn_optimize(params, agent, runarray)
-    %Numerical mapping system for running GA on each agentNOW and conditionNOW
-    %%%%agentNOW%%%%
-    %1 = kalman UV
-    %2 = kalman skeptic
-    %3 = kalman GRW
-    %4 = Q-Leaning
-    %5 = SARSA
-    %%%%conditionNOW%%%%
-    %1 = IEV
-    %2 = DEV 
-    %3 = QUADUP
-    %4 = ALL
-    
-    %global agentNOW %which agent is being optimized
-    %global conditionNOW %which lookup table is being used
-    %global vperm %load in the permuted matrix
-    
     %m=conditionNOW; %grab lookup
     %nruns = 15;
     %seed = 888;
@@ -37,10 +20,11 @@ function [cost] = fitnessfcn_optimize(params, agent, runarray)
 %     end
    
 
-    if strcmpi(agent.name, 'skeptic') || strcmpi(agent.name, 'skeptic_uvsum')
-        cost = multirun_clock_sceptic(params, agent, runarray);
-    elseif strcmpi(agent.name, 'kalman_grw')
-        
+    if ismember(agent.name, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
+            'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+            'kalman_sigmavolatility', 'kalman_uv_logistic', 'kalman_uv_sum', ...
+            'fixedLR_kl_softmax', 'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
+        cost = multirun_clock_sceptic(params, agent, runarray);        
     elseif strcmpi(agent.name, 'qlearning')
         
     elseif strcmpi(agent.name, 'sarsa')
