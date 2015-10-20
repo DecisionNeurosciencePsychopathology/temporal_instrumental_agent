@@ -73,22 +73,27 @@ clear mastersamp tmp row allcond i j;
 %this essentially kills the possibility of loop unrolling because i is never used directly as a first-level index!
 
 ncpus=getenv('matlab_cpus');
-if strcmpi(ncpus, ''), 
+if strcmpi(ncpus, '')
     ncpus=40;
     fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
+else
+    ncpus=str2double(ncpus);
 end
 
 %to speed up optimization, have multiple matlab instances that each handle processing for only one agent
 whichagent=getenv('which_agent');
 if ~strcmpi(whichagent, '')
+    pool=['local', whichagent]; %each instance needs its own parpool
     whichagent=str2double(whichagent);
     nagents=1;
     agents=agents(whichagent); %subset only this agent
+else
+    pool='local';
 end
 
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
-poolobj=parpool('local',ncpus);
+poolobj=parpool(pool,ncpus);
 parfor i = 1:noptim
 %for i = 1:noptim
     ipars=cell(nagents, ncond);
