@@ -3,7 +3,7 @@
 
 %%
 %basic structure
-cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
+%cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
 agents = initialize_agents_struct;
 %agentnames = fieldnames(agents);
 %nagents = length(agentnames);
@@ -17,6 +17,8 @@ ntimesteps = 500;
 load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
 condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
 ncond=length(condnames); %how many conditions/contingencies
+
+addpath('../');
 
 %truncate mastersamp to the number of trials used here to save RAM
 for i = 1:length(condnames)
@@ -72,6 +74,7 @@ clear mastersamp tmp row allcond i j;
 
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
+poolobj=parpool('local',40);
 parfor i = 1:noptim
 %for i = 1:noptim
     ipars=cell(nagents, ncond);
@@ -86,7 +89,7 @@ parfor i = 1:noptim
     costs(i, :, :) = icosts;
     pars(i, :, :) = ipars;
 end
-
+delete(poolobj);
 save('optimize_output.mat', 'costs', 'pars', 'agents', 'optmat');
 
 %assign pars and costs back into agents array?
