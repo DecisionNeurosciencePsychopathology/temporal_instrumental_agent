@@ -377,7 +377,7 @@ for i = 1:ntrials
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
             v_final = v_func; % just use value curve for choice
-        elseif strcmpi(modelname, 'kalman_uv_sum')
+        elseif strcmpi(agent, 'kalman_uv_sum')
             uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
@@ -386,7 +386,7 @@ for i = 1:ntrials
             %v_it_undisc(i+1,:) = v_func; %not implemented here yet
             
             %not storing rt_exploit_disc yet (see line 372 of skeptic_fitsubject_all_models.m)
-        elseif strcmpi(modelname, 'kalman_uv_sum_kl')
+        elseif strcmpi(agent, 'kalman_uv_sum_kl')
             v_disc = v_func + discount;
             %v_it_undisc(i+1,:) = v_func;
             uv_func=tau*v_disc + (1-tau)*u_func;
