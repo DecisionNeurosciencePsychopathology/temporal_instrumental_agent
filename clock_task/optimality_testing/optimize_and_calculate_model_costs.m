@@ -72,9 +72,23 @@ clear mastersamp tmp row allcond i j;
 %the first-level index must be a variant of the parfor counter (i).
 %this essentially kills the possibility of loop unrolling because i is never used directly as a first-level index!
 
+ncpus=getenv('matlab_cpus');
+if strcmpi(ncpus, ''), 
+    ncpus=40;
+    fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
+end
+
+%to speed up optimization, have multiple matlab instances that each handle processing for only one agent
+whichagent=getenv('which_agent');
+if ~strcmpi(whichagent, '')
+    whichagent=str2double(whichagent);
+    nagents=1;
+    agents=agents(whichagent); %subset only this agent
+end
+
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
-poolobj=parpool('local',40);
+poolobj=parpool('local',ncpus);
 parfor i = 1:noptim
 %for i = 1:noptim
     ipars=cell(nagents, ncond);
@@ -88,11 +102,22 @@ parfor i = 1:noptim
    
     costs(i, :, :) = icosts;
     pars(i, :, :) = ipars;
+    
+    %save interim progress
+    if nagents==1
+        parsave(['output/optim_', i, '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
+    else
+        parsave(['output/optim_', i, '_all.mat'], icosts, ipars); %all agents output
+    end
 end
 delete(poolobj);
-save('optimize_output.mat', 'costs', 'pars', 'agents', 'optmat');
 
-%assign pars and costs back into agents array?
+if nagents==1
+    save(['output/optimize_output_', agents(1).name, '.mat'], 'costs', 'pars', 'agents', 'optmat');
+else
+    %all agents output
+    save('output/optimize_output_all.mat', 'costs', 'pars', 'agents', 'optmat');
+end
 
 %%beautiful, but impossible in matlab. leaving here to cry over
 
