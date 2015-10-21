@@ -87,6 +87,7 @@ if ~strcmpi(whichagent, '')
     whichagent=str2double(whichagent);
     nagents=1;
     agents=agents(whichagent); %subset only this agent
+    system(['touch output/', agents.name, '_running']);
 else
     pool='local';
 end
@@ -110,9 +111,9 @@ parfor i = 1:noptim
     
     %save interim progress
     if nagents==1
-        parsave(['output/optim_', i, '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
+        parsave(['output/optim_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
     else
-        parsave(['output/optim_', i, '_all.mat'], icosts, ipars); %all agents output
+        parsave(['output/optim_', num2str(i), '_all.mat'], icosts, ipars); %all agents output
     end
 end
 delete(poolobj);
