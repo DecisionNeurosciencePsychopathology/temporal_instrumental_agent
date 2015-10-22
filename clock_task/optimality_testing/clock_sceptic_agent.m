@@ -335,7 +335,7 @@ for i = 1:ntrials
     if sum(v_func) == 0
         rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
     else
-        rt_exploit = find(v_func==max(v_func));
+        rt_exploit = find(v_func==max(v_func), 1); %only take the first max if there is are two identical peaks.
         if rt_exploit > max(tvec), rt_exploit = max(tvec); end
     end
     
@@ -348,7 +348,7 @@ for i = 1:ntrials
         if u == 0
             rt_explore = ceil(.5*ntimesteps);
         else
-            rt_explore = find(u_func==max(u_func), 1);%return position of first max (and add gaussian noise?)
+            rt_explore = find(u_func==max(u_func), 1); %return position of first max (and add gaussian noise?)
         end
 
         sigmoid = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with tradeoff as difficulty (location) parameter

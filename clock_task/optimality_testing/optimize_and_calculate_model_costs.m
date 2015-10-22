@@ -92,11 +92,16 @@ else
     pool='local';
 end
 
+%so, it seems that there are two issues here: 1) does the optimizer obtain the same parameters for the same input
+% and 2) are optimal parameters stable for slightly different reinforcement histories?
+% The first question is how this is setup. The second would require permuting the optmat within each replication.
+
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
 poolobj=parpool(pool,ncpus);
 parfor i = 1:noptim
 %for i = 1:noptim
+
     ipars=cell(nagents, ncond);
     icosts=NaN(nagents, ncond);
     
