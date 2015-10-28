@@ -34,8 +34,20 @@ ev = NaN(ntrials, 1); %expected value of choices (for cost function)
 Go = NaN(ntrials, 1);
 NoGo = NaN(ntrials, 1);
 
+usestruct=0;
+if isstruct(cond)
+    cstruct = cond;
+    cond = cstruct.name;
+    usestruct=1;
+end
+
 RTpred(1) = 2500; %start in middle
-[Reward(1) ev(1)] = RewFunction(RTpred(1), cond);
+
+if usestruct
+    [Reward(1), ev(1), cstruct] = getNextRew(RTpred(i)/10, cstruct);
+else
+    [Reward(1), ev(1)] = RewFunction(RTpred(1), cond);
+end
 
 V(1) = priors.V; %initialize expected value for first trial to prior (possibly from previous run)
 Go(1) = priors.Go; %initialize Go for first trial
@@ -98,7 +110,6 @@ dist_type = 'beta';
 %initialize algorithm parameters
 exp=0;
 exp1=0;
-exp1a=0;
 mean_short = 0.5;
 mean_long = 0.5;
 RT_locavg = RTpred(1); % set local/learned avg on first trial..
@@ -256,7 +267,11 @@ for i = 2:ntrials
     end
        
     %Enact predicted RT to obtain reward
-    [Reward(i) ev(i)] = RewFunction(RTpred(i), cond);
+    if usestruct
+        [Reward(i), ev(i), cstruct] = getNextRew(RTpred(i)/10, cstruct);
+    else
+        [Reward(i), ev(i)] = RewFunction(RTpred(i), cond);
+    end
     
     ret.rew(i-1) = Reward(i-1);             %rewards
     ret.rpe(i-1) = Reward(i-1) - V(i-1);    %prediction error
