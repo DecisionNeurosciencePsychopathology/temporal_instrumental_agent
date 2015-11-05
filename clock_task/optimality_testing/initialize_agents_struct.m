@@ -151,6 +151,7 @@ sarsa.k = length(sarsa.init_params); %number of free parameters
 sarsa.name = 'sarsa';
 sarsa.parnames = {'gamma', 'alpha', 'epsilon', 'lambda'};
 sarsa.clock_options=clock_options;
+sarsa.clock_options.agent = 'sarsa';
 a(15) = sarsa;
 
 franktc.init_params = [ 0.2, 3000, 0.3, 0.3, 1000, 0.1, 300 ];
