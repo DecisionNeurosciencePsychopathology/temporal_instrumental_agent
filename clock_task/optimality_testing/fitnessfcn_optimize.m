@@ -29,8 +29,8 @@ function [cost] = fitnessfcn_optimize(params, agent, runarray)
         
     elseif strcmpi(agent.name, 'sarsa')
         
-    elseif strcmpi(agent.name, 'frank_tc')
-        
+    elseif strcmpi(agent.name, 'franktc')
+        cost = multirun_TC_alg_forward(params, agent, runarray);
     else
         error('I dont'' recognize this agent');
     end

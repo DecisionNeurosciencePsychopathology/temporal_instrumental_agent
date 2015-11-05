@@ -8,7 +8,7 @@ function [totcost, costs, seeds] = multirun_TC_alg_forward(params, agent, runarr
     costs=NaN(nruns, 1);
     priors.V = 0; %don't give agent any insight into previous values (no SCEPTIC receives this boost)
     priors.Go = 0;
-    prior.NoGo = 0;
+    priors.NoGo = 0;
     %execute runs in parallel
     for i = 1:nruns
         thiscall = {params, priors, runarray(i), seeds(i,:), agent.ntrials, rtbounds};
