@@ -229,7 +229,7 @@ load('mDEV.mat')
         rng(explore_rng_seed);
         explore_rng_state=rng;
         
-        fprintf('running agent with gamma: %.3f, alpha: %.3f, epsilon: %.3f, lambda: %.3f and rngseeds: %s \n', gamma, alpha, epsilon, lambda, num2str(rngseeds))
+        %fprintf('running agent with gamma: %.3f, alpha: %.3f, epsilon: %.3f, lambda: %.3f and rngseeds: %s \n', gamma, alpha, epsilon, lambda, num2str(rngseeds))
         
         %The amount of decay you want to decrease epsilon by
         decay_val=.95; %Currently 5%

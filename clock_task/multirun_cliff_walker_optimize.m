@@ -3,7 +3,7 @@ function [totcost, costs, seeds] = multirun_cliff_walker_optimize(params, agent,
     %operator.
     rng(agent.runseed);
     nruns=length(runarray);
-    seeds=randi([1 500], nruns, 1); %just the seed for reward outcomes
+    seeds=randi([1 500], nruns, 2); %just the seed for reward outcomes
     
     costs=NaN(nruns, 1);
     %execute runs in parallel
