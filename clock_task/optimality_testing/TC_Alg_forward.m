@@ -44,7 +44,7 @@ end
 RTpred(1) = 2500; %start in middle
 
 if usestruct
-    [Reward(1), ev(1), cstruct] = getNextRew(RTpred(i)/10, cstruct);
+    [Reward(1), ev(1), cstruct] = getNextRew(round(RTpred(1)/10)+1, cstruct);
 else
     [Reward(1), ev(1)] = RewFunction(RTpred(1), cond);
 end
@@ -265,10 +265,17 @@ for i = 2:ntrials
     elseif RTpred(i) < rtbounds(1)
         RTpred(i) = rtbounds(1);
     end
-       
+
+    rtdiv = round(RTpred(i)/10);       
+    if rtdiv < 1
+      rtdiv = 1;
+    elseif rtdiv > round(rtbounds(2)/10)
+      rtdiv = floor(rtbounds(2)/10);
+    end							 
+
     %Enact predicted RT to obtain reward
     if usestruct
-        [Reward(i), ev(i), cstruct] = getNextRew(RTpred(i)/10, cstruct);
+        [Reward(i), ev(i), cstruct] = getNextRew(rtdiv, cstruct);
     else
         [Reward(i), ev(i)] = RewFunction(RTpred(i), cond);
     end
