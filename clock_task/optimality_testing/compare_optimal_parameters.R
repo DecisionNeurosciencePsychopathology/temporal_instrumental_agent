@@ -23,7 +23,8 @@ for (matname in completed) {
       fixedLR_kl_softmax = c("prop_spread", "beta", "alpha", "kappa", "lambda"),
       kalman_kl_softmax = c("prop_spread", "beta", "kappa", "lambda"),
       kalman_processnoise_kl = c("prop_spread", "beta", "omega", "kappa", "lambda"),
-      kalman_uv_sum_kl = c("prop_spread", "beta", "tau", "kappa", "lambda")
+      kalman_uv_sum_kl = c("prop_spread", "beta", "tau", "kappa", "lambda"),
+      franktc = c('lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho')
   )
   
   allcosts <- drop(m$costs)
