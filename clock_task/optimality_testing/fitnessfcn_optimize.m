@@ -26,9 +26,9 @@ function [cost] = fitnessfcn_optimize(params, agent, runarray)
             'fixedLR_kl_softmax', 'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
         cost = multirun_clock_sceptic(params, agent, runarray);        
     elseif strcmpi(agent.name, 'qlearning')
-        
+        cost = multirun_cliff_walker_optimize(params, agent, runarray);
     elseif strcmpi(agent.name, 'sarsa')
-        
+        cost = multirun_cliff_walker_optimize(params, agent, runarray);
     elseif strcmpi(agent.name, 'franktc')
         cost = multirun_TC_alg_forward(params, agent, runarray);
     else

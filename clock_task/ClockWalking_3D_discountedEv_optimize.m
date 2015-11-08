@@ -229,7 +229,7 @@ load('mDEV.mat')
         rng(explore_rng_seed);
         explore_rng_state=rng;
         
-        fprintf('running agent with gamma: %.3f, alpha: %.3f, epsilon: %.3f, lambda: %.3f and rngseeds: %s \n', gamma, alpha, epsilon, lambda, num2str(rngseeds))
+        %fprintf('running agent with gamma: %.3f, alpha: %.3f, epsilon: %.3f, lambda: %.3f and rngseeds: %s \n', gamma, alpha, epsilon, lambda, num2str(rngseeds))
         
         %The amount of decay you want to decrease epsilon by
         decay_val=.95; %Currently 5%
@@ -291,18 +291,18 @@ load('mDEV.mat')
         for ei = 1:episodeCount,
             
             %Reversal hack
-            if (rev_go ==1) && ei == episodeCount/2+1
-                vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
-                if strcmp(m.name, 'IEV')
-                    m=mDEV; %if it is IEV after x trials switch
-                    m.lookup = m.lookup(:,vperm_run);
-                    cond = m.name;
-                else
-                    m=mIEV; %else it is DEV after x trials switch to IEV
-                    m.lookup = m.lookup(:,vperm_run);
-                    cond = m.name;
-                end
-            end
+%             if (rev_go ==1) && ei == episodeCount/2+1
+%                 vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
+%                 if strcmp(m.name, 'IEV')
+%                     m=mDEV; %if it is IEV after x trials switch
+%                     m.lookup = m.lookup(:,vperm_run);
+%                     cond = m.name;
+%                 else
+%                     m=mIEV; %else it is DEV after x trials switch to IEV
+%                     m.lookup = m.lookup(:,vperm_run);
+%                     cond = m.name;
+%                 end
+%             end
             
             
             %commented out for simps
@@ -335,8 +335,9 @@ load('mDEV.mat')
                     %if we have arrived at the goal state, mark as finished and provide reward 0
                     episodeFinished = 1;
                     %r = RewFunction(nextpos.row.*factor, cond);
-                    [r, m] = getNextRew(nextpos.row.*10, m);
-                    [~,ev_i(ei)] = RewFunction(nextpos.row.*factor, cond);
+                    [r, ev_i(ei), m] = getNextRew(nextpos.row.*10, m);
+%                     [r, m] = getNextRew(nextpos.row.*10, m);
+%                     [~,ev_i(ei)] = RewFunction(nextpos.row.*factor, cond);
                     
                     %fprintf('harvested rew: %.2f ', r);
                     quits(ei)=curpos.row;
@@ -685,6 +686,8 @@ load('mDEV.mat')
         %update plot index
         
         ret.ev_i = ev_i;
+        ret.rts = quits; 
+        ret.rew_i = cumReward;
         
     end
     %     plot_index(1)=plot_index(1)+(cols*2);

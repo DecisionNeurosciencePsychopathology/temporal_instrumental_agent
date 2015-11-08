@@ -22,7 +22,7 @@ mastersamp=[];
 for i = 1:length(conds)
     %Initalize structure
     mastersamp.(conds{i}).lookup = zeros(ntimesteps,ntrials); %lookup table of timesteps and outcomes
-    mastersamp.(conds{i}).sample = ones(1,ntrials); %keeps track of how many times a timestep has been sampled by agent
+    mastersamp.(conds{i}).sample = zeros(1,ntrials); %keeps track of how many times a timestep has been sampled by agent
     mastersamp.(conds{i}).ev = zeros(1,ntrials);
     
     for j = 1:ntimesteps
