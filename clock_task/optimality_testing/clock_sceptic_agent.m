@@ -164,6 +164,7 @@ delta_ij =      zeros(ntrials, nbasis);     % prediction error assigned to each 
 e_ij =          zeros(ntrials, nbasis);     % eligibility traces for each microstimulus in relation to RT (US)
 v_jt =          zeros(nbasis, ntimesteps);  % value by microstimulus (rows for every microstimulus and columns for time points within trial)
 v_it =          zeros(ntrials, ntimesteps); % history of value function by trial
+vfinal_it =     zeros(ntrials, ntimesteps); % history of value function by trial after manipulations (u+v etc.)
 rew_i =         nan(1, ntrials);            % actual reward for each trial
 ev_i =          nan(1, ntrials);            % expected value of choice for each trial (used for cost function)
 u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each timestep
@@ -421,7 +422,7 @@ for i = 1:ntrials
     end
     
     %populate v_it for tracking final value function
-    v_it(i+1,:) = v_final; %store choice function for return according to model
+    vfinal_it(i+1,:) = v_final; %store choice function for return according to model
 
     %Output the rt explore and exploit from choice rule per trial
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
@@ -452,6 +453,7 @@ ret.delta_ij = delta_ij;
 ret.Q_ij = Q_ij;
 ret.e_ij = e_ij;
 ret.v_it = v_it;
+ret.vfinal_it = vfinal_it;
 ret.u_it = u_it;
 ret.uv_it = uv_it;
 ret.rew_i = rew_i;

@@ -36,3 +36,35 @@ for i = 1:length(conds)
 end
 save('mastersamp.mat', 'mastersamp');
 
+%New approach: generate variants of time-varying contingencies that do not prefer sampling at the edge.
+%Use sinusoidal functions to generate a continuous contingency that can be shifted in time to maintain a constant EV AUC (identical costs)
+%while shifting the optimal RT. Then optimize a subset of these possible contingencies (sampled at random)
+
+ntimesteps=500;
+
+ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
+ev = ev + abs(min(ev)) + 10;
+prb = 25*cos(2*pi*(1:ntimesteps).*1/ntimesteps) + 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps) + 6*sin(2*pi*(1:ntimesteps)*5/ntimesteps);
+prb_max=0.7;
+prb_min=0.3;
+prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
+
+%mag = mag + abs(min(mag)) + 10;
+%prb = evi./magi;
+%plot(1:ntimesteps, mot1, type="l")
+
+vec = 1:ntimesteps;
+
+figure(1); clf;
+for i = 1:ntimesteps
+  shift=[i:ntimesteps 1:(i-1)];
+  evi = ev(shift);
+  prbi = prb(shift);
+  
+  %subplot(3,1,1); plot(1:ntimesteps, evi)
+  %subplot(3,1,2); plot(1:ntimesteps, prbi);
+  %subplot(3,1,3); plot(1:ntimesteps, evi./prb);
+  %pause(0.02)
+  
+end
+
