@@ -53,13 +53,17 @@ prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
 %prb = evi./magi;
 %plot(1:ntimesteps, mot1, type="l")
 
-vec = 1:ntimesteps;
-
-figure(1); clf;
+%figure(1); clf;
+allshift = NaN(ntimesteps, ntimesteps, 3);
+conds = 1:ntimesteps;
 for i = 1:ntimesteps
   shift=[i:ntimesteps 1:(i-1)];
   evi = ev(shift);
   prbi = prb(shift);
+  
+  allshift(i,:,1) = evi;
+  allshift(i,:,2) = prbi;
+  allshift(i,:,3) = evi./prb;
   
   %subplot(3,1,1); plot(1:ntimesteps, evi)
   %subplot(3,1,2); plot(1:ntimesteps, prbi);
@@ -68,3 +72,26 @@ for i = 1:ntimesteps
   
 end
 
+%randomly sample 60 of the possible 500 contingencies without replacement
+keep = randsample(1:ntimesteps, 60);
+
+rng(102); %fix seed for pulling reward probabilities
+ntrials = 500;
+
+optmat=cell(1,1);
+for k = 1:length(keep)
+    thisCont=[];
+    thisCont.name = ['sinusoid' num2str(keep(k))];
+    thisCont.sample = zeros(1, ntrials); %keeps track of how many times a timestep has been sampled by agent
+    thisCont.lookup = zeros(ntimesteps, ntrials); %lookup table of timesteps and outcomes
+    thisCont.ev = allshift(keep(k),:,1);
+    
+    rvec = rand(ntimesteps, ntrials);
+    for t = 1:ntrials
+        thisCont.lookup(:,t) = (allshift(keep(k),:,2) > rvec(:,t)') .* allshift(keep(k),:,3);
+    end
+    
+    optmat{1}(k) = thisCont;
+end
+
+save('sinusoid_optmat.mat', 'optmat');
