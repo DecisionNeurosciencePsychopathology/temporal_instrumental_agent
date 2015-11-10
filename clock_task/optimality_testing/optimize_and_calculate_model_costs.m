@@ -10,48 +10,69 @@ agents = initialize_agents_struct;
 nagents = length(agents);
 noptim = 40; %optimize parameters 40x
 ncosts = 1000;
-nruns=10; %10 runs per contingency
 ntrials = 100;
 nbasis = 24;
 ntimesteps = 500;
-load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
-condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
-ncond=length(condnames); %how many conditions/contingencies
 
 addpath('../');
 
-%truncate mastersamp to the number of trials used here to save RAM
-for i = 1:length(condnames)
-    mastersamp.(condnames{i}).lookup = mastersamp.(condnames{i}).lookup(:,1:ntrials);
-end
+%two current approaches: either 'typical' (IEV, DEV, QUADUP, etc.) or 'sinusoid' (phase-shifted random sinusoid)
+whichopt=getenv('whichopt');
+if strcmpi(whichopt, ''), whichopt='sinusoid'; end
 
-%generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
-%handle permutation outside of optimization for speed
-optmat = cell(length(condnames),1);
-for i = 1:ncond
-    clear row; %need variable to be deleted for array of structs below to work
-    for j = 1:nruns
-        tmp = mastersamp.(condnames{i});
-        tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
-        tmp.lookup = tmp.lookup(:, randperm(size(tmp.lookup,2))); %randomly permute columns
-        %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
-        %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
-        row(j) = tmp; %add to a vector of structs
+if strcmpi(whichopt, 'typical')
+    fprintf('Optimizing parameters using the typical contingencies (IEV, DEV, etc., plus ALL)\n');
+    load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
+    condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
+    ncond=length(condnames); %how many conditions/contingencies
+    nruns=10; %10 runs per contingency
+
+    %truncate mastersamp to the number of trials used here to save RAM
+    for i = 1:length(condnames)
+        mastersamp.(condnames{i}).lookup = mastersamp.(condnames{i}).lookup(:,1:ntrials);
     end
-    optmat{i} = row;
+
+    %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
+    %handle permutation outside of optimization for speed
+    optmat = cell(length(condnames),1);
+    for i = 1:ncond
+        clear row; %need variable to be deleted for array of structs below to work
+        for j = 1:nruns
+            tmp = mastersamp.(condnames{i});
+            tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
+            tmp.lookup = tmp.lookup(:, randperm(size(tmp.lookup,2))); %randomly permute columns
+            %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
+            %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
+            row(j) = tmp; %add to a vector of structs
+        end
+        optmat{i} = row;
+    end
+
+    %concatenate optmat to obtain an ALL condition
+    allcond = horzcat(optmat{:});
+    optmat{length(optmat) + 1} = allcond;
+    condnames{length(condnames) + 1} = 'ALL';
+    ncond = ncond + 1; %add all condition
+
+    %optmat is now a cell vector where each element is an vector of structs for the lookups to be used for each run.
+    %the final element contains all of the preceding conditions. For the five contingencies and 10 runs, this amounts
+    %to a 58MB object that would need to be passed along to parpool workers.
+elseif strcmpi(whichopt, 'sinusoid')
+    fprintf('Optimizing parameters using a set of phase-shifted random sinusoids\n');
+    
+    %New tack: load optmat from random sinusoid function treated as one "condition"
+    %Similar to the 'ALL' optimization, but with contingencies being semi-random
+    load('sinusoid_optmat.mat');
+    ncond=1; %optmat only has one element
+    
+    %truncate to the number of trials for optimization
+    for i = 1:length(optmat{1})
+        optmat{1}(i).lookup = optmat{1}(i).lookup(:,1:ntrials);
+    end
 end
 
-%concatenate optmat to obtain an ALL condition
-allcond = horzcat(optmat{:});
-optmat{length(optmat) + 1} = allcond;
-condnames{length(condnames) + 1} = 'ALL';
-ncond = ncond + 1; %add all condition
 
-%optmat is now a cell vector where each element is an vector of structs for the lookups to be used for each run.
-%the final element contains all of the preceding conditions. For the five contingencies and 10 runs, this amounts
-%to a 58MB object that would need to be passed along to parpool workers.
-
-%add opt_results and opt_costs fields to each agent (based on number of optimizations)
+%copy shared optimization parameters to each agent
 for i = 1:nagents
     agents(i).nbasis = nbasis;
     agents(i).ntimesteps = ntimesteps;
@@ -68,15 +89,6 @@ end
 
 clear mastersamp tmp row allcond i j;
 
-%New tack: load optmat from random sinusoid function treated as one "condition"
-%Similar to the 'ALL' optimization, but with contingencies being semi-random
-load('sinusoid_optmat.mat');
-ncond=1; %optmat only has one element
-
-%truncate to the number of trials for optimization
-for i = 1:length(optmat{1})
-    optmat{1}(i).lookup = optmat{1}(i).lookup(:,1:ntrials);
-end
 
 %so, MATLAB requires that for arrays defined outside of loop, but operated on within the parfor,
 %the first-level index must be a variant of the parfor counter (i).
@@ -126,18 +138,18 @@ parfor i = 1:noptim
     
     %save interim progress
     if nagents==1
-        parsave(['output/optim_sinusoid_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
+        parsave(['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
     else
-        parsave(['output/optim_sinusoid_', num2str(i), '_all.mat'], icosts, ipars); %all agents output
+        parsave(['output/optim_', whichopt, '_', num2str(i), '_all.mat'], icosts, ipars); %all agents output
     end
 end
 delete(poolobj);
 
 if nagents==1
-    save(['output/optimize_output_sinusoid_', agents(1).name, '.mat'], 'costs', 'pars', 'agents', 'optmat');
+    save(['output/optimize_output_', whichopt, '_', agents(1).name, '.mat'], 'costs', 'pars', 'agents', 'optmat');
 else
     %all agents output
-    save('output/optimize_output_sinusoid_all.mat', 'costs', 'pars', 'agents', 'optmat');
+    save('output/optimize_output_', whichopt, '_all.mat', 'costs', 'pars', 'agents', 'optmat');
 end
 
 %%beautiful, but impossible in matlab. leaving here to cry over

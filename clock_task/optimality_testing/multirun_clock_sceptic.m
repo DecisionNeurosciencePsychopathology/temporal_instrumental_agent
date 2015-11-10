@@ -14,4 +14,6 @@ for i = 1:nruns
 end
 
 totcost=sum(costs);
+%fprintf('totcost: %.2f, pars: %s\n', totcost, num2str(params));
 end
+
