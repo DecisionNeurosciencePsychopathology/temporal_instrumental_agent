@@ -6,11 +6,11 @@ function [cost] = fitnessfcn_optimize(params, agent, runarray)
         cost = multirun_clock_sceptic(params, agent, runarray);        
     elseif strcmpi(agent.name, 'qlearning')
         agent.clock_options.episodeCount = agent.ntrials;
-        agent.clock_options.ntimesteps = agent.timesteps/10; %TD models operate on 50 timesteps, not 500, typically
+        agent.clock_options.ntimesteps = agent.ntimesteps/10; %TD models operate on 50 timesteps, not 500, typically
         cost = multirun_cliff_walker_optimize(params, agent, runarray);
     elseif strcmpi(agent.name, 'sarsa')
         agent.clock_options.episodeCount = agent.ntrials;
-        agent.clock_options.ntimesteps = agent.timesteps/10;
+        agent.clock_options.ntimesteps = agent.ntimesteps/10;
         cost = multirun_cliff_walker_optimize(params, agent, runarray);
     elseif strcmpi(agent.name, 'franktc')
         cost = multirun_TC_alg_forward(params, agent, runarray);
