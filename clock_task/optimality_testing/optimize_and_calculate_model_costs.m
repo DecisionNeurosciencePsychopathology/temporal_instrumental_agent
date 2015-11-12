@@ -69,8 +69,32 @@ elseif strcmpi(whichopt, 'sinusoid')
     for i = 1:length(optmat{1})
         optmat{1}(i).lookup = optmat{1}(i).lookup(:,1:ntrials);
     end
-end
+elseif strcmpi(whichopt, 'sinusoidsingle')
+    %test whether a single permuted sinusoid duplicated many times is stable in optimization
+    ncond=1; %optmat has only one element
+    nruns=20; %20 runs of a single contingency
 
+    fprintf('Optimizing parameters using a single sinusoid variant permuted %d times\n', nruns);
+    load('sinusoid_optmat.mat');
+    
+    %grab the first element for permutation (NB: this looks like a negative quadratic)
+    sinmaster = optmat{1}(1);
+    sinmaster.lookup = sinmaster.lookup(:,1:ntrials); %truncate to the number of trials for optimization
+    
+    %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
+    %handle permutation outside of optimization for speed
+    optmat = cell(1,1);
+    
+    clear row; %need variable to be deleted for array of structs below to work
+    for j = 1:nruns
+        tmp = sinmaster;
+        tmp.lookup = tmp.lookup(:, randperm(size(tmp.lookup,2))); %randomly permute columns
+        %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
+        %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
+        row(j) = tmp; %add to a vector of structs
+    end
+    optmat{1} = row;
+end
 
 %copy shared optimization parameters to each agent
 for i = 1:nagents
@@ -87,8 +111,7 @@ for i = 1:nagents
     %agents.(agentnames{i}).opt_conds = condnames;
 end
 
-clear mastersamp tmp row allcond i j;
-
+clear mastersamp sinmaster tmp row allcond i j;
 
 %so, MATLAB requires that for arrays defined outside of loop, but operated on within the parfor,
 %the first-level index must be a variant of the parfor counter (i).
