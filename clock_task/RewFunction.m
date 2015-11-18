@@ -1,5 +1,7 @@
 function [rew, ev] = RewFunction(rt, cond, userngseed, maxrt)
 
+global rew_rng_state;
+
 if nargin < 3
     userngseed=1; %whether to use global rew_rng_state for draws
 end

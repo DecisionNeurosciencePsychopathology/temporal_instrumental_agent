@@ -41,19 +41,14 @@ prop_spread = params(1);    %proportion of discrete interval over which to sprea
 [~, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %states for random generators are shared across functions to allow for repeatable draws
-global rew_rng_state explore_rng_state;
+global rew_rng_state;
 
 %initialize states for two repeatable random number generators using different seeds
-rew_rng_seed=rngseeds(1);
-explore_rng_seed=rngseeds(2);
-grw_step_rng_seed=rngseeds(3);
+rew_rng_seed=rngseeds(1); %used by RewFunction to draw probabilitic outcomes from contingency (not relevant for struct-based input)
+explore_rng_seed=rngseeds(2); %Used by agents to choose between exploratory and exploitative choices. Only pertains to non-softmax agents.
+grw_step_rng_seed=rngseeds(3); %used by GRW agent to sample random normal numbers for GRW step size
 randrt_seed=rngseeds(4); %used by epsilon greedy agent with random uniform exploration
-
-rng(rew_rng_seed);
-rew_rng_state=rng;
-
-rng(explore_rng_seed);
-explore_rng_state=rng;
+softmax_seed=rngseeds(5); %used by softmax agent for weighted sampling of softmax function using randsample
 
 %populate free parameters for the requested agent/model
 %note: Kalman filter does not have a free learning rate parameter.
@@ -200,6 +195,8 @@ if usestruct
     %sample from the contingency as drawn by RewFunction. This is much faster than arrayfun below.
     sigma_noise = repmat(std(cstruct.lookup(:))^2, 1, nbasis); 
 else
+    rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
+    rew_rng_state=rng;
     sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
 end
 
@@ -215,10 +212,21 @@ sigma_ij(1,:) = sigma_noise;
 %rng calls are slow according to profiler
 %pull a vector of random numbers in advance of the trial loop and pull ith element
 
-%soft classification (explore in proportion to uncertainty)
-rng(explore_rng_state); %draw from explore/exploit rng
-choice_rand=rand(ntrials,1);
-explore_rng_state=rng; %save state after random draw above
+%generate vector of random uniform numbers to define random/exploratory choice probabilities for each trial
+%this is only used by agents that do not use the softmax choice function (epsilon greedy and uv logistic)
+if ismember(agent, {'kalman_uv_logistic', 'fixedLR_egreedy', 'fixedLR_egreedy_grw'})
+    rng(explore_rng_seed); %draw from explore/exploit rng
+    choice_rand=rand(ntrials,1);
+end
+
+%setup random number generator for softmax function if relevant
+if ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+        'kalman_sigmavolatility', 'kalman_uv_sum', 'fixedLR_kl_softmax', ...
+        'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
+    
+    %setup a random number stream to be used by the softmax choice rule to make choices consistent during optimization
+    softmax_stream = RandStream('mt19937ar','Seed',softmax_seed);
+end 
 
 %Set up to run multiple runs for multiple ntrials
 for i = 1:ntrials    
@@ -416,7 +424,7 @@ for i = 1:ntrials
             %NB: all other models use a softmax choice rule over the v_final curve.
             p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
             %if (all(v_final==0)), v_final=rand(1, length(v_final)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
-            rts(i+1) = randsample(tvec, 1, true, p_choice(i,:));
+            rts(i+1) = randsample(softmax_stream, tvec, 1, true, p_choice(i,:));
         end
         
     end

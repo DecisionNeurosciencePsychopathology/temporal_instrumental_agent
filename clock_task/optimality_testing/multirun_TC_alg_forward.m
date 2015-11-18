@@ -1,8 +1,6 @@
 function [totcost, costs, seeds] = multirun_TC_alg_forward(params, agent, runarray)
     %use multiple runs of data to identify optimal parameters for TC model.
-    rng(agent.runseed);
     nruns=length(runarray);
-    seeds=randi([1 500], nruns, 1); %just the seed for reward outcomes
     
     rtbounds=[0 5000]; %RT space for testing
     costs=NaN(nruns, 1);
@@ -11,7 +9,7 @@ function [totcost, costs, seeds] = multirun_TC_alg_forward(params, agent, runarr
     priors.NoGo = 0;
     %execute runs in parallel
     for i = 1:nruns
-        thiscall = {params, priors, runarray(i), seeds(i,:), agent.ntrials, rtbounds};
+        thiscall = {params, priors, runarray(i), runarray(i).seeds, agent.ntrials, rtbounds};
         costs(i) = TC_Alg_forward(thiscall{:});
     end
     

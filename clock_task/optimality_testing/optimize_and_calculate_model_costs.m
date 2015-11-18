@@ -40,7 +40,9 @@ if strcmpi(whichopt, 'typical')
         for j = 1:nruns
             tmp = mastersamp.(condnames{i});
             tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
-            tmp.lookup = tmp.lookup(:, randperm(size(tmp.lookup,2))); %randomly permute columns
+            tmp.lookup = tmp.lookup(1:ntimesteps, randperm(size(tmp.lookup,2))); %randomly permute columns
+            tmp.ev = tmp.ev(1:ntimesteps);
+            tmp.sample = tmp.sample(1:ntimesteps);
             %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
             %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
             row(j) = tmp; %add to a vector of structs
@@ -67,7 +69,9 @@ elseif strcmpi(whichopt, 'sinusoid')
     
     %truncate to the number of trials for optimization
     for i = 1:length(optmat{1})
-        optmat{1}(i).lookup = optmat{1}(i).lookup(:,1:ntrials);
+        optmat{1}(i).lookup = optmat{1}(i).lookup(1:ntimesteps,1:ntrials);
+        optmat{1}(i).ev = optmat{1}(i).ev(1:ntimesteps);
+        optmat{1}(i).sample = optmat{1}(i).sample(1:ntimesteps);
     end
 elseif strcmpi(whichopt, 'sinusoidsingle')
     %test whether a single permuted sinusoid duplicated many times is stable in optimization
@@ -79,7 +83,9 @@ elseif strcmpi(whichopt, 'sinusoidsingle')
     
     %grab the first element for permutation (NB: this looks like a negative quadratic)
     sinmaster = optmat{1}(1);
-    sinmaster.lookup = sinmaster.lookup(:,1:ntrials); %truncate to the number of trials for optimization
+    sinmaster.lookup = sinmaster.lookup(1:ntimesteps,1:ntrials); %truncate to the number of trials for optimization
+    sinmaster.ev = sinmaster.ev(1:ntimesteps);
+    sinmaster.sample = sinmaster.sample(1:ntimesteps);
     
     %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
     %handle permutation outside of optimization for speed
@@ -96,12 +102,21 @@ elseif strcmpi(whichopt, 'sinusoidsingle')
     optmat{1} = row;
 end
 
+%setup random number seeds for each run of data based on a consistent starting seed
+rng(888); %an arbitrary consistent starting point for setting seeds that control various probabilistic processes within the agent script
+for i = 1:length(optmat)
+    for j = 1:length(optmat{i})
+        optmat{i}(j).seeds = randi([1 500], 1, 5); %5 random seeds between 1 and 500 per run of data
+    end
+end
+
 %copy shared optimization parameters to each agent
 for i = 1:nagents
     agents(i).nbasis = nbasis;
     agents(i).ntimesteps = ntimesteps;
     agents(i).ntrials = ntrials;
-    agents(i).runseed = 888; %seeds rngs inside runs?
+    %agents(i).runseed = 888; %seeds rngs inside runs (deprecated to speed up and maintain greater control)
+    
     %agents(i).opt_params = NaN(noptim, ncond, agents(i).k);
     %agents(i).opt_costs = NaN(noptim, ncond);
     %agents(i).opt_conds = condnames;
@@ -161,9 +176,9 @@ parfor i = 1:noptim
     
     %save interim progress
     if nagents==1
-        parsave(['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars); %single agent output
+        parsave(['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars, agents); %single agent output
     else
-        parsave(['output/optim_', whichopt, '_', num2str(i), '_all.mat'], icosts, ipars); %all agents output
+        parsave(['output/optim_', whichopt, '_', num2str(i), '_all.mat'], icosts, ipars, agents); %all agents output
     end
 end
 delete(poolobj);
