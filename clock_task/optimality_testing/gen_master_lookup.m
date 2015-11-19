@@ -49,6 +49,14 @@ prb_max=0.7;
 prb_min=0.3;
 prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
 
+%simpler version without substantial high-frequency oscillation
+% ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps);
+% ev = ev + abs(min(ev)) + 10;
+% prb = 25*cos(2*pi*(300-(1:ntimesteps)).*1/ntimesteps); %+ 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps);
+% prb_max=0.7;
+% prb_min=0.3;
+% prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
+
 %mag = mag + abs(min(mag)) + 10;
 %prb = evi./magi;
 %plot(1:ntimesteps, mot1, type="l")
@@ -72,11 +80,14 @@ for i = 1:ntimesteps
   
 end
 
+rng(102); %fix seed for pulling reward probabilities
+ntrials = 500; %maximum number of trials that could be used for testing this contingency
+
 %randomly sample 60 of the possible 500 contingencies without replacement
 keep = randsample(1:ntimesteps, 60);
 
-rng(102); %fix seed for pulling reward probabilities
-ntrials = 500;
+%for consistency with prior simulations, keep sinusoid 366 as first variant (this is roughly quad down with max at 250 and prb max at 150)
+keep(1) = 366;
 
 optmat=cell(1,1);
 for k = 1:length(keep)
@@ -85,6 +96,8 @@ for k = 1:length(keep)
     thisCont.sample = zeros(1, ntrials); %keeps track of how many times a timestep has been sampled by agent
     thisCont.lookup = zeros(ntimesteps, ntrials); %lookup table of timesteps and outcomes
     thisCont.ev = allshift(keep(k),:,1);
+    thisCont.prb = allshift(keep(k),:,2);
+    thisCont.mag = allshift(keep(k),:,3);
     
     rvec = rand(ntimesteps, ntrials);
     for t = 1:ntrials

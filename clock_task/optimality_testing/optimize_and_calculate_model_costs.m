@@ -73,10 +73,12 @@ elseif strcmpi(whichopt, 'sinusoid')
         optmat{1}(i).ev = optmat{1}(i).ev(1:ntimesteps);
         optmat{1}(i).sample = optmat{1}(i).sample(1:ntimesteps);
     end
-elseif strcmpi(whichopt, 'sinusoidsingle')
+elseif ismember(whichopt, {'sinusoidsingle', 'sinusoidsingle1run'})    
     %test whether a single permuted sinusoid duplicated many times is stable in optimization
     ncond=1; %optmat has only one element
     nruns=20; %20 runs of a single contingency
+    
+    if strcmpi(whichopt, 'sinusoidsingle1run'), nruns=1; end %only a single run
 
     fprintf('Optimizing parameters using a single sinusoid variant permuted %d times\n', nruns);
     load('sinusoid_optmat.mat');
@@ -86,6 +88,8 @@ elseif strcmpi(whichopt, 'sinusoidsingle')
     sinmaster.lookup = sinmaster.lookup(1:ntimesteps,1:ntrials); %truncate to the number of trials for optimization
     sinmaster.ev = sinmaster.ev(1:ntimesteps);
     sinmaster.sample = sinmaster.sample(1:ntimesteps);
+    sinmaster.prb = sinmaster.prb(1:ntimesteps);
+    sinmaster.mag = sinmaster.mag(1:ntimesteps);
     
     %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
     %handle permutation outside of optimization for speed
@@ -107,6 +111,7 @@ rng(888); %an arbitrary consistent starting point for setting seeds that control
 for i = 1:length(optmat)
     for j = 1:length(optmat{i})
         optmat{i}(j).seeds = randi([1 500], 1, 5); %5 random seeds between 1 and 500 per run of data
+        optmat{i}(j).firstrt = randi([1 ntimesteps], 1, 1); %set random first RT for choice rule.
     end
 end
 

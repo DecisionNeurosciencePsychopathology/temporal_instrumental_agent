@@ -348,8 +348,12 @@ for i = 1:ntrials
     if i == ntrials, break; end %do not compute i+1 choice on the final trial (invalid indexing problem)
     
     %compute hard max of value function alone (used by kalman_uv_logistic, fixedLR_egreedy, and fixedLR_egreedy_grw)
-    if sum(v_func) == 0
-        rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
+    if i == 1
+        if usestruct
+            rt_exploit = cstruct.firstrt; %use random first RT pre-computed outside of agent
+        else
+            rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
+        end
     else
         rt_exploit = find(v_func==max(v_func), 1); %only take the first max if there is are two identical peaks.
         if rt_exploit > max(tvec), rt_exploit = max(tvec); end
@@ -429,6 +433,7 @@ for i = 1:ntrials
         else
             %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
+            beta = 0.1; %horrible hack at the moment to lock in beta for all agents (but will make optimizer see no change in costs by beta)
             p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
             %if (all(v_final==0)), v_final=rand(1, length(v_final)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
             rts(i+1) = randsample(softmax_stream, tvec, 1, true, p_choice(i,:));
