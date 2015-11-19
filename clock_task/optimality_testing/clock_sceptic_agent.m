@@ -57,6 +57,13 @@ if strcmpi(agent, 'fixedLR_softmax')
     %Choice: softmax function of value to select among alternatives
     beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)
     alpha = params(3);          %learning rate (0..1)
+elseif strcmpi(agent, 'fixedLR_softmax_bfix')
+    %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
+    %Choice: softmax function of value to select among alternatives
+
+    %Same as fixedLR_softmax, but with beta fixed to 0.15
+    beta = 0.15;						     
+    alpha = params(2);          %learning rate (0..1)
 elseif strcmpi(agent, 'fixedLR_egreedy')
     %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
     %Choice: Epsilon-greedy with hard max of value for exploit and random uniform explore
@@ -220,7 +227,7 @@ if ismember(agent, {'kalman_uv_logistic', 'fixedLR_egreedy', 'fixedLR_egreedy_gr
 end
 
 %setup random number generator for softmax function if relevant
-if ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
         'kalman_sigmavolatility', 'kalman_uv_sum', 'fixedLR_kl_softmax', ...
         'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
     
@@ -282,7 +289,7 @@ for i = 1:ntrials
     delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
 
     %Variants of learning rule
-    if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
+    if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
         mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
@@ -383,7 +390,7 @@ for i = 1:ntrials
         end
         
         %compute final value function to use for choice
-        if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
+        if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum')

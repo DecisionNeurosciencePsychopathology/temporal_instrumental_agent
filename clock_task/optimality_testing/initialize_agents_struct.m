@@ -163,4 +163,14 @@ franktc.parnames = {'lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho'};
 franktc.clock_options=struct();
 a(16) = franktc;
 
+fixedLR_softmax_bfix.init_params =  [prop_spread_init, .1]; %prop_spread, alpha
+fixedLR_softmax_bfix.lower_bounds = [prop_spread_bounds(1), lr_bounds(1)];
+fixedLR_softmax_bfix.upper_bounds = [prop_spread_bounds(2), lr_bounds(2)];
+fixedLR_softmax_bfix.k = length(fixedLR_softmax_bfix.init_params); %number of free parameters
+fixedLR_softmax_bfix.name = 'fixedLR_softmax_bfix'; %add explicit name parameter since each field in struct gets pulled out separately
+fixedLR_softmax_bfix.parnames = {'prop_spread', 'alpha'};
+fixedLR_softmax_bfix.clock_options=struct();
+a(17) = fixedLR_softmax_bfix;
+
+
 end

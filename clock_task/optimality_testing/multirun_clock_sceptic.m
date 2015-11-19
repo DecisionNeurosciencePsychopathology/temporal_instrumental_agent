@@ -1,4 +1,4 @@
-function [totcost, costs, seeds] = multirun_clock_sceptic(params, agent, runarray)
+function [totcost, costs] = multirun_clock_sceptic(params, agent, runarray)
 %use multiple runs of data to identify optimal parameters for sceptic agent
 nruns = length(runarray);
 costs=NaN(nruns, 1);
