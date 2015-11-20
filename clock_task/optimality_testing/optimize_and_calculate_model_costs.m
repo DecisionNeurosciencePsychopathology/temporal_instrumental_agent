@@ -8,7 +8,7 @@ agents = initialize_agents_struct;
 %agentnames = fieldnames(agents);
 %nagents = length(agentnames);
 nagents = length(agents);
-noptim = 80; %optimize parameters 40x
+noptim = 120; %optimize parameters 120x
 ncosts = 1000;
 ntrials = 100;
 nbasis = 24;
@@ -19,6 +19,14 @@ addpath('../');
 %two current approaches: either 'typical' (IEV, DEV, QUADUP, etc.) or 'sinusoid' (phase-shifted random sinusoid)
 whichopt=getenv('whichopt');
 if strcmpi(whichopt, ''), whichopt='sinusoid'; end
+
+%whether to fix the softmax beta during optimization (and if so, what value)
+fixbeta=getenv('fixbeta');
+if strcmpi(fixbeta, '')
+    fixbeta=0;
+else
+    fixbeta=str2double(fixbeta);
+end
 
 if strcmpi(whichopt, 'typical')
     fprintf('Optimizing parameters using the typical contingencies (IEV, DEV, etc., plus ALL)\n');
@@ -120,15 +128,21 @@ for i = 1:nagents
     agents(i).nbasis = nbasis;
     agents(i).ntimesteps = ntimesteps;
     agents(i).ntrials = ntrials;
-    %agents(i).runseed = 888; %seeds rngs inside runs (deprecated to speed up and maintain greater control)
     
-    %agents(i).opt_params = NaN(noptim, ncond, agents(i).k);
-    %agents(i).opt_costs = NaN(noptim, ncond);
-    %agents(i).opt_conds = condnames;
-    
-    %agents.(agentnames{i}).opt_params = NaN(noptim, ncond, agents.(agentnames{i}).k);
-    %agents.(agentnames{i}).opt_costs = NaN(noptim, ncond);
-    %agents.(agentnames{i}).opt_conds = condnames;
+    %handle fixed beta by removing it from agent structure when 
+    if fixbeta > 0
+        if any(ismember(agents(i).parnames, 'beta'))
+            bpos = ismember(agents(i).parnames, 'beta');
+            agents(i).init_params = agents(i).init_params(~bpos);
+            agents(i).lower_bounds = agents(i).lower_bounds(~bpos);
+            agents(i).upper_bounds = agents(i).upper_bounds(~bpos);
+            agents(i).k = agents(i).k - 1;
+            agents(i).parnames = agents(i).parnames(~bpos);
+            agents(i).fixbeta = fixbeta;
+        end
+    else
+        agents(i).fixbeta=0;
+    end
 end
 
 clear mastersamp sinmaster tmp row allcond i j;
@@ -164,6 +178,7 @@ end
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
 poolobj=parpool(pool,ncpus);
+ifiles=cell(1, noptim);
 parfor i = 1:noptim
 %for i = 1:noptim
 
@@ -181,10 +196,12 @@ parfor i = 1:noptim
     
     %save interim progress
     if nagents==1
-        parsave(['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'], icosts, ipars, agents); %single agent output
+        ifiles{i} = ['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'];
     else
-        parsave(['output/optim_', whichopt, '_', num2str(i), '_all.mat'], icosts, ipars, agents); %all agents output
+        ifiles{i} = ['output/optim_', whichopt, '_', num2str(i), '_all.mat']; %all agents output
     end
+    
+    parsave(ifiles{i}, icosts, ipars, agents); %single agent output
 end
 delete(poolobj);
 
@@ -194,6 +211,10 @@ else
     %all agents output
     save('output/optimize_output_', whichopt, '_all.mat', 'costs', 'pars', 'agents', 'optmat');
 end
+
+%if we have made it here, then all optimizations have completed successfully, so cleanup the interim files
+ifiles = ifiles(~cellfun('isempty', ifiles)); %remove any empty elements
+delete(ifiles{:}) %delete all intermediate files
 
 %%beautiful, but impossible in matlab. leaving here to cry over
 

@@ -31,14 +31,11 @@ if nargin < 6, nbasis = 24; end
 if nargin < 7, ntimesteps=500; end
 if nargin < 8, reversal = 0; end %No reversal by default
 
-omega=0;                    %if not a PE-enhanced process noise model, remove this influence
-gamma=0;                    %zero gamma and phi for all models except kalman_sigmavolatility
-phi=0;
-tradeoff=0;                 %parameter only applies to kalman_uv_logistic
-prop_spread = params(1);    %proportion of discrete interval over which to spread reward (SD of Gaussian) (0..1)
+%load relevant parameters for this agent into the p struct
+[p, agent] = get_sceptic_parameters(pvec, agent); %if agent is a structure on input, just the agent name string is returned at output
 
 %define radial basis
-[~, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
+[~, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, p.prop_spread);
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state;
@@ -50,102 +47,22 @@ grw_step_rng_seed=rngseeds(3); %used by GRW agent to sample random normal number
 randrt_seed=rngseeds(4); %used by epsilon greedy agent with random uniform exploration
 softmax_seed=rngseeds(5); %used by softmax agent for weighted sampling of softmax function using randsample
 
-%populate free parameters for the requested agent/model
-%note: Kalman filter does not have a free learning rate parameter.
-if strcmpi(agent, 'fixedLR_softmax')
-    %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
-    %Choice: softmax function of value to select among alternatives
-    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)
-    alpha = params(3);          %learning rate (0..1)
-elseif strcmpi(agent, 'fixedLR_softmax_bfix')
-    %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
-    %Choice: softmax function of value to select among alternatives
-
-    %Same as fixedLR_softmax, but with beta fixed to 0.15
-    beta = 0.15;						     
-    alpha = params(2);          %learning rate (0..1)
-elseif strcmpi(agent, 'fixedLR_egreedy')
-    %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
-    %Choice: Epsilon-greedy with hard max of value for exploit and random uniform explore
-    epsilon = params(2);        %proportion of exploratory choices (0..1)
-    alpha = params(3);          %learning rate (0..1)
-    
+%define vector of random uniform exploratory choices for egreedy agent
+if strcmpi(agent, 'fixedLR_egreedy')
     rng(randrt_seed);
     randuniform_rts_explore = randi([min(tvec), max(tvec)], ntrials, 1); %vector of random uniform explore RTs
 elseif strcmpi(agent, 'fixedLR_egreedy_grw')
-    %Learning: Bush-Mosteller fixed learning rate applied to PE+ and PE- according to radial basis; no representation of uncertainty
-    %Choice: Epsilon-greedy with hard max of value for exploit and GRW exploration
-    epsilon = params(2);                %proportion of exploratory choices (0..1)
-    alpha = params(3);                  %learning rate (0..1)
-    sig_grw = params(4)*range(tvec);    %SD of GRW (0..1 interval proportion) rescaled wrt the observed interval
-    
-    %determine whether to strategic explore versus GRW (not currently used)
-    %rng(exptype_rng_seed);
-    %explore_type_rand=rand(ntrials,1);
-    %exptype_rng_state=rng; %no need to save if this is not re-used.
-    
     rng(grw_step_rng_seed); %seed for GRW step sizes
-    grw_step=round(sig_grw*randn(ntrials,1)); %compute vector of step sizes for GRW
-elseif strcmpi(agent, 'asymfixedLR_softmax')
-    %Learning: Bush-Mosteller separate fixed learning rates for PE+ and PE- according to radial basis; no representation of uncertainty
-    %Choice: softmax function of value to select among alternatives
-    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)
-    alpha = params(3);          %learning rate for PE+ (0..1)
-    rho = params(4);            %learning rate for PE- (0..1)
-elseif strcmpi(agent, 'kalman_softmax')
-    %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
-    %Choice: softmax function of value to select among alternatives (no uncertainty)
-    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
-elseif strcmpi(agent, 'kalman_processnoise')
-    %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
-    %Choice: softmax function of value to select among alternatives
-    %Additional: PEs boost process noise (Q), effectively enhancing learning rate when surprising events occur.
-    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
-    omega = params(3);          %scaling of process noise Q by PE.
-elseif strcmpi(agent, 'kalman_sigmavolatility')
-    %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); no representation of uncertainty
-    %Choice: softmax function of value to select among alternatives
-    %Additional: Prediction errors increase uncertainty (sigma) by a smooth function of PEs according to a second learning rate, phi.
-    beta = params(2);           %temperature parameter scaling preference among alternatives in softmax (.001..2)  
-    phi = params(3);            %scales additional noise added to sigma update according to smooth function of PEs.
-    gamma = params(4);          %decay factor for volatility (0..1)
-elseif strcmpi(agent, 'kalman_uv_logistic')
-    %old logistic explore/exploit choice rule
-    tradeoff = params(2); %point at which agent is indifferent between explore and exploit
-    discrim = params(3); %discrimination/slope of logistic function for explore/exploit sampling (0.01..100)
-elseif strcmpi(agent, 'kalman_uv_sum')
-    beta = params(2);
-    tau = params(3); % tau from Greek ???? -- value, price, cf ???? as trophys in Homer
-elseif strcmpi(agent, 'fixedLR_kl_softmax')
-    beta = params(2);
-    alpha = params(3);   %learning rate for value
-    kappa = params(4);   %PE+ tilt scaling parameter
-    lambda = params(5);  %PE- tilt scaling parameter 
-elseif strcmpi(agent, 'kalman_kl_softmax')
-    beta = params(2);
-    kappa = params(3);
-    lambda = params(4);
-elseif strcmpi(agent, 'kalman_processnoise_kl')
-    beta = params(2);
-    omega = params(3);  %scaling of process noise by PE.
-    kappa = params(4);  %PE+ tilt scaling parameter
-    lambda = params(5); %PE- tilt scaling parameter
-elseif strcmpi(agent, 'kalman_uv_sum_kl')
-    beta = params(2);
-    tau = params(3);
-    kappa = params(4);
-    lambda = params(5);
+    grw_step=round(range(tvec) * p.sig_grw * randn(ntrials,1)); %compute vector of step sizes for GRW
 end
-
-if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
 
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
 %it can also be a struct, in which case this defines the lookup table for sequential samples from a contingency of interest.
-usestruct=0;
+usecstruct=0;
 if isstruct(cond)
     cstruct = cond;
     cond = cstruct.name;
-    usestruct=1;
+    usecstruct=1;
 end
 
 %add Gaussian noise with sigma = 1% of the range of the time interval to rt_explore
@@ -197,7 +114,7 @@ z_i(1) = 0;        %no initial expected volatility.
 %just use the variance of the returns (ala Frank). But for the generative agent, this is not known up front -- so sample
 %from the chosen contingency for each timestep as a guess.
 
-if usestruct
+if usecstruct
     %taking std over all timesteps and possible draws here. This is in contrast to approach below where you get one
     %sample from the contingency as drawn by RewFunction. This is much faster than arrayfun below.
     sigma_noise = repmat(std(cstruct.lookup(:))^2, 1, nbasis); 
@@ -208,13 +125,13 @@ else
 end
 
 %Define indifference point between explore and exploit (p = 0.5) as proportion reduction in variance from initial value
-u_threshold = (1-tradeoff) * sigma_noise(1);
+u_threshold = (1-p.tradeoff) * sigma_noise(1);
 
 %As in Frank, initialize estimate of std of each Gaussian to the noise of returns on a sample of the whole contingency.
 %This leads to an effective learning rate of 0.5 since k = sigma_ij / sigma_ij + sigma_noise
 sigma_ij(1,:) = sigma_noise;
 
-%fprintf('running agent with sigs: %.3f, tradeoff: %.3f and rngseeds: %s \n', sig_spread, tradeoff, num2str(rngseeds));
+%fprintf('running agent with sigs: %.3f, tradeoff: %.3f and rngseeds: %s \n', sig_spread, p.tradeoff, num2str(rngseeds));
 
 %rng calls are slow according to profiler
 %pull a vector of random numbers in advance of the trial loop and pull ith element
@@ -227,7 +144,7 @@ if ismember(agent, {'kalman_uv_logistic', 'fixedLR_egreedy', 'fixedLR_egreedy_gr
 end
 
 %setup random number generator for softmax function if relevant
-if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+if ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
         'kalman_sigmavolatility', 'kalman_uv_sum', 'fixedLR_kl_softmax', ...
         'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
     
@@ -275,7 +192,7 @@ for i = 1:ntrials
 %         end        
 %     end
 
-    if usestruct
+    if usecstruct
         [rew_i(i), ev_i(i), cstruct] = getNextRew(rts(i), cstruct);
         
         %The code below is slow due to rand/rng usage and computing functions, rather than struct pre-compute approach.
@@ -289,14 +206,14 @@ for i = 1:ntrials
     delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
 
     %Variants of learning rule
-    if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
-        mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
+    if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
+        mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
         if (max(delta_ij(i,:))) > 0
-            mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:); %learn from PE+
+            mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:); %learn from PE+
         else
-            mu_ij(i+1,:) = mu_ij(i,:) + rho.*delta_ij(i,:); %learn from PE-
+            mu_ij(i+1,:) = mu_ij(i,:) + p.rho.*delta_ij(i,:); %learn from PE-
         end
     else
         %Kalman variants of learning and uncertainty
@@ -307,7 +224,7 @@ for i = 1:ntrials
         
         %MH 8Sep2015: At the moment, we assume zero process noise in the estimated posterior error covariances, sigma_ij.
         %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.
-        Q_ij(i,:) = omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
+        Q_ij(i,:) = p.omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
         
         %Compute the Kalman gains for the current trial (potentially adding process noise)
         k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);       
@@ -320,7 +237,7 @@ for i = 1:ntrials
         mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
         
         %Track smooth estimate of volatility according to unsigned PE history
-        z_i(i+1) = gamma.*z_i(i) + phi.*abs(sum(delta_ij(i,:)));
+        z_i(i+1) = p.gamma.*z_i(i) + p.phi.*abs(sum(delta_ij(i,:)));
         
         %Uncertainty is a function of Kalman uncertainties.
         u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;        
@@ -349,7 +266,7 @@ for i = 1:ntrials
     
     %compute hard max of value function alone (used by kalman_uv_logistic, fixedLR_egreedy, and fixedLR_egreedy_grw)
     if i == 1
-        if usestruct
+        if usecstruct
             rt_exploit = cstruct.firstrt; %use random first RT pre-computed outside of agent
         else
             rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
@@ -371,7 +288,7 @@ for i = 1:ntrials
             rt_explore = find(u_func==max(u_func), 1); %return position of first max (and add gaussian noise?)
         end
 
-        sigmoid = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with tradeoff as difficulty (location) parameter
+        sigmoid = 1/(1+exp(-p.discrim.*(u - u_threshold))); %Rasch model with tradeoff as difficulty (location) parameter
         
         if choice_rand(i) < sigmoid
             %explore according to hardmax u
@@ -387,14 +304,14 @@ for i = 1:ntrials
             %compute a "tilt" vector that linearly scales with timepoint according to PE size * parameter
             %use different parameters, kappa and lambda, to handle PE+ and PE-, respectively
             if max(delta_ij(i,:)) > 0
-                discount = kappa*(max(delta_ij(i,:)))*tvec; %% also add valence-dependent parameters: kappa for PE+, lambda for PE-
+                discount = p.kappa*(max(delta_ij(i,:)))*tvec; %% also add valence-dependent parameters: kappa for PE+, lambda for PE-
             else
-                discount = lambda*(min(delta_ij(i,:)))*tvec;
+                discount = p.lambda*(min(delta_ij(i,:)))*tvec;
             end
         end
         
         %compute final value function to use for choice
-        if ismember(agent, {'fixedLR_softmax', 'fixedLR_softmax_bfix', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
+        if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum')
@@ -415,7 +332,7 @@ for i = 1:ntrials
         
         %compute choice rule according to agent
         if ismember(agent, {'fixedLR_egreedy', 'fixedLR_egreedy_grw'})
-            if choice_rand(i) < epsilon %explore
+            if choice_rand(i) < p.epsilon %explore
                 if strcmpi(agent, 'fixedLR_egreedy')
                     rts(i+1) = randuniform_rts_explore(i);
                 elseif strcmpi(agent, 'fixedLR_egreedy_grw')
@@ -433,8 +350,7 @@ for i = 1:ntrials
         else
             %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
-            beta = 0.1; %horrible hack at the moment to lock in beta for all agents (but will make optimizer see no change in costs by beta)
-            p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
+            p_choice(i,:) = (exp((v_final-max(v_final))/p.beta)) / (sum(exp((v_final-max(v_final))/p.beta))); %Divide by temperature
             %if (all(v_final==0)), v_final=rand(1, length(v_final)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
             rts(i+1) = randsample(softmax_stream, tvec, 1, true, p_choice(i,:));
         end

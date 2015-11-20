@@ -7,10 +7,10 @@ clear a;
 % unless a is the parfor loop counter. This is not the best way to parallelize (since there are only 4-6 agents).
 % revert to single struct and use fieldnames.
 
-prop_spread_init=.20;           %tends to be pretty reasonable default for temporal generalization
+prop_spread_init=.10;           %tends to be pretty reasonable default for temporal generalization
 beta_init=.1;                   %default for temperature parameter.
 lr_bounds=[.001 1];             %min/max values for all fixed learning rate parameters
-prop_spread_bounds=[.001, .7];  %min/max values for prop_spread (gaussian temporal generalization)
+prop_spread_bounds=[.01, .5];  %min/max values for prop_spread (gaussian temporal generalization)
 beta_bounds=[.001, 2];
 omega_bounds=[0 100];
 kl_bounds=[0 5];
@@ -162,15 +162,6 @@ franktc.name = 'franktc';
 franktc.parnames = {'lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho'};
 franktc.clock_options=struct();
 a(16) = franktc;
-
-fixedLR_softmax_bfix.init_params =  [prop_spread_init, .1]; %prop_spread, alpha
-fixedLR_softmax_bfix.lower_bounds = [prop_spread_bounds(1), lr_bounds(1)];
-fixedLR_softmax_bfix.upper_bounds = [prop_spread_bounds(2), lr_bounds(2)];
-fixedLR_softmax_bfix.k = length(fixedLR_softmax_bfix.init_params); %number of free parameters
-fixedLR_softmax_bfix.name = 'fixedLR_softmax_bfix'; %add explicit name parameter since each field in struct gets pulled out separately
-fixedLR_softmax_bfix.parnames = {'prop_spread', 'alpha'};
-fixedLR_softmax_bfix.clock_options=struct();
-a(17) = fixedLR_softmax_bfix;
 
 
 end

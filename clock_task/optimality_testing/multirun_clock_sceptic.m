@@ -6,7 +6,7 @@ costs=NaN(nruns, 1);
 reversal = 0;
 for i = 1:nruns
     %args{1,9}.lookup = args{1,9}.lookup(:,vperm(i,:)); %Permute
-    thiscall={params, agent.name, runarray(i).seeds, runarray(i), agent.ntrials, agent.nbasis, agent.ntimesteps, reversal};
+    thiscall={params, agent, runarray(i).seeds, runarray(i), agent.ntrials, agent.nbasis, agent.ntimesteps, reversal};
     costs(i) = clock_sceptic_agent(thiscall{:});
 end
 
