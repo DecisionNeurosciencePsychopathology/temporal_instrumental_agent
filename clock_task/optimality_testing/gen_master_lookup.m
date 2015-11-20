@@ -9,7 +9,7 @@
 %of outcomes. This eliminates this source of variability in the costs.
 
 ntimesteps = 500; %in 10ms bins (1-5s)
-conds = {'IEV' 'DEV' 'QUADUP' 'IEVLINPROB' 'DEVLINPROB'};
+conds = {'IEV' 'DEV' 'QUADUP' 'QUADDOWN', 'IEVLINPROB' 'DEVLINPROB'};
 ntrials = 500; %number of draws for each RT where each draw becomes a column in the lookup matrix
 
 %set up seeds
@@ -26,7 +26,7 @@ for i = 1:length(conds)
     mastersamp.(conds{i}).ev = zeros(1,ntrials);
     
     for j = 1:ntimesteps
-        [~, mastersamp.(conds{i}).ev(j)] = RewFunction(j*10, conds{i}, 0, 5000);
+        [~, mastersamp.(conds{i}).ev(j), mastersamp.(conds{i}).prb(j), mastersamp.(conds{i}).mag(j)] = RewFunction(j*10, conds{i}, 0, 5000);
         for k = 1:ntrials
             [mastersamp.(conds{i}).lookup(j,k)] = RewFunction(j*10, conds{i}, 0, 5000);
         end

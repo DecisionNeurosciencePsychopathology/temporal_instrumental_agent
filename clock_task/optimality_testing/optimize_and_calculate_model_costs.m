@@ -1,15 +1,10 @@
-%Script to optimize parameters of RL models and calculate costs over a
-%specified number of runs
+%Script to optimize parameters of clock RL models over a specified number of runs
 
-%%
-%basic structure
-%cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
 agents = initialize_agents_struct;
 %agentnames = fieldnames(agents);
 %nagents = length(agentnames);
 nagents = length(agents);
 noptim = 120; %optimize parameters 120x
-ncosts = 1000;
 ntrials = 100;
 nbasis = 24;
 ntimesteps = 500;
@@ -22,18 +17,40 @@ if strcmpi(whichopt, ''), whichopt='sinusoid'; end
 
 %whether to fix the softmax beta during optimization (and if so, what value)
 fixbeta=getenv('fixbeta');
-if strcmpi(fixbeta, '')
-    fixbeta=0;
+if strcmpi(fixbeta, ''), fixbeta=0;
+else fixbeta=str2double(fixbeta); end
+
+%number of permuted runs per condition to test (passed to multirun optimizer)
+runspercond=getenv('runspercond');
+if strcmpi(runspercond, ''), runspercond=10; %default to 10 runs per condition
+else runspercond=str2double(runspercond); end
+
+ncpus=getenv('matlab_cpus');
+if strcmpi(ncpus, '')
+    ncpus=40;
+    fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
 else
-    fixbeta=str2double(fixbeta);
+    ncpus=str2double(ncpus);
 end
 
+%to speed up optimization, have multiple matlab instances that each handle processing for only one agent
+whichagent=getenv('which_agent');
+if ~strcmpi(whichagent, '')
+    pool=['local', whichagent]; %each instance needs its own parpool
+    whichagent=str2double(whichagent);
+    nagents=1;
+    agents=agents(whichagent); %subset only this agent
+    system(['touch output/', agents.name, '_running']);
+else
+    pool='local';
+end
+
+rng(621); %an arbitrary consistent starting point for random permutation of contingencies below
 if strcmpi(whichopt, 'typical')
     fprintf('Optimizing parameters using the typical contingencies (IEV, DEV, etc., plus ALL)\n');
     load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
     condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
     ncond=length(condnames); %how many conditions/contingencies
-    nruns=10; %10 runs per contingency
 
     %truncate mastersamp to the number of trials used here to save RAM
     for i = 1:length(condnames)
@@ -45,7 +62,7 @@ if strcmpi(whichopt, 'typical')
     optmat = cell(length(condnames),1);
     for i = 1:ncond
         clear row; %need variable to be deleted for array of structs below to work
-        for j = 1:nruns
+        for j = 1:runspercond
             tmp = mastersamp.(condnames{i});
             tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
             tmp.lookup = tmp.lookup(1:ntimesteps, randperm(size(tmp.lookup,2))); %randomly permute columns
@@ -67,6 +84,28 @@ if strcmpi(whichopt, 'typical')
     %optmat is now a cell vector where each element is an vector of structs for the lookups to be used for each run.
     %the final element contains all of the preceding conditions. For the five contingencies and 10 runs, this amounts
     %to a 58MB object that would need to be passed along to parpool workers.
+elseif ismember(whichopt, {'IEV', 'DEV', 'IEVLINPROB', 'DEVLINPROB', 'QUADUP', 'QUADDOWN'})
+    fprintf('Optimizing parameters using a single contingency %s with %d runs\n', whichopt, runspercond);
+    load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
+    condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
+
+    %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
+    %handle permutation outside of optimization for speed
+    optmat = cell(1,1);
+    mastersamp.(whichopt).lookup = mastersamp.(whichopt).lookup(:,1:ntrials); %truncate to number of trials
+    
+    clear row; %need variable to be deleted for array of structs below to work
+    for j = 1:runspercond
+        tmp = mastersamp.(whichopt);
+        tmp.name = whichopt; %for keeping track of what contingency this is (esp. when they mix in ALL)
+        tmp.lookup = tmp.lookup(1:ntimesteps, randperm(size(tmp.lookup,2))); %randomly permute columns
+        tmp.ev = tmp.ev(1:ntimesteps);
+        tmp.sample = tmp.sample(1:ntimesteps);
+        %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
+        %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
+        row(j) = tmp; %add to a vector of structs
+    end
+    optmat{1} = row;
 elseif strcmpi(whichopt, 'sinusoid')
     fprintf('Optimizing parameters using a set of phase-shifted random sinusoids\n');
     
@@ -81,17 +120,14 @@ elseif strcmpi(whichopt, 'sinusoid')
         optmat{1}(i).ev = optmat{1}(i).ev(1:ntimesteps);
         optmat{1}(i).sample = optmat{1}(i).sample(1:ntimesteps);
     end
-elseif ismember(whichopt, {'sinusoidsingle', 'sinusoidsingle1run'})    
+elseif strcmpi(whichopt, 'sinusoidsingle')
     %test whether a single permuted sinusoid duplicated many times is stable in optimization
     ncond=1; %optmat has only one element
-    nruns=20; %20 runs of a single contingency
     
-    if strcmpi(whichopt, 'sinusoidsingle1run'), nruns=1; end %only a single run
-
-    fprintf('Optimizing parameters using a single sinusoid variant permuted %d times\n', nruns);
+    fprintf('Optimizing parameters using a single sinusoid variant permuted %d times\n', runspercond);
     load('sinusoid_optmat.mat');
     
-    %grab the first element for permutation (NB: this looks like a negative quadratic)
+    %grab the first element for permutation (NB: this looks roughly like a negative quadratic)
     sinmaster = optmat{1}(1);
     sinmaster.lookup = sinmaster.lookup(1:ntimesteps,1:ntrials); %truncate to the number of trials for optimization
     sinmaster.ev = sinmaster.ev(1:ntimesteps);
@@ -104,7 +140,7 @@ elseif ismember(whichopt, {'sinusoidsingle', 'sinusoidsingle1run'})
     optmat = cell(1,1);
     
     clear row; %need variable to be deleted for array of structs below to work
-    for j = 1:nruns
+    for j = 1:runspercond
         tmp = sinmaster;
         tmp.lookup = tmp.lookup(:, randperm(size(tmp.lookup,2))); %randomly permute columns
         %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
@@ -151,25 +187,6 @@ clear mastersamp sinmaster tmp row allcond i j;
 %the first-level index must be a variant of the parfor counter (i).
 %this essentially kills the possibility of loop unrolling because i is never used directly as a first-level index!
 
-ncpus=getenv('matlab_cpus');
-if strcmpi(ncpus, '')
-    ncpus=40;
-    fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
-else
-    ncpus=str2double(ncpus);
-end
-
-%to speed up optimization, have multiple matlab instances that each handle processing for only one agent
-whichagent=getenv('which_agent');
-if ~strcmpi(whichagent, '')
-    pool=['local', whichagent]; %each instance needs its own parpool
-    whichagent=str2double(whichagent);
-    nagents=1;
-    agents=agents(whichagent); %subset only this agent
-    system(['touch output/', agents.name, '_running']);
-else
-    pool='local';
-end
 
 %so, it seems that there are two issues here: 1) does the optimizer obtain the same parameters for the same input
 % and 2) are optimal parameters stable for slightly different reinforcement histories?

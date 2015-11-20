@@ -1,10 +1,14 @@
 cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output';
 
-uvsum = load('optimize_output_kalman_uv_sum.mat');
+%uvsum = load('optimize_output_kalman_uv_sum.mat');
 
-pars = median(cell2mat(uvsum.pars(:,1,6))); %median of each parameter over optimization values
+%uvsum = load('optimize_output_sinusoidsingle_kalman_uv_sum');
+uvsum = load('optimize_output_sinusoidsingle_fixedLR_softmax_bfix.mat');
+%pars = median(cell2mat(uvsum.pars(:,1,6))); %median of each parameter over optimization values
+pars = median(cell2mat(uvsum.pars)); %median of each parameter over optimization values
 
-IEVmaster = uvsum.optmat{2}(1); %first contingency is IEV
+%IEVmaster = uvsum.optmat{2}(1); %first contingency is IEV
+IEVmaster = uvsum.optmat{1}(1); %first contingency is IEV
 
 a = uvsum.agents; %agent used for these parameters
 
@@ -14,8 +18,14 @@ costs=NaN(nreps, 1);
 v_it=NaN(nreps, a.ntrials, a.ntimesteps);
 rts = NaN(nreps, a.ntrials);
 
+parmat = cell2mat(uvsum.pars);
+hist(parmat(:,2)) %prop srprea
+hist(uvsum.costs)
+
+%pars=[.01, .01, .95];
+
 for p = 1:nreps
-    seeds = randi([1 500], 1, 4);
+    seeds = randi([1 500], 1, 5);
     permIEV = IEVmaster;
     permIEV.lookup = permIEV.lookup(:, randperm(size(permIEV.lookup,2))); %randomly permute columns
     
@@ -23,7 +33,15 @@ for p = 1:nreps
 
 end
 
+plot(IEVmaster.ev)
 plot(rts')
+for i=1:100
+    plot(rts(i,:))
+    axis([1 100 1 500]);
+    pause(0.2)
+end
+
+plot(rts(10,:))
 histogram(mean(rts'))
 
 %%
