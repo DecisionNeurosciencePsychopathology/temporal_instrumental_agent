@@ -17,7 +17,11 @@ if isstruct(agent)
     astruct=agent;
     agent=astruct.name;
     if isfield(astruct, 'fixbeta'), fixbeta=astruct.fixbeta; end %use fixed beta from agent if specified
-    p.prop_spread = params(strcmpi(astruct.parnames, 'prop_spread'));
+    if isfield(astruct, 'fixps') && astruct.fixps > 0
+        p.prop_spread=astruct.fixps;
+    else
+        p.prop_spread = params(strcmpi(astruct.parnames, 'prop_spread'));
+    end
 else
     %if not using agent structure, always assume prop spread is first parameter
     p.prop_spread = params(1);      %proportion of discrete interval over which to spread reward (SD of Gaussian) (0..1)

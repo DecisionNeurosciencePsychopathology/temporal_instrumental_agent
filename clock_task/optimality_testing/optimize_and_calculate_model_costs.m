@@ -20,6 +20,11 @@ fixbeta=getenv('fixbeta');
 if strcmpi(fixbeta, ''), fixbeta=0;
 else fixbeta=str2double(fixbeta); end
 
+%whether to fix the prop_spread beta during optimization (and if so, what value)
+fixps=getenv('fixps');
+if strcmpi(fixps, ''), fixps=0;
+else fixps=str2double(fixps); end
+
 %number of permuted runs per condition to test (passed to multirun optimizer)
 runspercond=getenv('runspercond');
 if strcmpi(runspercond, ''), runspercond=10; %default to 10 runs per condition
@@ -88,6 +93,7 @@ elseif ismember(whichopt, {'IEV', 'DEV', 'IEVLINPROB', 'DEVLINPROB', 'QUADUP', '
     fprintf('Optimizing parameters using a single contingency %s with %d runs\n', whichopt, runspercond);
     load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
     condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup
+    ncond=1; %only a single condition being optimized
 
     %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
     %handle permutation outside of optimization for speed
@@ -165,7 +171,7 @@ for i = 1:nagents
     agents(i).ntimesteps = ntimesteps;
     agents(i).ntrials = ntrials;
     
-    %handle fixed beta by removing it from agent structure when 
+    %handle fixed beta by removing it from agent structure when beta is a relevant parameter
     if fixbeta > 0
         if any(ismember(agents(i).parnames, 'beta'))
             bpos = ismember(agents(i).parnames, 'beta');
@@ -179,6 +185,21 @@ for i = 1:nagents
     else
         agents(i).fixbeta=0;
     end
+    
+    %handle fixed prop_spread by removing it from agent structure
+    if fixps > 0
+        if any(ismember(agents(i).parnames, 'prop_spread'))
+            pspos = ismember(agents(i).parnames, 'prop_spread');
+            agents(i).init_params = agents(i).init_params(~pspos);
+            agents(i).lower_bounds = agents(i).lower_bounds(~pspos);
+            agents(i).upper_bounds = agents(i).upper_bounds(~pspos);
+            agents(i).k = agents(i).k - 1;
+            agents(i).parnames = agents(i).parnames(~pspos);
+            agents(i).fixps = fixps;
+        end
+    else
+        agents(i).fixps=0;
+    end
 end
 
 clear mastersamp sinmaster tmp row allcond i j;
@@ -187,10 +208,15 @@ clear mastersamp sinmaster tmp row allcond i j;
 %the first-level index must be a variant of the parfor counter (i).
 %this essentially kills the possibility of loop unrolling because i is never used directly as a first-level index!
 
-
 %so, it seems that there are two issues here: 1) does the optimizer obtain the same parameters for the same input
 % and 2) are optimal parameters stable for slightly different reinforcement histories?
 % The first question is how this is setup. The second would require permuting the optmat within each replication.
+
+if fixbeta > 0, betastr=['_beta' num2str(fixbeta)];
+else betastr=''; end
+
+if fixps > 0, psstr=['_ps' num2str(fixps)];
+else psstr=''; end
 
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
@@ -213,9 +239,9 @@ parfor i = 1:noptim
     
     %save interim progress
     if nagents==1
-        ifiles{i} = ['output/optim_', whichopt, '_', num2str(i), '_', agents(1).name, '.mat'];
+        ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_', agents(1).name, '.mat'];
     else
-        ifiles{i} = ['output/optim_', whichopt, '_', num2str(i), '_all.mat']; %all agents output
+        ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_all.mat']; %all agents output
     end
     
     parsave(ifiles{i}, icosts, ipars, agents); %single agent output
@@ -223,10 +249,10 @@ end
 delete(poolobj);
 
 if nagents==1
-    save(['output/optimize_output_', whichopt, '_', agents(1).name, '.mat'], 'costs', 'pars', 'agents', 'optmat');
+    save(['output/optimize_output_', whichopt, betastr, psstr, '_', agents(1).name, '.mat'], 'costs', 'pars', 'agents', 'optmat');
 else
     %all agents output
-    save('output/optimize_output_', whichopt, '_all.mat', 'costs', 'pars', 'agents', 'optmat');
+    save(['output/optimize_output_', whichopt, betastr, psstr, '_all.mat'], 'costs', 'pars', 'agents', 'optmat');
 end
 
 %if we have made it here, then all optimizations have completed successfully, so cleanup the interim files

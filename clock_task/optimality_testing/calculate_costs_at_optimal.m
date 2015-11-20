@@ -3,7 +3,8 @@ cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing
 %uvsum = load('optimize_output_kalman_uv_sum.mat');
 
 %uvsum = load('optimize_output_sinusoidsingle_kalman_uv_sum');
-uvsum = load('optimize_output_sinusoidsingle_fixedLR_softmax_bfix.mat');
+%uvsum = load('optimize_output_sinusoidsingle_fixedLR_softmax_bfix.mat');
+uvsum = load('optimize_output_sinusoidsingle_fixedLR_softmax_1run_freebeta.mat');
 %pars = median(cell2mat(uvsum.pars(:,1,6))); %median of each parameter over optimization values
 pars = median(cell2mat(uvsum.pars)); %median of each parameter over optimization values
 
@@ -19,7 +20,11 @@ v_it=NaN(nreps, a.ntrials, a.ntimesteps);
 rts = NaN(nreps, a.ntrials);
 
 parmat = cell2mat(uvsum.pars);
-hist(parmat(:,2)) %prop srprea
+hist(parmat(:,1)) %prop spread
+hist(parmat(:,2)) %beta
+hist(parmat(:,3)) %alpha
+
+
 hist(uvsum.costs)
 
 %pars=[.01, .01, .95];
@@ -29,7 +34,7 @@ for p = 1:nreps
     permIEV = IEVmaster;
     permIEV.lookup = permIEV.lookup(:, randperm(size(permIEV.lookup,2))); %randomly permute columns
     
-    [costs(p), v_it(p,:,:), rts(p,:), ret(p)] = clock_sceptic_agent(pars, a.name, seeds, permIEV, a.ntrials, a.nbasis, a.ntimesteps);
+    [costs(p), v_it(p,:,:), rts(p,:), ret(p)] = clock_sceptic_agent(pars, a, seeds, permIEV, a.ntrials, a.nbasis, a.ntimesteps);
 
 end
 

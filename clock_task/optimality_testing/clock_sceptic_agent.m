@@ -32,7 +32,7 @@ if nargin < 7, ntimesteps=500; end
 if nargin < 8, reversal = 0; end %No reversal by default
 
 %load relevant parameters for this agent into the p struct
-[p, agent] = get_sceptic_parameters(pvec, agent); %if agent is a structure on input, just the agent name string is returned at output
+[p, agent] = get_sceptic_parameters(params, agent); %if agent is a structure on input, just the agent name string is returned at output
 
 %define radial basis
 [~, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, p.prop_spread);
@@ -73,7 +73,12 @@ end
 rts = nan(1,ntrials);
 
 %Have initial rts be constant for cost function
-rts(1) = ceil(.5*ntimesteps);
+if usecstruct
+    rts(1) = cstruct.firstrt; %use random first RT pre-computed outside of agent
+else
+    rts(1) = ceil(.5*ntimesteps);
+end
+
 
 %setup matrices for tracking learning
 % i = trial
@@ -272,7 +277,7 @@ for i = 1:ntrials
             rt_exploit = ceil(.5*ntimesteps); %default to mid-point of time domain
         end
     else
-        rt_exploit = find(v_func==max(v_func), 1); %only take the first max if there is are two identical peaks.
+        rt_exploit = find(v_func==max(v_func), 1); %only take the first max if there are two identical peaks.
         if rt_exploit > max(tvec), rt_exploit = max(tvec); end
     end
     
