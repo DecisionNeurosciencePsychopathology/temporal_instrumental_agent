@@ -5,7 +5,7 @@ agents = initialize_agents_struct;
 %nagents = length(agentnames);
 nagents = length(agents);
 noptim = 120; %optimize parameters 120x
-ntrials = 100;
+ntrials = 150;
 nbasis = 24;
 ntimesteps = 500;
 
@@ -81,15 +81,15 @@ if strcmpi(whichopt, 'typical')
     end
 
     %concatenate optmat to obtain an ALL condition
-    allcond = horzcat(optmat{:});
-    optmat{length(optmat) + 1} = allcond;
-    condnames{length(condnames) + 1} = 'ALL';
-    ncond = ncond + 1; %add all condition
+    %allcond = horzcat(optmat{:});
+    %optmat{length(optmat) + 1} = allcond;
+    %condnames{length(condnames) + 1} = 'ALL';
+    %ncond = ncond + 1; %add all condition
 
     %optmat is now a cell vector where each element is an vector of structs for the lookups to be used for each run.
     %the final element contains all of the preceding conditions. For the five contingencies and 10 runs, this amounts
     %to a 58MB object that would need to be passed along to parpool workers.
-elseif ismember(whichopt, {'IEV', 'DEV', 'IEVLINPROB', 'DEVLINPROB', 'QUADUP', 'QUADDOWN'})
+elseif ismember(whichopt, {'IEV', 'DEV', 'IEVLINPROB', 'DEVLINPROB', 'QUADUP', 'QUADUPOLD', 'QUADDOWN'})
     fprintf('Optimizing parameters using a single contingency %s with %d runs\n', whichopt, runspercond);
     load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
     condnames=fieldnames(mastersamp); %by default, optimize over all contingencies in lookup

@@ -8,8 +8,10 @@
 %So if SKEPTIC chooses 3500ms 4 times and Q-learning chooses 3500ms 4 times, both receive the same series
 %of outcomes. This eliminates this source of variability in the costs.
 
+addpath('../');
+
 ntimesteps = 500; %in 10ms bins (1-5s)
-conds = {'IEV' 'DEV' 'QUADUP' 'QUADDOWN', 'IEVLINPROB' 'DEVLINPROB'};
+conds = {'IEV' 'DEV' 'QUADUP' 'QUADUPOLD' 'QUADDOWN', 'IEVLINPROB' 'DEVLINPROB'};
 ntrials = 500; %number of draws for each RT where each draw becomes a column in the lookup matrix
 
 %set up seeds
