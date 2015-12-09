@@ -80,7 +80,7 @@ num_start_pts=25;
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [8];
+models = [9];
 
 % a(models(i)).name = {};
 % for i = 1:length(models)
@@ -90,7 +90,7 @@ models = [8];
 
 
 %test_cases={'param_set1', 'param_set2', 'grw' 'param_set3'};
-test_cases={'noise_params'};
+test_cases={'noise_params' 'subj_fitting'};
 ct=0;
 %When fitting generated rts for specified paramters
 %%%load('model_test_data2.mat')
@@ -107,14 +107,41 @@ rngseeds=[98 83 66 10];
 
 %Start loop
 ct=ct+1;
-test_case = test_cases{ct};
+
+%Add another test case called subj_fitting
+test_case = test_cases{2};
+
+
 %Reset the best_parameters
 for i = 1:length(models)
     fitted_vars.(test_case).(a(models(i)).name).best_parameters = [];
     fitted_vars.(test_case).(a(models(i)).name).best_cost = [];
 end
 
-for sub = 1:length(fieldnames(param_recovery_test_data.(a(models(i)).name).ret))
+if strcmpi(test_case,'subj_fitting')
+    data = behavfiles;
+elseif strcmpi(test_case,'noise_params')
+    data=fieldnames(param_recovery_test_data.(a(models(i)).name).ret);
+end
+
+%CHECK ON SUB INITIAL NUMBER!!
+for sub = 1:length(data) %Start with 8 since it died
+    
+    %This guy is a bad apple skip him for now, he breaks process noise
+    if sub==24
+        continue
+    end
+    
+    if strcmpi(test_case,'subj_fitting')
+        behav{sub}.data = readtable(behavfiles{sub},'Delimiter',',','ReadVariableNames',true);
+        % write id
+        fname = behavfiles{sub};
+        idchars = regexp(fname,'\d');
+        behav{sub}.id = fname(idchars);
+        id = behav{sub}.id;
+    else 
+        id=sub; %Set id to sub by default
+    end
     
     
     for i = 1:length(models)
@@ -126,34 +153,38 @@ for sub = 1:length(fieldnames(param_recovery_test_data.(a(models(i)).name).ret))
         
 %         j = models(i);
         
+    %If subject fitting set data as behav struct
+    if strcmpi(test_case,'subj_fitting')
+        test_data = behav{sub};
+    else
         test_data_1=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
         test_data_2=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
         test_data = [test_data_1; test_data_2];
-        
+    end
         
         
         %% fit the model with a full range of RTs
         if strcmpi(a(models(i)).name,'franktc') || strcmpi(a(models(i)).name,'qlearning') || strcmpi(a(models(i)).name,'sarsa')
             optmat=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).optmat;
-            a = initialize_stability_struct(sub,test_data,rngseeds,0,optmat);
+            a = initialize_stability_struct(id,test_data,rngseeds,0,optmat);
         else
             sigma_noise_input = param_recovery_test_data.(a(models(i)).name).ret.set_1.sigma_noise;
-            a = initialize_stability_struct(sub,test_data,rngseeds,sigma_noise_input);
+            a = initialize_stability_struct(id,test_data,rngseeds,sigma_noise_input);
         end
         
-        [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).cost_rmsearch,...
-            fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).xstart_rmsearch]=...
+        [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch,...
+            fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).xstart_rmsearch]=...
             rmsearch(a(models(i)).fun, 'fmincon', a(models(i)).init_params, a(models(i)).lower_bounds, a(models(i)).upper_bounds, 'initialsample', num_start_pts, 'options', opts,'plot','off');
         
         
         
         
         %Save the best cost and parameters associated with it.
-        [best_cost,best_index] =min(fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).cost_rmsearch);
+        [best_cost,best_index] =min(fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch);
         
         
         fitted_vars.(test_case).(a(models(i)).name).best_cost(sub,1) = best_cost;
-        fitted_vars.(test_case).(a(models(i)).name).best_parameters(sub,:) = fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(sub)]).fittedparameters_rmsearch(best_index,:);
+        fitted_vars.(test_case).(a(models(i)).name).best_parameters(sub,:) = fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch(best_index,:);
         
         
         %Tried to use parfor loop on subject loop maybe come back to

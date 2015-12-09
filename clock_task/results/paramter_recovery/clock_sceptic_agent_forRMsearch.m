@@ -37,8 +37,6 @@ phi=0;
 sig_grw=0;                  %default width of GRW for fixedLR_egreedy_grw
 prop_spread = params(1);    %proportion of discrete interval over which to spread reward (SD of Gaussian) (0..1)
 
-%define radial basis
-[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -93,18 +91,18 @@ elseif strcmpi(agent, 'asymfixedLR_softmax')
 elseif strcmpi(agent, 'kalman_softmax')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
     %Choice: softmax function of value to select among alternatives (no uncertainty)
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)
 elseif strcmpi(agent, 'kalman_processnoise')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); uncertainty is tracked, but not used
     %Choice: softmax function of value to select among alternatives
     %Additional: PEs boost process noise (Q), effectively enhancing learning rate when surprising events occur.
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)
     omega = params(3);          %scaling of process noise Q by PE.
 elseif strcmpi(agent, 'kalman_sigmavolatility')
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); no representation of uncertainty
     %Choice: softmax function of value to select among alternatives
     %Additional: Prediction errors increase uncertainty (sigma) by a smooth function of PEs according to a second learning rate, phi.
-    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)  
+    beta = params(2);           %inverse temperature parameter scaling preference among alternatives in softmax (0..Inf)
     phi = params(3);            %scales additional noise added to sigma update according to smooth function of PEs.
     gamma = params(4);          %decay factor for volatility (0..1)
 elseif strcmpi(agent, 'kalman_uv_logistic')
@@ -114,11 +112,19 @@ elseif strcmpi(agent, 'kalman_uv_logistic')
 elseif strcmpi(agent, 'kalman_uv_sum')
     beta = params(2);
     tau = params(3); % tau from Greek ???? -- value, price, cf ???? as trophys in Homer
+    
+    %Bounded version
+    minrt = min(rt_obs);
+    maxrt = max(rt_obs);
+    rt_obs = rt_obs - minrt+1;
+    %occasional subjects are very fast, so
+    rt_obs(rt_obs<1) = 1;
+    ntimesteps = maxrt - minrt;
 elseif strcmpi(agent, 'fixedLR_kl_softmax')
     beta = params(2);
     alpha = params(3);   %learning rate for value
     kappa = params(4);   %PE+ tilt scaling parameter
-    lambda = params(5);  %PE- tilt scaling parameter 
+    lambda = params(5);  %PE- tilt scaling parameter
 elseif strcmpi(agent, 'kalman_kl_softmax')
     beta = params(2);
     kappa = params(3);
@@ -137,14 +143,17 @@ end
 
 if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
 
+%define radial basis
+[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
+
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
 %it can also be a struct, in which case this defines the lookup table for sequential samples from a contingency of interest.
-usestruct=0;
-if isstruct(cond)
-    cstruct = cond;
-    cond = cstruct.name;
-    usestruct=1;
-end
+% usestruct=0;
+% if isstruct(cond)
+%     cstruct = cond;
+%     cond = cstruct.name;
+%     usestruct=1;
+% end
 
 %add Gaussian noise with sigma = 1% of the range of the time interval to rt_explore
 prop_expnoise=.01;
@@ -180,7 +189,7 @@ sigma_ij =      zeros(ntrials, nbasis);     %Standard deviations of Gaussians (u
 Q_ij =          zeros(ntrials, nbasis);     %Process noise (i.e., noise/change in the system dynamics with time)
 
 mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all Gaussians.
-z_i(1) = 0;        %no initial expected volatility. 
+z_i(1) = 0;        %no initial expected volatility.
 
 despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
 
@@ -195,7 +204,7 @@ despair = zeros(1,ntrials);                 %despair/volatility to detect revers
 
 %Might need to change
 % if usestruct
-    sigma_noise = sigma_noise_input; %Make if statement later
+sigma_noise = sigma_noise_input; %Make if statement later
 % else
 %     sigma_noise = repmat(std(arrayfun(@(x) RewFunction(x*10, cond, 0), tvec))^2, 1, nbasis);
 % end
@@ -218,13 +227,13 @@ rng(explore_rng_state); %draw from explore/exploit rng
 choice_rand=rand(ntrials,1);
 explore_rng_state=rng; %save state after random draw above
 
-    %% find unrewarded RTs
-    unrew_rts = NaN(size(rt_obs));
-    unrew_rts(rew_obs==0) = rt_obs(rew_obs==0);
+%% find unrewarded RTs
+unrew_rts = NaN(size(rt_obs));
+unrew_rts(rew_obs==0) = rt_obs(rew_obs==0);
 
 
 %% Set up to run multiple runs for multiple ntrials
-for i = 1:ntrials    
+for i = 1:ntrials
     % get symmetric eligibility traces for each basis function (temporal generalization)
     % generate a truncated Gaussian basis function centered at the RT and with sigma equal to the free parameter.
     
@@ -249,33 +258,33 @@ for i = 1:ntrials
     e_ij(i,:) = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 2);
     
     %%NB: broken for now
-%     if reversal==1 && i==ntrials/2+1
-%         %Optimal param reversal hack
-%         vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
-%         if strcmp(m.name, 'IEV')
-%             m=mDEV; %if it is IEV after x trials switch
-%             m.lookup = m.lookup(:,vperm_run);
-%             cond = m.name;
-%         else
-%             m=mIEV; %else it is DEV after x traisl switch to IEV
-%             m.lookup = m.lookup(:,vperm_run);
-%             cond = m.name;
-%         end        
-%     end
-
-%     if usestruct
-%         [rew_i(i), ev_i(i), cstruct] = getNextRew(rt_obs(i), cstruct);
-%         
-%         %The code below is slow due to rand/rng usage and computing functions, rather than struct pre-compute approach.
-%         %[~, ev_i(i)] = RewFunction(rts(i).*10, cond, 0); %multiply by 10 because underlying functions range 0-5000ms
-%         %don't use the reward function rng seed if already passed in master structure (since we're just looking up EV).
-%     else
-%         [rew_i(i) ev_i(i)] = RewFunction(rt_obs(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
-%     end
+    %     if reversal==1 && i==ntrials/2+1
+    %         %Optimal param reversal hack
+    %         vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
+    %         if strcmp(m.name, 'IEV')
+    %             m=mDEV; %if it is IEV after x trials switch
+    %             m.lookup = m.lookup(:,vperm_run);
+    %             cond = m.name;
+    %         else
+    %             m=mIEV; %else it is DEV after x traisl switch to IEV
+    %             m.lookup = m.lookup(:,vperm_run);
+    %             cond = m.name;
+    %         end
+    %     end
+    
+    %     if usestruct
+    %         [rew_i(i), ev_i(i), cstruct] = getNextRew(rt_obs(i), cstruct);
+    %
+    %         %The code below is slow due to rand/rng usage and computing functions, rather than struct pre-compute approach.
+    %         %[~, ev_i(i)] = RewFunction(rts(i).*10, cond, 0); %multiply by 10 because underlying functions range 0-5000ms
+    %         %don't use the reward function rng seed if already passed in master structure (since we're just looking up EV).
+    %     else
+    %         [rew_i(i) ev_i(i)] = RewFunction(rt_obs(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
+    %     end
     
     %1) compute prediction error, scaled by eligibility trace
     delta_ij(i,:) = e_ij(i,:).*(rew_obs(i) - mu_ij(i,:));
-
+    
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
         mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
@@ -298,7 +307,7 @@ for i = 1:ntrials
         Q_ij(i,:) = omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
         
         %Compute the Kalman gains for the current trial (potentially adding process noise)
-        k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);       
+        k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);
         
         %Update posterior variances on the basis of Kalman gains
         sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*(sigma_ij(i,:) + z_i(i));
@@ -311,11 +320,11 @@ for i = 1:ntrials
         z_i(i+1) = gamma.*z_i(i) + phi.*abs(sum(delta_ij(i,:)));
         
         %Uncertainty is a function of Kalman uncertainties.
-        u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;        
+        u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;
         u_func = sum(u_jt); %vector of uncertainties by timestep
         u_it(i+1,:) = u_func;
     end
-        
+    
     %compute summed/evaluated value function across all timesteps
     v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
     v_func = sum(v_jt); %subjective value by timestep as a sum of all basis functions
@@ -348,20 +357,20 @@ for i = 1:ntrials
         %compared to other models that use a curve over which to choose (either by softmax or egreedy selection),
         %kalman_uv_logistic computes explore and exploit choices and chooses according to a logistic.
         u = sum(u_func)/length(u_func);
-
+        
         if u == 0
             rt_explore = ceil(.5*ntimesteps);
         else
             rt_explore = find(u_func==max(u_func), 1);%return position of first max (and add gaussian noise?)
         end
-
+        
         sigmoid = 1/(1+exp(-discrim.*(u - u_threshold))); %Rasch model with tradeoff as difficulty (location) parameter
         
         if choice_rand(i) < sigmoid
             %explore according to hardmax u
-            rt_obs(i+1) = rt_explore;
+            p_chosen(i) = rt_explore;
         else
-            rt_obs(i+1) = rt_exploit;
+            p_chosen(i) = rt_exploit;
         end
         
         v_final = v_func; %no alterations of value function for logistic
@@ -401,39 +410,39 @@ for i = 1:ntrials
         if ismember(agent, {'fixedLR_egreedy', 'fixedLR_egreedy_grw'})
             if choice_rand(i) < epsilon %explore
                 if strcmpi(agent, 'fixedLR_egreedy')
-                    rt_obs(i+1) = randuniform_rts_explore(i);
+                    p_chosen(i) = randuniform_rts_explore(i);
                 elseif strcmpi(agent, 'fixedLR_egreedy_grw')
-                    rt_grw = rt_obs(i) + grw_step(i);
-                
+                    p_chosen(i) = rt_obs(i) + grw_step(i);
+                    
                     %N.B.: Need to have more reasonable GRW near the edge such that it doesn't just oversample min/max
                     %e.g., perhaps reflect the GRW if rt(t-1) was already very close to edge and GRW samples in that direction again.
                     if rt_grw > max(tvec), rt_grw = max(tvec);
                     elseif rt_grw < min(tvec), rt_grw = min(tvec); end
-                    rt_obs(i+1) = rt_grw;
+                    p_chosen(i) = rt_grw;
                 end
             else
-                rt_obs(i+1) = rt_exploit; %need to unify this with kalman_uv_logistic above...
+                p_chosen(i) = rt_exploit; %need to unify this with kalman_uv_logistic above...
             end
         else
             %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
-            p_choice(i,:) = (exp((v_final-max(v_final)))/beta)/(sum(exp((v_final-max(v_final)))/beta)); %Divide by temperature
+            p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
             
             %JW
             %I was getting an error that v_final was nothing but zeros, so
             %randsample couldn't make a decision, since all the wiehgts
             %were 0. added if statement to fix this. If we are going to use
             %v_final as the weight and not p_choice
-%             if (sum(p_choice(i,:))==0)
-%                 
-%             end
+            %             if (sum(p_choice(i,:))==0)
+            %
+            %             end
             
             %rts(i+1) = randsample(tvec, 1, true, v_final);
             %rt_obs(i+1) = randsample(tvec, 1, true, p_choice(i,:));
             ind = randsample(1:ntimesteps,1,true,p_choice(i,:));
             
             p_chosen(i) = ind;
-
+            
             
         end
         
@@ -441,17 +450,17 @@ for i = 1:ntrials
     
     %populate v_it for tracking final value function
     v_it(i+1,:) = v_final; %store choice function for return according to model
-
+    
     %Output the rt explore and exploit from choice rule per trial
     %fprintf('trial: %d rt_exploit: %.2f rt_explore: %.2f\n', i, rt_exploit, rt_explore);
-        
+    
     verbose=0;
     if verbose == 1
         fprintf('Trial: %d, Rew(i): %.2f, Rt(i): %.2f\n', i, rew_obs(i), rt_obs(i));
         %fprintf('w_i,k:    '); fprintf('%.2f ', mu_ij(i,:)); fprintf('\n');
         %fprintf('delta_ij:   '); fprintf('%.2f ', delta_ij(i,:)); fprintf('\n');
         %fprintf('w_i+1,k:  '); fprintf('%.2f ', mu_ij(i+1,:)); fprintf('\n');
-        fprintf('\n');        
+        fprintf('\n');
     end
     
 end
@@ -459,8 +468,8 @@ end
 %Cost function
 %cost = -sum(ev_i);
 
- p_chosen = [ntimesteps/2 p_chosen]; %Until I talk to Alex about this indexing issue...he said just take the middle
- cost = sum((rt_obs-p_chosen(1:ntrials)).^2); %maximize choice probabilities
+p_chosen = [ntimesteps/2 p_chosen]; %Until I talk to Alex about this indexing issue...he said just take the middle
+cost = sum((rt_obs-p_chosen(1:ntrials)).^2); %maximize choice probabilities
 
 ret.nbasis = nbasis;
 ret.ntimesteps = ntimesteps;
@@ -475,7 +484,16 @@ ret.u_it = u_it;
 ret.rew_i = rew_i;
 ret.ev_i = ev_i;
 ret.z_i = z_i;
-ret.rts = rt_obs;
-%ret.sigma_noise = sigma_noise;
+ret.rt_obs = rt_obs;
+ret.rt_chosen = p_chosen;
+ret.rt_exploit = rt_exploit;
+ret.cost = cost;
+ret.rew_obs = rew_obs;
+ret.ntrials = ntrials;
+ret.ntimesteps = ntimesteps;
+ret.nbasis = nbasis;
+ret.sigma_noise = sigma_noise;
+ret.uv = uv_it;
+ret.params = params;
 
 mov=0; %Throwning me an error??
