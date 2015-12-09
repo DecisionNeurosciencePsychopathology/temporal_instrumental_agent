@@ -1,3 +1,4 @@
+function createSubjFittedPlots
 %This script will diagnose and compare the v_process noise and fixed
 %learning rate models. Plots are cost comparision and overall value fitting
 %comparisions
@@ -41,13 +42,13 @@ load('param_recov')
 load('clock_options');
 options = clock_options;
 models = fieldnames(fitted_vars.subj_fitting);
-pick = [2]; % skip Q and Frank for now;
+pick = [1 2 3 6]; % skip Q and Frank for now;
 models = models(pick);
 
 %% settings
 trialplots = 0;
 fit_params = 0;
-compare_cost = 1;
+compare_cost = 1; %compare cost between subject-fitted and optimal
 %%
 
 nbasis=24;
@@ -55,8 +56,12 @@ ntimesteps=500;
 reversal=0;
 rngseeds=[98 83 66 10];
 
+apply_different_taus=0;
+%Bound model's rts
+RT_limit = 1;
+
 %wow, matlab has a useful function for mixed data types!!
-start_with = 1;
+start_with = 7;
 %% write struct array of behavioral data with ids
 for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
     % write data
@@ -129,13 +134,14 @@ for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
                 end
             else
                 
-                [~,ret1] = clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent);
+                [~,ret1] = clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,RT_limit);
+                
                 %temp_cost = temp_cost+ clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent);
                 % [~, ret, ~] = skeptic_fitsubject_all_models(opt_params, rts_obs', rew_obs', [10 9 15 50], 24, 400, 0, 25, 400, agent);
                 
                 %Cost comparision
                 if compare_cost
-                    [cost, ret2] = clock_sceptic_agent_forRMsearch(opt_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent);
+                    [cost, ret2] = clock_sceptic_agent_forRMsearch(opt_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,RT_limit);
                     cost_h(sub,run,modelnum)=cost;
                 end
             end
@@ -146,14 +152,21 @@ for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
             
             
             %Investigating tau
-            if strcmp(agent,'kalman_uv_sum')
-                tau_range = [.1 .5 .95];
+            
+            if strcmp(agent,'kalman_uv_sum') && apply_different_taus
+                tau_range = [.99 .1];
+                prop_spread = .241;
                 for o = 1:length(tau_range)
                     search_params(3) = tau_range(o);
-                    [~,ret_uv] = clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent);
-                    fit_all_subs_all_models(agent,sub,ret_uv,ret2);
+                    search_params(1) = prop_spread;
+                    [~,ret_uv] = clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,RT_limit);
+                    if RT_limit==1
+                        [~,ret3] = clock_sceptic_agent_forRMsearch(search_params, rts_obs', rew_obs',cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,0);
+                    end
+                    fit_all_subs_all_models(agent,sub,ret_uv,ret2,ret3);
                 end
             end
+            
             
             
             %% write p_choice fit statistics
@@ -161,6 +174,88 @@ for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
         end
     end
     stop=0;
+end
+end
+
+%function fit_all_subs_all_models(modelname,sub,subject_param_data,optimal_param_data,unbound_data)
+function fit_all_subs_all_models(modelname,sub,varargin)
+
+%Number of plots
+num_plots=length(varargin);
+%Transfer to easy to read data struct
+data = cell2mat(varargin)';
+
+%For my two monitor set up, splits up the figures, although more than two images will stack
+factor = [.4 repmat(.0003,1,length(varargin))]; 
+
+for i = 1:num_plots
+    %It was getting annoying moving the figs constantly
+    set(0,'DefaultFigureUnits','normalized', ...
+        'DefaultFigurePosition', [1-i*factor(i),.3,.35,.5]);
+    figure(i); clf;
+    ret = data(i,:);
+    unrew_rts = NaN(size(ret.rt_obs));
+    unrew_rts(ret.rew_obs==0) = ret.rt_obs(ret.rew_obs==0);
+    disp(['Subject: ',num2str(sub),' ', modelname, ' Params: ',num2str(ret.params);]);
+    
+    %Typically how the data is read in is subject fit first then fit using optimal
+    %values
+    if i==1
+        str = 'Subject Fit';
+    else
+        str = 'Optimal Fit';
+    end
+    
+    
+    
+    subplot(3,1,1);
+    plot(1:length(ret.rt_obs), ret.rt_obs, 'r');
+    hold on;
+    plot(1:length(ret.rt_chosen), ret.rt_chosen, 'b');
+    hold off;
+    title([modelname,' Red: actual RT, Blue: predicted RT ' str]);
+    ax2=subplot(3,1,2);
+    contourf(1:ret.ntrials, 1:ret.ntimesteps, ret.v_it(1:ret.ntrials,:)'); colorbar('southoutside');hold on;
+    scatter(1:ret.ntrials, ret.rt_obs,ret.rew_obs+10, 'r','Filled');
+    scatter(1:ret.ntrials, unrew_rts,'b', 'Filled'); hold off;
+    title('Value map; red: rewards, blue: omissions');
+    colormap(ax2,summer);
+    
+    if strfind(modelname, 'fixed')
+        
+        
+    elseif  strfind(modelname, 'kalman_processnoise')
+        ax3 = subplot(4,1,3);
+        contourf(1:ret.ntrials, 1:ret.nbasis, ret.Q_ij(1:ret.ntrials,:)');colorbar('southoutside'); hold on;
+        scatter(1:ret.ntrials, ret.rt_obs.*24./500,ret.rew_obs.*24./500+10, 'r','Filled');
+        scatter(1:ret.ntrials, unrew_rts.*24./500,'b', 'Filled'); hold off;
+        title('Process Noise map; red: rewards,   blue: ommissions');
+        colormap(ax3,summer);
+        ax3 = subplot(4,1,4);
+        contourf(1:ret.ntrials, 1:ret.nbasis, ret.delta_ij(1:ret.ntrials,:)');colorbar('southoutside'); hold on;
+        scatter(1:ret.ntrials, ret.rt_obs.*24./500,ret.rew_obs.*24./500+10, 'r','Filled');
+        scatter(1:ret.ntrials, unrew_rts.*24./500,'b', 'Filled'); hold off;
+        title('Prediction error map; red: rewards,   blue: ommissions');
+        colormap(ax3,summer);
+        
+    elseif strfind(modelname, 'uv_sum')
+        ax3 = subplot(3,1,3);
+        contourf(1:ret.ntrials, 1:ret.ntimesteps, ret.u_it(1:ret.ntrials,:)');colorbar('southoutside'); hold on;
+        scatter(1:ret.ntrials, ret.rt_obs,ret.rew_obs+10, 'r', 'Filled');
+        scatter(1:ret.ntrials, unrew_rts,'b', 'Filled'); hold off;
+        title(['Uncertainty map; red: rewards,   blue: ommissions ' num2str(ret.params)]);
+        colormap(ax3,summer);
+        
+    elseif strfind(modelname, 'kalman_softmax')
+        
+    elseif strcmpi(modelname,'qlearning')
+        
+    end
+    
+end
+
+
+waitforbuttonpress;
 end
 
 %Plot cost comparision graph here
