@@ -320,7 +320,7 @@ for i = 1:ntrials
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum')
-            uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
+            uv_func=p.tau*v_func + (1-p.tau)*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
         elseif ismember(agent, {'kalman_kl_softmax', 'fixedLR_kl_softmax', 'kalman_processnoise_kl'})
@@ -331,7 +331,7 @@ for i = 1:ntrials
         elseif strcmpi(agent, 'kalman_uv_sum_kl')
             v_disc = v_func + discount;
             %v_it_undisc(i+1,:) = v_func;
-            uv_func=tau*v_disc + (1-tau)*u_func;
+            uv_func=p.tau*v_disc + (1-p.tau)*u_func;
             v_final = uv_func;
         end
         

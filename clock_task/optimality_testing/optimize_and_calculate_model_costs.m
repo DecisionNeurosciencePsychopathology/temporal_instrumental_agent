@@ -5,7 +5,7 @@ agents = initialize_agents_struct;
 %nagents = length(agentnames);
 nagents = length(agents);
 noptim = 120; %optimize parameters 120x
-ntrials = 150;
+ntrials = 100;
 nbasis = 24;
 ntimesteps = 500;
 
