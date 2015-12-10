@@ -8,7 +8,7 @@ function gen_temperatureFixed_rts(agent)
 %Load in prev results so we don't overwrite
 load('C:\kod\temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data');
 %Load in master sample array
-load('C:\kod\temporal_instrumental_agent\clock_task\results\optimality_testing\mastersamp.mat')
+load('C:\kod\temporal_instrumental_agent\clock_task\optimality_testing\mastersamp.mat')
 %Load in clock options
 load('C:\kod\temporal_instrumental_agent\clock_task\optimality_testing\clock_options.mat')
 
@@ -21,6 +21,7 @@ beta=.1; %.1 is a good estimate
 %Set some parameters
 rngseeds=[98 83 66 10];
 ntrials=50;
+clock_options.episodeCount=ntrials;
 nbasis=24;
 ntimesteps=500;
 reversal=0;
@@ -28,19 +29,17 @@ reversal=0;
 %Set agent parameters
 switch agent
     case 'fixedLR_softmax'
-        params = [0.03081894 1.536380918 0.01698200]; %prop_spread  beta  alpha
-%     case 'fixed'
-%         params = .2;
-%     case 'fixed_rho'
-%         params = [.2 .05];
-%     case 'fixed_KL'
-%         params = [.2 .002 .0007];
-%     case 'v_processnoise'
-%         params = 10;
-%     case 'uv'
-%         params = .45;
+        params = [0.03081894 .1 0.01698200]; %prop_spread  beta  alpha
+    case 'fixedLR_egreedy'
+        params = [0.45744891 0.15440092 0.11702531];
+    case 'kalman_softmax'
+        params=[0.5016875 0.53796360]; %Prop_spread Beta
+    case 'kalman_processnoise'
+        %         params=[0.44260383 0.2414416 2.384186e-07];
+        params=[0.44260383 0.2414416 10]; %Changed omega to 10 to see if it could recover a non-zero number
     case 'kalman_sigmavolatility'
-        params = [0.272621000 0.10000000 0.00000000 0.3532713]; %All condition params via Michael's email
+        %params = [0.272621000 0.10000000 0.00000000 0.3532713] prop_spread beta phi gamma
+        params = [0.272621000 0.10000000 1 0.3532713]; %Changed phi to 1 to see if it could recover a non-zero number
         %params = [0.272621000 0.10000000 0 0]; %All condition params via recovery
     case 'frank'
         params = [0.03059226 87511.530 3.449525 2.092848  685.891054 1879.997  611.3465]; %All condition params via Michael's email [lambda   epsilon   alphaG   alphaN  K   nu  rho]
@@ -56,10 +55,13 @@ switch agent
         params =[0.27298721 1.2574299 0.611199892 2.15673530 2.2536939758]; %prop_spread  beta  tau kappa lambda
     case 'kalman_uv_logistic'
         %All condition params via Michael's email
-        params =[0.62416337 0.001524063 0.69507251]; %prop_spread  beta  tau
+        params =[0.06442844 0.1209529 37.93337]; %prop_spread  tradeoff disrim
     case 'qlearning'
         %All condition params via Michael's email
-        params =[]; %gamma, alpha, epsilon lambda
+        params =[0.98763,0.216741,0.1448303,0.9854957]; %gamma, alpha, epsilon lambda
+    case 'sarsa'
+        %All condition params via Michael's email
+        params =[0.989816,0.239363,0.260227,0.9453975]; %gamma, alpha, epsilon lambda
     otherwise
         error('Not any agent I''ve heard of');
 end
@@ -77,7 +79,7 @@ condnames=fieldnames(mastersamp); %by default, optimize over all contingencies i
 ncond=length(condnames); %how many conditions/contingencies
 
 %truncate mastersamp to the number of trials used here to save RAM
-for i = 1:length(condnames)
+for i = 1:length(condnames)-1 %Quick dirty fix since DEVLINPROB qasn't correctly made
     mastersamp.(condnames{i}).lookup = mastersamp.(condnames{i}).lookup(:,1:ntrials);
 end
 
@@ -101,9 +103,9 @@ end
             ret.(['set_' num2str(i)]).rts = ret.(['set_' num2str(i)]).rtpred';
             ret.(['set_' num2str(i)]).rew_i = ret.(['set_' num2str(i)]).rew;
             ret.(['set_' num2str(i)]).optmat = optmat(i);
-            [cost_og(i),~,~,~,ret.(['set_' num2str(i)])] = clock_sceptic_agent_genRts(params, agent, rngseeds, optmat(i), ntrials, nbasis, ntimesteps, reversal);
         elseif(strcmp(agent,'qlearning') || (strcmp(agent,'sarsa'))) 
-            [cost_og(i),~,~,~,~, ret.(['set_' num2str(i)])]=ClockWalking_3D_discountedEv_genRts(clock_options,optmat,rngseeds,params);
+            clock_options.agent=agent;
+            [cost_og(i),~,~,~,~, ret.(['set_' num2str(i)])]=ClockWalking_3D_discountedEv_genRts(clock_options,optmat(i),rngseeds,params);
         else
             [cost_og(i),~,~,~,ret.(['set_' num2str(i)])] = clock_sceptic_agent_genRts(params, agent, rngseeds, optmat(i), ntrials, nbasis, ntimesteps, reversal);
         end
@@ -114,6 +116,8 @@ end
 param_recovery_test_data.(agent).ret = ret;
 param_recovery_test_data.(agent).cost = cost_og;
 param_recovery_test_data.(agent).condition = condition;
+param_recovery_test_data.(agent).params = params;
+param_recovery_test_data.(agent).name = agent;
 %param_recovery_test_data.(agent).optmat = optmat;
 
 
@@ -147,3 +151,15 @@ save('C:\kod\temporal_instrumental_agent\clock_task\results\paramter_recovery\pa
 % temperature_test_data.(model).ret = ret;
 % temperature_test_data.(model).cost = cost_og;
 %temperature_test_data.(model).seeds = seeds;
+
+
+%     case 'fixed'
+%         params = .2;
+%     case 'fixed_rho'
+%         params = [.2 .05];
+%     case 'fixed_KL'
+%         params = [.2 .002 .0007];
+%     case 'v_processnoise'
+%         params = 10;
+%     case 'uv'
+%         params = .45;
