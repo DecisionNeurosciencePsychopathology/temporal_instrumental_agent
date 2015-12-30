@@ -24,8 +24,8 @@ mastersamp=[];
 for i = 1:length(conds)
     %Initalize structure
     mastersamp.(conds{i}).lookup = zeros(ntimesteps,ntrials); %lookup table of timesteps and outcomes
-    mastersamp.(conds{i}).sample = zeros(1,ntrials); %keeps track of how many times a timestep has been sampled by agent
-    mastersamp.(conds{i}).ev = zeros(1,ntrials);
+    mastersamp.(conds{i}).sample = zeros(1,ntimesteps); %keeps track of how many times a timestep has been sampled by agent
+    mastersamp.(conds{i}).ev = zeros(1,ntimesteps);
     
     for j = 1:ntimesteps
         [~, mastersamp.(conds{i}).ev(j), mastersamp.(conds{i}).prb(j), mastersamp.(conds{i}).mag(j)] = RewFunction(j*10, conds{i}, 0, 5000);
@@ -95,7 +95,7 @@ optmat=cell(1,1);
 for k = 1:length(keep)
     thisCont=[];
     thisCont.name = ['sinusoid' num2str(keep(k))];
-    thisCont.sample = zeros(1, ntrials); %keeps track of how many times a timestep has been sampled by agent
+    thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
     thisCont.lookup = zeros(ntimesteps, ntrials); %lookup table of timesteps and outcomes
     thisCont.ev = allshift(keep(k),:,1);
     thisCont.prb = allshift(keep(k),:,2);
