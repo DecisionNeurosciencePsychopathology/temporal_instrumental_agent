@@ -11,7 +11,7 @@ function  [fx] = clock_sceptic_evolution(x_t, theta, u, inF)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
-alpha = theta(1);
+alpha = 1./(1+exp(-theta));
 %prop_spread = theta(2);
 rt = u(1);
 reward = u(2);
