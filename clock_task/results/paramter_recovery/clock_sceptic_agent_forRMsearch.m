@@ -1,4 +1,4 @@
-function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent)
+function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,RT_limit)
 % This is the primary script that attempts to solve clock contingencies using variants of the sceptic agent.
 % Variants are described using the parameter agent, which determines the behavior of the forward model.
 % This script is used for testing the optimality of variants of sceptic for solving clock contingencies.
@@ -30,12 +30,14 @@ if nargin < 5, ntrials=100; end
 if nargin < 6, nbasis = 24; end
 if nargin < 7, ntimesteps=500; end
 if nargin < 8, reversal = 0; end %No reversal by default
+if nargin < 9, RT_limit = 0; end %Model RTs not bounded by subject's observed RTs by default
 
 omega=0;                    %if not a PE-enhanced process noise model, remove this influence
 gamma=0;                    %zero gamma and phi for all models except kalman_sigmavolatility
 phi=0;
 sig_grw=0;                  %default width of GRW for fixedLR_egreedy_grw
 prop_spread = params(1);    %proportion of discrete interval over which to spread reward (SD of Gaussian) (0..1)
+
 
 
 %states for random generators are shared across functions to allow for repeatable draws
@@ -52,6 +54,18 @@ rew_rng_state=rng;
 
 rng(explore_rng_seed);
 explore_rng_state=rng;
+
+%if RT_limit==1
+% % %     %Bounded version
+% % %     minrt = min(rt_obs);
+% % %     maxrt = max(rt_obs);
+% % %     rt_obs = rt_obs - minrt+1;
+% % %     %occasional subjects are very fast, so
+% % %     rt_obs(rt_obs<1) = 1;
+% % %     ntimesteps = maxrt - minrt;
+%end
+
+
 
 %populate free parameters for the requested agent/model
 %note: Kalman filter does not have a free learning rate parameter.
@@ -112,14 +126,6 @@ elseif strcmpi(agent, 'kalman_uv_logistic')
 elseif strcmpi(agent, 'kalman_uv_sum')
     beta = params(2);
     tau = params(3); % tau from Greek ???? -- value, price, cf ???? as trophys in Homer
-    
-    %Bounded version
-    minrt = min(rt_obs);
-    maxrt = max(rt_obs);
-    rt_obs = rt_obs - minrt+1;
-    %occasional subjects are very fast, so
-    rt_obs(rt_obs<1) = 1;
-    ntimesteps = maxrt - minrt;
 elseif strcmpi(agent, 'fixedLR_kl_softmax')
     beta = params(2);
     alpha = params(3);   %learning rate for value
@@ -440,7 +446,7 @@ for i = 1:ntrials
             %rts(i+1) = randsample(tvec, 1, true, v_final);
             %rt_obs(i+1) = randsample(tvec, 1, true, p_choice(i,:));
             ind = randsample(1:ntimesteps,1,true,p_choice(i,:));
-            
+
             p_chosen(i) = ind;
             
             

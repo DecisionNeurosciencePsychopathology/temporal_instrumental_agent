@@ -48,7 +48,9 @@ for run=1:length(runs);
         priors.Go=0; %initialize Go for first trial
         priors.NoGo=0; %initialize NoGo for first trial
         rtbounds = [1 5000]; %Don't let the agent choose 0
-        rts_obs = rts_obs.*10;
+        %%%%rts_obs = rts_obs.*10; %I commented this out when refitting the
+        %%%%pseudo 'subjects' wanted to make sure rts were on the same
+        %%%%scale.
         %optmat.sample = zeros(1,ntimesteps); %rest the optmat sampling back to 0 for each run
         cost = cost + franktc_forRMsearch(params,priors, rts_obs, rews,optmat,rngseeds, ntrials,rtbounds); %rews not really used
     elseif strcmpi(agent,'qlearning') || strcmpi(agent,'sarsa')

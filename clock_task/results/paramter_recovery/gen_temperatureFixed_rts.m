@@ -1,16 +1,41 @@
-function gen_temperatureFixed_rts(agent)
+function gen_temperatureFixed_rts(agent,uniform_flag)
 %This script will generate a set of rts and rews to be used in future
 %parameter recovery simulations.
-%
-% ex: gen_temperatureFixed_rts('v_processnoise')
+% IN:
+%   agent -> name of agent to generate data
+%   fname -> data sotrage matrix default is default_subj_test_data
+%   ex: gen_temperatureFixed_rts('v_processnoise')
 %
 
+if nargin <2
+    uniform_flag=0;
+end
+
+%Create the defualt data hub if it doesn't exisit
+if ~exist('temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data.mat','file')
+    param_recovery_test_data = [];
+    save('c:\kod\temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data.mat','param_recovery_test_data'); %I think you need the full path so this may be different on your machine...
+end
+
+
+
+
 %Load in prev results so we don't overwrite
-load('C:\kod\temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data');
+% try
+%     load(['temporal_instrumental_agent\clock_task\results\paramter_recovery\',fname]);
+% catch
+%     fprintf('No pseudo subject data matrix found using default...\n\n');
+%     load('temporal_instrumental_agent\clock_task\results\paramter_recovery\default_subj_test_data'); %This also maybe different depending on where default is saved
+% end
+
+%Load in prev results so we don't overwrite
+load('temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data');
+
+%You will need these for certain models
 %Load in master sample array
-load('C:\kod\temporal_instrumental_agent\clock_task\optimality_testing\mastersamp.mat')
+load('temporal_instrumental_agent\clock_task\optimality_testing\mastersamp.mat')
 %Load in clock options
-load('C:\kod\temporal_instrumental_agent\clock_task\optimality_testing\clock_options.mat')
+load('temporal_instrumental_agent\clock_task\optimality_testing\clock_options.mat')
 
 
 data_sets = 100; %Define number of data sets
@@ -26,44 +51,12 @@ nbasis=24;
 ntimesteps=500;
 reversal=0;
 
-%Set agent parameters
-switch agent
-    case 'fixedLR_softmax'
-        params = [0.03081894 .1 0.01698200]; %prop_spread  beta  alpha
-    case 'fixedLR_egreedy'
-        params = [0.45744891 0.15440092 0.11702531];
-    case 'kalman_softmax'
-        params=[0.5016875 0.53796360]; %Prop_spread Beta
-    case 'kalman_processnoise'
-        %         params=[0.44260383 0.2414416 2.384186e-07];
-        params=[0.44260383 0.2414416 10]; %Changed omega to 10 to see if it could recover a non-zero number
-    case 'kalman_sigmavolatility'
-        %params = [0.272621000 0.10000000 0.00000000 0.3532713] prop_spread beta phi gamma
-        params = [0.272621000 0.10000000 1 0.3532713]; %Changed phi to 1 to see if it could recover a non-zero number
-        %params = [0.272621000 0.10000000 0 0]; %All condition params via recovery
-    case 'frank'
-        params = [0.03059226 87511.530 3.449525 2.092848  685.891054 1879.997  611.3465]; %All condition params via Michael's email [lambda   epsilon   alphaG   alphaN  K   nu  rho]
-        priors.V=0; %initialize expected value for first trial to prior (possibly from previous run)
-        priors.Go=0; %initialize Go for first trial
-        priors.NoGo=0; %initialize NoGo for first trial
-        rtbounds = [1 5000]; %Don't let the agent choose 0
-    case 'kalman_uv_sum'
-        %All condition params via Michael's email
-        params =[0.62416337 0.001524063 0.69507251]; %prop_spread  beta  discrim
-    case 'kalman_uv_sum_kl'
-        %All condition params via Michael's email
-        params =[0.27298721 1.2574299 0.611199892 2.15673530 2.2536939758]; %prop_spread  beta  tau kappa lambda
-    case 'kalman_uv_logistic'
-        %All condition params via Michael's email
-        params =[0.06442844 0.1209529 37.93337]; %prop_spread  tradeoff disrim
-    case 'qlearning'
-        %All condition params via Michael's email
-        params =[0.98763,0.216741,0.1448303,0.9854957]; %gamma, alpha, epsilon lambda
-    case 'sarsa'
-        %All condition params via Michael's email
-        params =[0.989816,0.239363,0.260227,0.9453975]; %gamma, alpha, epsilon lambda
-    otherwise
-        error('Not any agent I''ve heard of');
+a = initialize_stability_struct();
+
+if uniform_flag
+     [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,data_sets,a);
+else
+    [params,priors,rtbounds] = getAgentParams(agent);
 end
 
 %10-15-15 So we've decided that each contingency will have a fixed sigma
@@ -98,16 +91,26 @@ end
     
     %Using mike's new optimality script
     for i = 1:data_sets
-        if (strcmp(agent,'frank'))
-            [cost_og(i),~, ret.(['set_' num2str(i)])]=TC_Alg_forward(params, priors, optmat(i), rngseeds, ntrials,rtbounds); %No rtbounds arg default is 0-5000ms
+        
+        %If there are multiple parameter values for each model loop through
+        %them to create the rts
+        if size(params,1)==1
+            j=1;
+        else
+            j=i;
+        end
+        
+        
+        if (strcmp(agent,'franktc'))
+            [cost_og(i),~, ret.(['set_' num2str(i)])]=TC_Alg_forward(params(j,:), priors, optmat(i), rngseeds, ntrials,rtbounds); %No rtbounds arg default is 0-5000ms
             ret.(['set_' num2str(i)]).rts = ret.(['set_' num2str(i)]).rtpred';
             ret.(['set_' num2str(i)]).rew_i = ret.(['set_' num2str(i)]).rew;
             ret.(['set_' num2str(i)]).optmat = optmat(i);
         elseif(strcmp(agent,'qlearning') || (strcmp(agent,'sarsa'))) 
             clock_options.agent=agent;
-            [cost_og(i),~,~,~,~, ret.(['set_' num2str(i)])]=ClockWalking_3D_discountedEv_genRts(clock_options,optmat(i),rngseeds,params);
+            [cost_og(i),~,~,~,~, ret.(['set_' num2str(i)])]=ClockWalking_3D_discountedEv_genRts(clock_options,optmat(i),rngseeds,params(j,:));
         else
-            [cost_og(i),~,~,~,ret.(['set_' num2str(i)])] = clock_sceptic_agent_genRts(params, agent, rngseeds, optmat(i), ntrials, nbasis, ntimesteps, reversal);
+            [cost_og(i),~,~,~,ret.(['set_' num2str(i)])] = clock_sceptic_agent_genRts(params(j,:), agent, rngseeds, optmat(i), ntrials, nbasis, ntimesteps, reversal);
         end
     end
 
@@ -122,6 +125,145 @@ param_recovery_test_data.(agent).name = agent;
 
 
 save('C:\kod\temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data', 'param_recovery_test_data')
+
+
+function [params,priors,rtbounds] = getAgentParams(agent)
+%Previous function used to generate rts using optimal parameters
+
+%This is frank specific but always return it to make life easy
+priors.V=0; %initialize expected value for first trial to prior (possibly from previous run)
+priors.Go=0; %initialize Go for first trial
+priors.NoGo=0; %initialize NoGo for first trial
+rtbounds = [1 5000]; %Don't let the agent choose 0
+
+%Set agent parameters
+switch agent
+    case 'fixedLR_softmax'
+        params = [0.03081894 .1 0.01698200]; %prop_spread  beta  alpha
+    case 'fixedLR_egreedy'
+        params = [0.45744891 0.15440092 0.11702531];
+    case 'kalman_softmax'
+        params=[0.5016875 0.53796360]; %Prop_spread Beta
+    case 'kalman_processnoise'
+        %         params=[0.44260383 0.2414416 2.384186e-07];
+        params=[0.44260383 0.2414416 10]; %Changed omega to 10 to see if it could recover a non-zero number
+    case 'kalman_sigmavolatility'
+        %params = [0.272621000 0.10000000 0.00000000 0.3532713] prop_spread beta phi gamma
+        params = [0.272621000 0.10000000 1 0.3532713]; %Changed phi to 1 to see if it could recover a non-zero number
+        %params = [0.272621000 0.10000000 0 0]; %All condition params via recovery
+    case 'franktc'
+        params = [0.03059226 87511.530 3.449525 2.092848  685.891054 1879.997  611.3465]; %All condition params via Michael's email [lambda   epsilon   alphaG   alphaN  K   nu  rho]
+    case 'kalman_uv_sum'
+        %All condition params via Michael's email
+        params =[0.62416337 0.001524063 0.69507251]; %prop_spread  beta  tau
+    case 'kalman_uv_sum_kl'
+        %All condition params via Michael's email
+        params =[0.27298721 1.2574299 0.611199892 2.15673530 2.2536939758]; %prop_spread  beta  tau kappa lambda
+    case 'kalman_uv_logistic'
+        %All condition params via Michael's email
+        params =[0.06442844 0.1209529 37.93337]; %prop_spread  tradeoff disrim
+    case 'qlearning'
+        %All condition params via Michael's email
+        params =[0.98763,0.216741,0.1448303,0.9854957]; %gamma, alpha, epsilon lambda
+    case 'sarsa'
+        %All condition params via Michael's email
+        params =[0.989816,0.239363,0.260227,0.9453975]; %gamma, alpha, epsilon lambda
+    otherwise
+        error('Not any agent I''ve heard of');
+end
+
+
+function [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,n,a)
+%Produce params via a uniform distribution each agent will be drawn from a
+%specific seed
+
+
+a_index = find(cellfun(@(x) strcmp(x,agent), {a.name}));
+fprintf('%s\n',agent)
+fprintf('a_index is %d\n',a_index)
+
+%This is frank specific but always return it to make life easy
+priors.V=0;                     %initialize expected value for first trial to prior (possibly from previous run)
+priors.Go=0;                    %initialize Go for first trial
+priors.NoGo=0;                  %initialize NoGo for first trial
+rtbounds = [1 5000];            %Don't let the agent choose 0
+
+%Fix the beta and some qlearning stats
+beta = repmat(beta,n,1);
+fix_gamma = .99;
+fix_gamma = repmat(fix_gamma,n,1);
+fix_lambda = .99;
+fix_lambda = repmat(fix_lambda,n,1);
+
+%Set agent parameters
+switch agent
+    case 'fixedLR_softmax'
+        rng(1);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        alpha = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        params = [prop_spread beta alpha]; %prop_spread  beta  alpha
+    case 'fixedLR_egreedy' %Model not useful
+        rng(2);
+        params = []; 
+    case 'kalman_softmax'
+        rng(3);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        params=[prop_spread beta]; %Prop_spread Beta
+    case 'kalman_processnoise'
+        rng(4);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        omega = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        params=[prop_spread beta omega]; %prop_spread beta omega
+    case 'kalman_sigmavolatility' %Model not useful
+        rng(5);
+        params = []; %Changed phi to 1 to see if it could recover a non-zero number        
+    case 'franktc'
+        rng(6);
+        lambda = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        epsilon = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        alphaG = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
+        alphaN = genParamInRange(a(a_index).lower_bounds(4),a(a_index).upper_bounds(4),n);
+        K = genParamInRange(a(a_index).lower_bounds(5),a(a_index).upper_bounds(5),n);   
+        nu = genParamInRange(a(a_index).lower_bounds(6),a(a_index).upper_bounds(6),n);  
+        rho = genParamInRange(a(a_index).lower_bounds(7),a(a_index).upper_bounds(7),n);
+        params = [lambda epsilon alphaG alphaN  K nu  rho]; %lambda   epsilon   alphaG   alphaN  K   nu  rho
+    case 'kalman_uv_sum'
+        rng(7);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        tau = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        params =[prop_spread beta tau]; %prop_spread  beta  tau
+    case 'kalman_uv_sum_kl' %Model not useful
+        rng(8);
+        params =[]; %prop_spread  beta  tau kappa lambda
+    case 'kalman_uv_logistic'
+        rng(9);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        tradeoff = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        discrim = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
+        params =[prop_spread tradeoff discrim]; %prop_spread  tradeoff disrim
+    case 'qlearning'
+        %Note that gamma and lambda are fixed, if this changes in the
+        %initialize struct function the hard coded index numbers will have
+        %to change
+        rng(10);
+        alpha = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        epsilon = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        params =[fix_gamma,alpha,epsilon,fix_lambda]; %gamma, alpha, epsilon lambda
+    case 'sarsa' %Model not useful
+        rng(11);
+        params =[]; %gamma, alpha, epsilon lambda
+    otherwise
+        error('Not any agent I''ve heard of');
+
+end
+
+function param=genParamInRange(min,max,n)
+%Generate random numbers within a specific range
+%In:
+%   min -> min range
+%   max -> max range
+%   n -> total number to generate
+param = (max-min).*rand(n,1) + min;
 
 
 %See what some generated rts are

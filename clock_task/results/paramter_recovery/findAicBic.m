@@ -9,7 +9,7 @@ load('param_recov.mat')
 %fitted_vars=rmfield(fitted_vars,'optimal_params');
 fit_type = fieldnames(fitted_vars);
 modelnames = fieldnames(fitted_vars.subj_fitting);
-pick = [1 2 3 4 5 6]; % skip Q and Frank for now;
+pick = [1 2 3 4 5 6 7]; % skip Q and Frank for now;
 modelnames = modelnames(pick);
 %modelnames = {'fixed' 'fixed_KL'};
 %num_vars = [1 3];

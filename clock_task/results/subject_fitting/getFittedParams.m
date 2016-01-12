@@ -40,6 +40,7 @@ switch agent
         %All condition params via Michael's email
         %params =[0.62416337 0.001524063 0.69507251]; %prop_spread  tradeoff disrim
         opt_params =[0.06442844 0.1209529 37.93337];
+        search_params = [fitted_vars.subj_fitting.(agent).best_parameters(sub,:)];
         names={'prop_spread'; 'tradeoff'; 'discrim'};
     case 'qlearning'
         %All condition params via Michael's email

@@ -41,6 +41,17 @@ if isstruct(cond)
     usestruct=1;
 end
 
+%Depending upon the rt_obs input we may have to round the reaction
+%times and scale the cost function, frank rts should be within the range of
+%1-5000.
+if sum(rt_obs>5000)>1
+    rt_obs=rt_obs./10;
+elseif sum(max(rt_obs)<1000)>1
+    rt_obs=rt_obs.*10;
+end
+scaling_factor=.01;
+
+%I don't think while fitting it should overwrite a choice but...?
 rt_obs(1) = 2500; %start in middle
 RTpred(1) = rt_obs(1);
 
@@ -338,6 +349,6 @@ for i = 2:ntrials
     
 end
 %cost = -sum(ev);
-cost = sum((rt_obs-RTpred').^2)*.01; %put it on the same scale as kalman models since kalman rt_obs = 0-500 scale
+cost = sum((rt_obs-RTpred').^2).*scaling_factor; %put it on the same scale as kalman models since kalman rt_obs = 0-500 scale
 ret.rtpred = RTpred; %copy predicted RTs to return struct (e.g., used for plotting)
 ret.ev = ev;

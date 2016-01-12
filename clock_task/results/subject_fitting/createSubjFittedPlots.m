@@ -42,7 +42,7 @@ load('param_recov')
 load('clock_options');
 options = clock_options;
 models = fieldnames(fitted_vars.subj_fitting);
-pick = [1 2 3 6]; % skip Q and Frank for now;
+pick = [1 2 3 6 7]; % skip Q and Frank for now;
 models = models(pick);
 
 %% settings
@@ -61,7 +61,7 @@ apply_different_taus=0;
 RT_limit = 1;
 
 %wow, matlab has a useful function for mixed data types!!
-start_with = 7;
+start_with = 1;
 %% write struct array of behavioral data with ids
 for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
     % write data
@@ -148,7 +148,7 @@ for sub = start_with:length(fitted_vars.subj_fitting.fixedLR_softmax.best_cost);
             
             
             %Plot subjects trial-wise
-            fit_all_subs_all_models(agent,sub,ret1,ret2);
+            %fit_all_subs_all_models(agent,sub,ret1,ret2);
             
             
             %Investigating tau
@@ -190,8 +190,8 @@ factor = [.4 repmat(.0003,1,length(varargin))];
 
 for i = 1:num_plots
     %It was getting annoying moving the figs constantly
-    set(0,'DefaultFigureUnits','normalized', ...
-        'DefaultFigurePosition', [1-i*factor(i),.3,.35,.5]);
+%     set(0,'DefaultFigureUnits','normalized', ...
+%         'DefaultFigurePosition', [1-i*factor(i),.3,.35,.5]);
     figure(i); clf;
     ret = data(i,:);
     unrew_rts = NaN(size(ret.rt_obs));

@@ -74,13 +74,14 @@ num_start_pts=25;
 % 11) 'kalman_kl_softmax'
 % 12) 'kalman_processnoise_kl'
 % 13) 'kalman_uv_sum_kl' x
-% 14) 'qlearning'
+% 14) 'qlearning' x
 % 15) 'sarsa'
 % 16) 'franktc' x
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [9];
+models = [1 5 6 8 9 14 16];
+
 
 % a(models(i)).name = {};
 % for i = 1:length(models)
@@ -90,7 +91,7 @@ models = [9];
 
 
 %test_cases={'param_set1', 'param_set2', 'grw' 'param_set3'};
-test_cases={'noise_params' 'subj_fitting'};
+test_cases={'pseudo_subj_data_fitting' 'subj_fitting'};
 ct=0;
 %When fitting generated rts for specified paramters
 %%%load('model_test_data2.mat')
@@ -109,7 +110,7 @@ rngseeds=[98 83 66 10];
 ct=ct+1;
 
 %Add another test case called subj_fitting
-test_case = test_cases{2};
+test_case = test_cases{1};
 
 
 %Reset the best_parameters
@@ -120,19 +121,24 @@ end
 
 if strcmpi(test_case,'subj_fitting')
     data = behavfiles;
-elseif strcmpi(test_case,'noise_params')
+elseif strcmpi(test_case,'pseudo_subj_data_fitting')
     data=fieldnames(param_recovery_test_data.(a(models(i)).name).ret);
 end
+
+
+
+%If anysubject breaks the fitting process
+bad_apples = cell(length(data),1);
 
 %CHECK ON SUB INITIAL NUMBER!!
 for sub = 1:length(data) %Start with 8 since it died
     
-    %This guy is a bad apple skip him for now, he breaks process noise
-    if sub==24
-        continue
-    end
-    
     if strcmpi(test_case,'subj_fitting')
+        %This guy is a bad apple skip him for now, he breaks process noise
+        if sub==24
+            continue
+        end
+        
         behav{sub}.data = readtable(behavfiles{sub},'Delimiter',',','ReadVariableNames',true);
         % write id
         fname = behavfiles{sub};
@@ -172,9 +178,16 @@ for sub = 1:length(data) %Start with 8 since it died
             a = initialize_stability_struct(id,test_data,rngseeds,sigma_noise_input);
         end
         
+        
+        try
         [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch,...
             fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).xstart_rmsearch]=...
             rmsearch(a(models(i)).fun, 'fmincon', a(models(i)).init_params, a(models(i)).lower_bounds, a(models(i)).upper_bounds, 'initialsample', num_start_pts, 'options', opts,'plot','off');
+        catch
+            fprintf('Subject %d on agent %s broke rmsearch, logging...\n',sub,a(models(i)).name)
+            bad_apples{sub,1} = {sub,a(models(i)).name};
+            save bad_apples bad_apples
+        end
         
         
         

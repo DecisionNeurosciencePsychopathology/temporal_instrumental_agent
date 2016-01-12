@@ -1,7 +1,7 @@
 function [p,tbl,stats] =see_subject_params(fitted_vars)
 
 models=fieldnames(fitted_vars.subj_fitting); 
-pick = [1 2 3 5 6]; % skip Q and Frank for now;
+pick = [1 2 3 5 6 7]; % skip Q and Frank for now;
 models = models(pick);
 y=[];
 %Plotting loop to show subject parameter space for each model
