@@ -47,7 +47,7 @@ end
 if strcmpi(model,'fixed')
     h_name = @h_sceptic_fixed;
 elseif strcmpi(model,'kalman_softmax')
-    h_name = @h_sceptic_kalman_softmax;
+    h_name = @h_sceptic_kalman_softmax; % Jon will continue here
 end
 g_name = @g_sceptic;
 
