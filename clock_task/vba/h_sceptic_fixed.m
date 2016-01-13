@@ -1,4 +1,4 @@
-function  [fx] = clock_sceptic_evolution(x_t, theta, u, inF)
+function  [fx] = h_sceptic_fixed(x_t, theta, u, inF)
 % evolution function of q-values of a RL agent (2-armed bandit problem)
 % [fx,dfdx,dfdP] = f_Qlearn2(x,P,u,in)
 % Here, there are only two q-values to evolve, i.e. there are only two
