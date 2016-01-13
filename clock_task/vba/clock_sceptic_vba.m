@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multisession,fixed_params_across_runs)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multisession,fixed_params_across_runs,fit_propspread)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 
@@ -24,6 +24,8 @@ n_steps = 40;
 n_t = 400;
 n_runs = 8;
 trialsToFit = 1:n_t;
+% fit_propspread = 1;
+options.inF.fit_propspread = fit_propspread;
 
 %% fit as multiple runs
 % multisession = 1;
@@ -32,14 +34,19 @@ trialsToFit = 1:n_t;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % If we can't find the path have the user select it.
-try
-data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-% data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
-catch
-    disp('Can''t read subject data!\n\n')
-    [fname,path_name]=uigetfile('*.csv', 'Select a subjects data file');
-    data = readtable([path_name fname],'Delimiter',',','ReadVariableNames',true);
+os = computer;
+if strcmp(os(1:end-2),'PCWIN')
+    data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+else
+    [~, me] = system('whoami');
+    me = strtrim(me);
+    if strcmp(me,'Alex')==1
+        data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+    else
+        data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
+    end
 end
+
 
 
 %% set up models within evolution/observation Fx
@@ -62,16 +69,16 @@ options.DisplayWin=1;
 
 
 %Set up sigma noise for every point in u or hidden state?
-    rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
-    rew_rng_state=rng;
-    [~,idx] = unique(data.run);
-    conditions=data.rewFunc(idx);
-    sigma_noise = [];
-    bin_size = n_t/n_runs;
-    for i = 1:length(conditions)
-        sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*10, conditions(i), 0), options.inF.tvec))^2, 1, bin_size)];
-    end
-    sigma_noise = mean(sigma_noise);
+rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
+rew_rng_state=rng;
+[~,idx] = unique(data.run);
+conditions=data.rewFunc(idx);
+sigma_noise = [];
+run_length = n_t/n_runs;
+for i = 1:length(conditions)
+    sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*10, conditions(i), 0), options.inF.tvec))^2, 1, run_length)];
+end
+sigma_noise = mean(sigma_noise);
 options.inF.sigma_noise = sigma_noise;
 
 
@@ -92,7 +99,7 @@ end
 
 
 %Determine which evolution funciton to use
-switch model 
+switch model
     case 'fixed'
         h_name = @h_sceptic_fixed;
         hidden_variables = 1; %tracks only value
@@ -126,7 +133,7 @@ g_name = @g_sceptic;
 
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
-    dim = struct('n',hidden_variables*n_basis,'n_theta',1,'n_phi',1,'p',n_steps);
+    dim = struct('n',hidden_variables*n_basis,'n_theta',1+fit_propspread,'n_phi',1,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
