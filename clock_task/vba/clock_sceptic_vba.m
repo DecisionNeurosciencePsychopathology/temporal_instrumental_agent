@@ -10,6 +10,8 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multis
 % n_basis:      8 works well, 4 also OK
 % multinomial:  if 1 fits p_chosen from the softmax; continuous RT (multinomial=0) works less well
 % multisession: treats runs/conditions as separate, helps fit (do not allow X0 to vary though)
+% fixed_params_across_runs -- self-explanatory
+% fit_propspread -- makes temporal generalization within the eligibility trace a free parameter
 
 %%
 close all
