@@ -1,10 +1,8 @@
 function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multisession,fixed_params_across_runs,fit_propspread)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
-
 % example call:
-% [posterior,out]=clock_sceptic_vba(10638,'fixed',4,1,1,1)
-
+% [posterior,out]=clock_sceptic_vba(10638,'modelname',nbasis,multinomial,multisession,fixed_params_across_runs,fit_propsrpead)
 % id:           5-digit subject id in Michael Hallquist's BPD study
 % only works with 'fixed' (fixed learning rate SCEPTIC) so far
 % n_basis:      8 works well, 4 also OK
