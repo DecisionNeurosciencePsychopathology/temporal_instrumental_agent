@@ -29,6 +29,10 @@ trialsToFit = 1:n_t;
 % fit_propspread = 1;
 options.inF.fit_propspread = fit_propspread;
 
+%% set up dim defaults
+n_theta = 1;
+n_phi = 1;
+
 %% fit as multiple runs
 % multisession = 1;
 % fix parameters across runs
@@ -66,6 +70,14 @@ options.GnTolFun = 1e-8;
 options.verbose=1;
 options.DisplayWin=1;
 
+%% set up kalman defaults
+options.inF.kalman.processnoise = 0;
+options.inF.kalman.sigmavolatility  = 0;
+options.inF.kalman.kalman_softmax = 0;
+options.inF.kalman.kalman_logistic = 0;
+options.inF.kalman.kalman_uv_logistic = 0;
+options.inF.kalman.kalman_uv_sum = 0;
+
 %% set up basis
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
 
@@ -82,7 +94,7 @@ for i = 1:length(conditions)
 end
 sigma_noise = mean(sigma_noise);
 options.inF.sigma_noise = sigma_noise;
-
+options.inF.gaussmat = options.inG.gaussmat;
 
 %% split into conditions/runs
 if multisession %improves fits moderately
@@ -101,41 +113,70 @@ end
 
 
 %Determine which evolution funciton to use
+
+options.inF.kalman.(model)=1; %Declare which model to use if kalman
+
 switch model
+    %fixed learning rate (alpha) for PE+ and PE-; softmax choice rule
     case 'fixed'
         h_name = @h_sceptic_fixed;
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         
+        %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
+        %Prop_spread is the only variable in this model
+        if fit_propspread
+            n_theta = 0;
+        end
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman_softmax;
+        h_name = @h_sceptic_kalman;
+        
+        %kalman learning rule (no free parameter); PEs enhance gain through process noise Q according to parameter omega
     case 'kalman_processnoise'
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman_processnoise;
+        h_name = @h_sceptic_kalman;
+        
+        %old kalman with explore/exploit hardmax selection according to logistic function
+    case 'kalman_logistic'
+        hidden_variables = 2; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        h_name = @h_sceptic_kalman;
+        
+        %kalman learning rule (no free parameter); PEs inflate posterior variance (sigma) according to phi and gamma
+    case 'kalman_sigmavolatility'
+        n_theta = 2;
+        hidden_variables = 2; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        h_name = @h_sceptic_kalman;
+        
     case 'kalman_uv_sum'
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman_uv_sum;
+        h_name = @h_sceptic_kalman;
+        
+    otherwise
+        disp('The model you have entered does not match any of the default names, check spelling!');
+        return
+        
 end
-% if strcmpi(model,'fixed')
-%     h_name = @h_sceptic_fixed;
-% elseif strcmpi(model,'kalman_softmax')
-%     h_name = @h_sceptic_kalman_softmax; % Jon will continue here
-% end
+
+%Define observation function
 g_name = @g_sceptic;
 
 
 
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
-    dim = struct('n',hidden_variables*n_basis,'n_theta',1+fit_propspread,'n_phi',1,'p',n_steps);
+    dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
@@ -150,7 +191,7 @@ if multinomial
     options.binomial = 1;
     priors.SigmaPhi = 1e1*eye(dim.n_phi);
 else
-    dim = struct('n',hidden_variables*n_basis,'n_theta',1,'n_phi',1, 'n_t', n_t);
+    dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi, 'n_t', n_t);
     y = (data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
     priors.a_alpha = Inf;
     priors.b_alpha = 0;
@@ -192,8 +233,7 @@ priors.muPhi = zeros(dim.n_phi,1); % exp tranform
 priors.SigmaTheta = 1e1*eye(dim.n_theta);
 options.priors = priors;
 
-
-%u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+%User data (rts) and feedback (score)
 u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);

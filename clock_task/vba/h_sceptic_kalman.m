@@ -1,4 +1,4 @@
-function  [fx] = h_sceptic_kalman_processnoise(x_t, theta, u, inF)
+function  [fx] = h_sceptic_kalman(x_t, theta, u, inF)
 % This is the evolution function of the kalman processnoise version of the
 % sceptic model.
 % evolution function of q-values of a RL agent (2-armed bandit problem)
@@ -7,7 +7,7 @@ function  [fx] = h_sceptic_kalman_processnoise(x_t, theta, u, inF)
 % actions to reinforce (2-armed bandit problem).
 % IN:
 %   - x_t : basis values/heights (nbasis x 1)
-%   - theta : theta will equal omega, discrim, tau, gamma, or phi.  theta(end) = prop_spread 
+%   - theta : theta will equal omega, discrim, tau, gamma, or phi.  theta(end) = prop_spread
 %   - u : u(1) = rt; u(2) = reward
 %   - inF : struct of input options (has nbasis and ntimesteps)
 % OUT:
@@ -23,11 +23,12 @@ z=0;
 %Set the proper paramters NOTE gamma is first then phi for sigma volatility
 %model.
 if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
-if inF.kalman.sigmavolatility 
+if inF.kalman.sigmavolatility
     gamma = 1./(1+exp(-theta(1)));
-    inF.kalman.phi, phi = 1./(1+exp(-theta(2))); 
+    phi = 1./(1+exp(-theta(2)));
 end
-if inF.kalman.uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
+if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
+if inF.kalman.kalman_uv_sum, tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); end
 
 
 
@@ -35,7 +36,7 @@ if inF.kalman.uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
 % alpha = 1./(1+exp(-theta(1)));
 if inF.fit_propspread
     prop_spread = 1./(1+exp(-theta(end)));
-else 
+else
     prop_spread = inF.sig_spread;
 end
 rt = u(1);
@@ -73,8 +74,12 @@ elig=elig/auc*inF.refspread;
 %Gaussian spread function.
 e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
+
+
+
 %1) compute prediction error, scaled by eligibility trace
-delta = e.*(reward - x_t(1:nbasis));
+mu=x_t(1:nbasis);
+delta = e.*(reward - mu);
 
 
 
@@ -87,7 +92,7 @@ delta = e.*(reward - x_t(1:nbasis));
 
 % sigma = sigma_noise; BUT SET SIGMA_NOISE PRIORS FOR EACH SESSION
 sigma = x_t(nbasis+1:end);
-%THIS will be nothing since there is no omega term...
+
 %MH 8Sep2015: At the moment, we assume zero process noise in the estimated posterior error covariances, sigma_ij.
 %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.
 Q = omega.*abs(delta); %use abs of PE so that any large surprise enhances effective gain.
@@ -99,24 +104,28 @@ k = (sigma + Q)./(sigma + Q + sigma_noise);
 %SIGMA
 fx(nbasis+1:end) = (1 - e.*k).*(sigma + z);
 
-%Update reward expectation. AD: Would it be better for the delta to be the difference between the reward
-%and the point value estimate at the RT(i)?
-
-%This might be the end for this guy!...
-% mu_ij = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
-
-%For this case these drop out as well
 %Track smooth estimate of volatility according to unsigned PE history
 z = gamma.*z + phi.*abs(sum(delta));
 
-%Uncertainty is a function of Kalman uncertainties.
-% u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;
-% u_func = sum(u_jt); %vector of uncertainties by timestep
-% u_it(i+1,:) = u_func;
 
-% What our final for kalman will be is x_t + k_ij * delta so we need to
-% compute k
-fx(1:nbasis) = x_t(1:nbasis) + k.*delta;
+%Uncertainty is a function of Kalman uncertainties.
+%This may be un-needed...
+%u=sigma'*ones(1,inF.ntimesteps) .* inF.gaussmat;
+%u_func = sum(sigma); %vector of uncertainties by timestep
+
+%I think this is correct [tau * hidden state value + (1-tau) * hidden state uncertainty]
+if inF.kalman.kalman_uv_sum
+    mu = mu + k.*delta;
+    fx(1:nbasis)=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
+    %fx(1:nbasis)=tau.*mu + (1-tau).*fx(nbasis+1:end); %mix together value and uncertainty according to tau
+else
+    % What our final for kalman will be is x_t + k_ij * delta so we need to
+    % compute k
+    fx(1:nbasis) = mu + k.*delta;
+end
+
+%FOR uv sum we need to to rewrite fx(1:nbasis) to be the uv sum analog to
+%the old clock sceptic script
 
 
 
