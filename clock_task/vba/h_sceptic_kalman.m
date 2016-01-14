@@ -20,15 +20,32 @@ phi=0;
 tradeoff=0;                 %parameter only applies to kalman_uv_logistic
 z=0;
 
+nbasis = inF.nbasis; %Grab basis numbers
+hidden_state_index=1:inF.hidden_state*nbasis;
+hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
+
 %Set the proper paramters NOTE gamma is first then phi for sigma volatility
 %model.
 if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
-if inF.kalman.sigmavolatility
+if inF.kalman.kalman_sigmavolatility
     gamma = 1./(1+exp(-theta(1)));
     phi = 1./(1+exp(-theta(2)));
+    z = x_t(hidden_state_index(:,3)); %Volatility
 end
 if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
 if inF.kalman.kalman_uv_sum, tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); end
+
+
+%Define hidden states
+%Value should always be the first while uncertainey should always be the
+%second.
+mu=x_t(hidden_state_index(:,1)); %Value
+sigma = x_t(hidden_state_index(:,2)); %Uncertainty
+
+ 
+% mu=x_t(1:nbasis); %Value
+% sigma = x_t(nbasis+1:end); %Uncertainty
+
 
 
 
@@ -49,7 +66,7 @@ fx = zeros(size(x_t));
 %    nbasis_cdf = cdf('Normal',theta(2),inF.muTheta2, inF.SigmaTheta2);
 %    nbasis = unidinv(nbasis_cdf,inF.maxbasis);
 %else
-nbasis = inF.nbasis;
+
 %end
 % ntimesteps = inF.ntimesteps;
 
@@ -78,7 +95,6 @@ e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 
 %1) compute prediction error, scaled by eligibility trace
-mu=x_t(1:nbasis);
 delta = e.*(reward - mu);
 
 
@@ -90,9 +106,6 @@ delta = e.*(reward - mu);
 %variance as the basis deviates from the timing of the obtained reward.
 
 
-% sigma = sigma_noise; BUT SET SIGMA_NOISE PRIORS FOR EACH SESSION
-sigma = x_t(nbasis+1:end);
-
 %MH 8Sep2015: At the moment, we assume zero process noise in the estimated posterior error covariances, sigma_ij.
 %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.
 Q = omega.*abs(delta); %use abs of PE so that any large surprise enhances effective gain.
@@ -102,10 +115,12 @@ k = (sigma + Q)./(sigma + Q + sigma_noise);
 
 %Update posterior variances on the basis of Kalman gains, what used to be
 %SIGMA
-fx(nbasis+1:end) = (1 - e.*k).*(sigma + z);
+fx(hidden_state_index(:,2)) = (1 - e.*k).*(sigma + z);
 
-%Track smooth estimate of volatility according to unsigned PE history
-z = gamma.*z + phi.*abs(sum(delta));
+% 
+% 
+% %THIS need to be fx(whatever) to update next timestep
+% z = gamma.*z + phi.*abs(sum(delta));
 
 
 %Uncertainty is a function of Kalman uncertainties.
@@ -116,18 +131,21 @@ z = gamma.*z + phi.*abs(sum(delta));
 %I think this is correct [tau * hidden state value + (1-tau) * hidden state uncertainty]
 if inF.kalman.kalman_uv_sum
     mu = mu + k.*delta;
-    fx(1:nbasis)=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
+    fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
     %fx(1:nbasis)=tau.*mu + (1-tau).*fx(nbasis+1:end); %mix together value and uncertainty according to tau
+elseif inF.kalman.kalman_sigmavolatility
+    %Update value
+    fx(hidden_state_index(:,1)) = mu + k.*delta;
+    %Track smooth estimate of volatility according to unsigned PE history
+    fx(hidden_state_index(:,3)) = gamma.*z + phi.*abs(sum(delta));
 else
     % What our final for kalman will be is x_t + k_ij * delta so we need to
     % compute k
-    fx(1:nbasis) = mu + k.*delta;
+    fx(hidden_state_index(:,1)) = mu + k.*delta;
 end
 
 %FOR uv sum we need to to rewrite fx(1:nbasis) to be the uv sum analog to
 %the old clock sceptic script
-
-
 
 
 

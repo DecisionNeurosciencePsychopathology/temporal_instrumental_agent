@@ -70,7 +70,7 @@ options.DisplayWin=1;
 
 %% set up kalman defaults
 options.inF.kalman.processnoise = 0;
-options.inF.kalman.sigmavolatility  = 0;
+options.inF.kalman.kalman_sigmavolatility  = 0;
 options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
 options.inF.kalman.kalman_uv_logistic = 0;
@@ -150,8 +150,8 @@ switch model
         %kalman learning rule (no free parameter); PEs inflate posterior variance (sigma) according to phi and gamma
     case 'kalman_sigmavolatility'
         n_theta = 2;
-        hidden_variables = 2; %tracks value and uncertainty
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
+        hidden_variables = 3; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
         
@@ -166,6 +166,8 @@ switch model
         return
         
 end
+
+options.inF.hidden_state = hidden_variables;
 
 %Define observation function
 g_name = @g_sceptic;
