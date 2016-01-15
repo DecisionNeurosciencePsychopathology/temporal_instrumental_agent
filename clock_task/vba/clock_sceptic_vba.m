@@ -88,7 +88,7 @@ conditions=data.rewFunc(idx);
 sigma_noise = [];
 run_length = n_t/n_runs;
 for i = 1:length(conditions)
-    sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*10, conditions(i), 0), options.inF.tvec))^2, 1, run_length)];
+    sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*100, conditions(i), 0), options.inF.tvec))^2, 1, run_length)];
 end
 sigma_noise = mean(sigma_noise);
 options.inF.sigma_noise = sigma_noise;
@@ -107,6 +107,9 @@ if multisession %improves fits moderately
     end
     
 end
+
+%Define observation function
+g_name = @g_sceptic;
 
 
 
@@ -142,19 +145,32 @@ switch model
         
         %old kalman with explore/exploit hardmax selection according to logistic function
     case 'kalman_logistic'
+        %Prop_spread is the only variable currently in this model
+        if fit_propspread
+            n_theta = 0;
+        end
+        n_phi  = 2;  %Beta and discrim
+        %Different observation function than other kalman models
+        g_name = @g_sceptic_logistic;
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis); %This is Discrim not Beta for this model
         h_name = @h_sceptic_kalman;
+        %Define indifference point between explore and exploit (p = 0.5) as proportion reduction in variance from initial value
+        tradeoff = 0.1209529; %From what was the optimized overall
+        options.inG.u_threshold = (1 - tradeoff * sigma_noise);
+        %Predetermined random trials
+        %options.inG.choice_rand=rand(n_steps,1);
         
         %kalman learning rule (no free parameter); PEs inflate posterior variance (sigma) according to phi and gamma
     case 'kalman_sigmavolatility'
         n_theta = 2;
-        hidden_variables = 3; %tracks value and uncertainty
+        hidden_variables = 3; %tracks value and uncertainty and volatility
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
         
+        %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
     case 'kalman_uv_sum'
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
@@ -168,10 +184,6 @@ switch model
 end
 
 options.inF.hidden_state = hidden_variables;
-
-%Define observation function
-g_name = @g_sceptic;
-
 
 
 if multinomial
