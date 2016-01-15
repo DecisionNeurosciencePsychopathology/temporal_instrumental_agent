@@ -22,7 +22,7 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_uv_logistic'};
+modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility'};  % 'kalman_logistic'};
 
 %% set parameters
 nbasis = 4;
@@ -40,34 +40,41 @@ id = NaN(length(behavfiles));
 % parpool
 grp = struct([]);
 
-fit_single_model = 1;
+fit_single_model = 0;
 if fit_single_model
-    model = 'kalman_uv_logistic';
+    model = 'fixed'; % will run to get value and prediction errors.
+    p = ProgressBar(sub);
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
         [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
         L(sub) = out.F;
-        
+        value(:,:,sub) = out.suffStat.muX;
+        p.progress;
     end
+    p.stop;
     filename = sprintf('grp_%s%d',model);
-    save(filename,L);
+    save(filename);
 else
+    %% continue where I left off earlier
     load L_n=64
     for sub = 64:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
+        p = ProgressBar(sub);
         parfor m=1:length(modelnames)
             model = char(modelnames(m));
             fprintf('Fitting %s to %d',model,id(sub))
             [posterior,out] = clock_sceptic_vba(id(sub),char(modelnames(m)),nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
             L(m,sub) = out.F;
+            p.progress;
         end
+        p.stop;
     end
     filename = 'group_model_comparison';
-    save(filename,L);
+    save(filename,'L');
 end
 % save grp grp;
 % %%
