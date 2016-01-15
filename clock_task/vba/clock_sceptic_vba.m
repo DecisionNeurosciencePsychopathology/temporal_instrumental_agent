@@ -17,16 +17,12 @@ close all
 global rew_rng_state
 rew_rng_seed = 99;
 
-% n_basis = 8; %24%
-options.inF.fit_nbasis = 0;
-range_RT = 400;
-n_steps = 40;
-n_t = 400;
-n_runs = 8;
-trialsToFit = 1:n_t;
-% fit_propspread = 1;
-options.inF.fit_propspread = fit_propspread;
 
+graphics = 0;
+if ~graphics
+options.DisplayWin = 0;
+options.GnFigs = 0;
+end
 %% set up dim defaults
 n_theta = 1;
 n_phi = 1;
@@ -51,6 +47,14 @@ else
     end
 end
 
+options.inF.fit_nbasis = 0;
+range_RT = 400;
+n_steps = 40;
+n_t = size(data,1);
+n_runs = n_t/50;
+trialsToFit = 1:n_t;
+% fit_propspread = 1;
+options.inF.fit_propspread = fit_propspread;
 
 
 %% set up models within evolution/observation Fx
@@ -188,6 +192,7 @@ options.inF.hidden_state = hidden_variables;
 
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
+    rtrnd(rtrnd==0)=1;
     dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
@@ -251,5 +256,5 @@ u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
 %% save output figure
-h = figure(1);
-savefig(h,sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+% h = figure(1);
+% savefig(h,sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
