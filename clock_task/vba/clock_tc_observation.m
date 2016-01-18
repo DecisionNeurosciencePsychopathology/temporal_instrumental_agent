@@ -41,12 +41,16 @@ RT_prev = u(2); %previous RT (not used here in evolution function)
 % rew_std = u(5); %reward standard deviation up to trial t
 
 %pull out observation parameters and transform 
-K = unifinv(cdf('Normal', phi(1), inG.priors.muPhi(1), inG.priors.SigmaPhi(1,1)), 0, inG.maxRT);
+K = unifinv(fastnormcdf(phi(1)), 0, inG.maxRT);
+%K = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(1), 'linear'), 0, inG.maxRT);
+
 lambda = 1 ./ (1+exp(-phi(2))); %exponential transform to 0..1
 nu = inG.maxNu ./ (1+exp(-phi(3))); %exponential transform to 0..100
 %use a long-tailed gamma(2,2) distribution to approximate 0..10000 parameter
 %at probability .999, gamma is ~18, so need to multiply by about 400 to achieve 0..10000 scaling
-rho = inG.rhoMultiply * gaminv(cdf('Normal', phi(4), inG.priors.muPhi(4), inG.priors.SigmaPhi(4,4)), 2, 2); 
+%rho = inG.rhoMultiply * gaminv(normcdf(phi(4), inG.priors.muPhi(4), inG.priors.SigmaPhi(4,4)), 2, 2); 
+rho = inG.rhoMultiply * gaminv(fastnormcdf(phi(4)), 2, 2); %use precompiled std norm cdf code for speed
+%rho = inG.rhoMultiply * gaminv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(4), 'linear'), 2, 2);
 
 %example of Normal -> Gamma transformation using inverse cdf method
 %gaussTest = -5:.01:5;
@@ -59,13 +63,18 @@ rho = inG.rhoMultiply * gaminv(cdf('Normal', phi(4), inG.priors.muPhi(4), inG.pr
 %for now, keep a non-negative number (otherwise need to implement sticky choice)
 %epsilon = phi(5);
 
-epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 2, 2);
+%epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 2, 2);
+
+%uniform 0..80000 variant
+%epsilon = unifinv(normcdf(phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 0, 80000);
+epsilon = unifinv(fastnormcdf(phi(5)), 0, 80000);
+%epsilon = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(5), 'linear'), 0, 80000);
 
 %need overall average RT for the block for "Go for the gold"
 meanRT = inG.meanRT;
 
 %pull out hidden states
-bestRT = hidden(1);
+bestRT = hidden(1)*inG.RTrescale;
 a_fast = hidden(2);
 b_fast = hidden(3);
 a_slow = hidden(4);
@@ -73,7 +82,7 @@ b_slow = hidden(5);
 %V = hidden(6); %not used in observation function
 Go = hidden(7);
 NoGo = hidden(8);
-%RTlocavg = hidden(9); %not used in observation function
+%RTlocavg = hidden(9)*inG.RTrescale; %not used in observation function
 expsign = hidden(10);
 
 %compute the means and variances of fast and slow betas

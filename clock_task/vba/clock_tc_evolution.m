@@ -44,7 +44,7 @@ alphaN = inF.maxAlpha ./ (1+exp(-theta(2)));
 %any model component that doesn't evolve is placed in the evolution function.
 
 %extract hidden states to update
-bestRT = hidden(1);
+bestRT = hidden(1)*inF.RTrescale;
 a_fast = hidden(2);
 b_fast = hidden(3);
 a_slow = hidden(4);
@@ -52,8 +52,8 @@ b_slow = hidden(5);
 V = hidden(6);
 Go = hidden(7);
 NoGo = hidden(8);
-RTlocavg = hidden(9);
-expsign = hidden(10);
+RTlocavg = hidden(9)*inF.RTrescale;
+%expsign = hidden(10);
 
 alphaV = 0.1; %Fixed as in Frank
 V_new = V + alphaV*(reward - V); %critic value
@@ -94,5 +94,5 @@ end
 %update estimate of recent/"learned" RTlocavg
 RTlocavg_new = RTlocavg + alphaV*(reward - RTlocavg);
 
-fx = [bestRT_new; a_fast_new; b_fast_new; a_slow_new; b_slow_new; ...
-    V_new; Go_new; NoGo_new; RTlocavg_new; expsign_new];
+fx = [bestRT_new/inF.RTrescale; a_fast_new; b_fast_new; a_slow_new; b_slow_new; ...
+    V_new; Go_new; NoGo_new; RTlocavg_new/inF.RTrescale; expsign_new];
