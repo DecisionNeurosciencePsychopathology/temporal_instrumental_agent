@@ -1,4 +1,4 @@
-function  [fx] = clock_sceptic_evolution(x_t, theta, u, inF)
+function  [fx] = h_sceptic_fixed(x_t, theta, u, inF)
 % evolution function of q-values of a RL agent (2-armed bandit problem)
 % [fx,dfdx,dfdP] = f_Qlearn2(x,P,u,in)
 % Here, there are only two q-values to evolve, i.e. there are only two
@@ -12,7 +12,11 @@ function  [fx] = clock_sceptic_evolution(x_t, theta, u, inF)
 %   - fx: evolved basis values/heights (nbasis x 1)
 
 alpha = 1./(1+exp(-theta(1)));
-%prop_spread = theta(2);
+if inF.fit_propspread
+prop_spread = 1./(1+exp(-theta(2)));
+else 
+    prop_spread = inF.sig_spread;
+end
 rt = u(1);
 reward = u(2);
 if inF.fit_nbasis
@@ -27,7 +31,8 @@ end
 %refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
 
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
-elig = gaussmf(inF.tvec, [inF.sig_spread, rt]);
+% elig = gaussmf(inF.tvec, [inF.sig_spread, rt]);
+elig = gaussmf(inF.tvec, [prop_spread, rt]);
 
 %compute sum of area under the curve of the gaussian function
 auc=sum(elig);
