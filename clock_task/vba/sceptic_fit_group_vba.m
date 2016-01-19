@@ -22,7 +22,7 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'kalman_softmax' };
+modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility'};  % 'kalman_logistic'};
 
 %% set parameters
 nbasis = 4;
@@ -36,36 +36,61 @@ fit_propspread = 1;
 id = NaN(length(behavfiles));
 
 %% main loop
-posterior = struct([length(behavfiles),length(modelnames)]);
-out = struct([]);
-L = NaN(length(modelnames),length(behavfiles));
-for sub = 1:length(behavfiles)
-    str = behavfiles{sub};
-    id(sub) = str(isstrprop(str,'digit'));
-    for m=1:length(modelnames)
-        [posterior,out] = clock_sceptic_vba(id(sub),modelnames(m),nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
-        L(m,sub) = out.F;
-    end
-end
-grp.modelnames = modelnames;
-grp.id = id;
-grp.L = L;
+% L = NaN(length(modelnames),length(behavfiles));
+% parpool
+grp = struct([]);
 
-save grp grp;
+fit_single_model = 0;
+if fit_single_model
+    model = 'fixed'; % will run to get value and prediction errors.
+    p = ProgressBar(sub);
+    parfor sub = 1:length(behavfiles)
+        str = behavfiles{sub};
+        id(sub) = str2double(str(isstrprop(str,'digit')));
+        fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
+        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
+        L(sub) = out.F;
+        value(:,:,sub) = out.suffStat.muX;
+        p.progress;
+    end
+    p.stop;
+    filename = sprintf('grp_%s%d',model);
+    save(filename);
+else
+    %% continue where I left off earlier
+    load L_n=64
+    for sub = 64:length(behavfiles)
+        str = behavfiles{sub};
+        id(sub) = str2double(str(isstrprop(str,'digit')));
+        fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
+        p = ProgressBar(sub);
+        parfor m=1:length(modelnames)
+            model = char(modelnames(m));
+            fprintf('Fitting %s to %d',model,id(sub))
+            [posterior,out] = clock_sceptic_vba(id(sub),char(modelnames(m)),nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
+            L(m,sub) = out.F;
+            p.progress;
+        end
+        p.stop;
+    end
+    filename = 'group_model_comparison';
+    save(filename);
+end
+% save grp grp;
 % %%
 % %read header
 % % fid = fopen(behavfiles(1).name, 'r');
 % % head = textscan(fid, '%s', 1);
 % % fclose(fid);
 % % m = csvread(behavfiles(1).name, 1, 0);
-% 
+%
 % %% settings
 % trialplots = 1;
 % fit_params = 0;
 % %%
-% 
+%
 % %wow, matlab has a useful function for mixed data types!!
-% 
+%
 % %% write struct array of behavioral data with ids
 % for sub = 1:length(behavfiles)
 %     % write data
@@ -74,7 +99,7 @@ save grp grp;
 % fname = behavfiles{sub};
 % idchars = regexp(fname,'\d');
 % behav{sub}.id = fname(idchars);
-% 
+%
 % %% fit SKEPTIC RL model to each subject, using fixed 'optimal' parameters, with both
 % % a full RT range and subject's actual (limited) RT range
 % runs=unique(behav{sub}.data.run);
@@ -90,10 +115,10 @@ save grp grp;
 % % cond = behav{sub}.data.rewFunc(sub);
 % %% fit the model with a full range of RTs
 % % params = [.9165 .2261 .5]; %epsilon, prop_spread, spotlight
-% 
-% 
+%
+%
 % % if fit_params
-% 
+%
 % for modelnum = 1:length(modelnames)
 %     modelname = char(modelnames(modelnum));
 %     if strcmpi(modelname,'value_softmax')
@@ -109,13 +134,13 @@ save grp grp;
 % %         weight)
 % %% NB -- higher than 'optimal' tau here
 %         params = [.2261 .01 .005 .95]; %prop_spread, beta (temperature), kappa (discount factor), tau
-% 
+%
 %     end
-%     
+%
 %     %clock_logistic_fitsubject(params, rts_obs', rew_obs');
 %     range = 'full';
 %     [~, ret, ~] = skeptic_fitsubject_all_models(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, 25, 400, modelname);
-%     
+%
 %     %% write p_choice fit statistics
 %     behav{sub}.data.(sprintf('%s_p_chosen',modelname))(behav{sub}.data.run==runs(run),1) = ret.p_chosen';
 % end
@@ -123,38 +148,38 @@ save grp grp;
 % %%
 % %version with spotlight
 % %[~, ret, ~] = skeptic_fitsubject(params(1:3), rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, cond);
-% 
+%
 % % % %% write predicted RTs -explore and -exploit
 % %  behav{sub}.data.full_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
-% 
-%  
-% 
+%
+%
+%
 % %% test fits with regression
 % % fprintf('\r**************\r%s range\r',range);
 % % behav{sub}.stats_full.(block)=test_reg(rts_obs,ret, modelname);
 % % fprintf('**************\r');
-% % 
+% %
 % % %% Let's also try with a representational basis restricted to the subject's RT range
 % % range = 'limited';
 % % minrt = round(min(rts_obs(rts_obs>0))./10);
 % % maxrt = round(max(rts_obs)./10);
 % % [~, ret, ~] = skeptic_fitsubject_all_models(params, rts_obs', rew_obs', [10 9 15 50], 24, 400, trialplots, minrt, maxrt, modelname);
-% % % 
+% % %
 % % %  behav{sub}.data.limited_rtpred_explore(behav{sub}.data.run==runs(run),1) = ret.rts_pred_explore(1:50)';
 % % %  behav{sub}.data.limited_rtpred_exploit(behav{sub}.data.run==runs(run),1) = ret.rts_pred_exploit(1:50)';
-% % 
+% %
 % % % %% write predicted RTs for representational range limited to subject's RT range
 % % % behav{sub}.data.lim_rtpred_explore(behav{sub}.data.run==runs(run)) = ret.rts_pred_explore(1:50)';
 % % % behav{sub}.data.lim_rtpred_exploit(behav{sub}.data.run==runs(run)) = ret.rts_pred_exploit(1:50)';
-% % 
+% %
 % % %% test with regression
 % % fprintf('\r**************\r%s range\r',range);
 % % behav{sub}.stats_lim.(block)=test_reg(rts_obs,ret, modelname);
 % % fprintf('**************\r');
 % end
-% 
-% 
-% 
+%
+%
+%
 % save behav behav
 % %% let's see if R2 improves for limited vs. full range
 % %% more importantly, are betas for RT_pred(explore, exploit) different from 0?
@@ -163,41 +188,41 @@ save grp grp;
 % % for run = 1:length(conds)
 % % r2full(sub,run) = behav{sub}.stats_full.(conds{run}).stats(1);
 % % r2lim_range(sub,run) = behav{sub}.stats_lim.(conds{run}).stats(1);
-% % 
+% %
 % % b_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(1);
-% % 
+% %
 % % b_L_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,1);
 % % b_U_CI_exploit_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(1,2);
-% % 
+% %
 % % b_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).b(2);
-% % 
+% %
 % % b_L_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,1);
 % % b_U_CI_explore_full(sub,run) = behav{sub}.stats_full.(conds{run}).bint(2,2);
-% % 
-% % 
+% %
+% %
 % % b_exploit_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(1);
 % % b_explore_lim(sub,run) = behav{sub}.stats_lim.(conds{run}).b(2);
 % % end
 % % end
-% 
+%
 % %% sanity check plots
 % % clf
 % % figure(99);
 % % errorbar(1:length(behavfiles),b_exploit_full(:,2),b_exploit_full(:,2)-b_L_CI_exploit_full(:,2),b_U_CI_exploit_full(:,2)-b_exploit_full(:,2));hold on;
 % % errorbar(1:length(behavfiles),b_explore_full(:,2),b_explore_full(:,2)-b_L_CI_explore_full(:,2),b_U_CI_explore_full(:,2)-b_explore_full(:,2),'r');hold off;
-% % 
+% %
 % % figure(98)
 % % scatter(b_exploit_full(:,2),b_explore_full(:,2));
 % %% testing range limitation
-% % 
+% %
 % % [h,p,CI,stats] = ttest(r2full,r2lim_range);
 % % %no, R2 does not seem to improve
-% % 
+% %
 % % %% are betas different from 0?
 % % % this should really be done using CIs stored above!!!
 % % [h,p,CI,stats] = ttest(b_exploit_lim,0);
 % % [h,p,CI,stats] = ttest(b_explore_lim,0);
-% % % strangely, 
+% % % strangely,
 % % figure(1);clf;
 % % subplot(4,1,1);
 % % hist(b_explore_full,40);
@@ -210,7 +235,7 @@ save grp grp;
 % % xlabel('RTexploIT regression coefficients; color: run')
 % % ylabel('Subject count')
 % % title('Full RT range results WITHOUT OUTLIERS');
-% % 
+% %
 % % subplot(4,1,3);
 % % hist(b_explore_full,40);
 % % xlabel('RTexploRE regression coefficients; color: run')
@@ -222,10 +247,10 @@ save grp grp;
 % % xlabel('RTexploIT regression coefficients; color: run')
 % % ylabel('Subject count')
 % % title('Limited RT range results WITHOUT OUTLIERS');
-% % 
-% 
+% %
+%
 % %% export data to R
-% 
+%
 % for sub=1:length(behavfiles)
 %     writetable(behav{sub}.data,sprintf('%s.csv',behav{sub}.id));
 % end
@@ -233,20 +258,20 @@ save grp grp;
 % %sub = 53;
 % %%
 % %function [cost,mov,ret] = skeptic_fitsubject(params, rt_obs, rew_obs, rngseeds, nbasis, ntimesteps, trial_plots, cond, minrt)
-% % 
+% %
 % % fmincon_options = optimoptions(@fmincon, 'UseParallel',false, 'Algorithm', 'active-set');%, 'DiffMinChange', 0.001);
-% % 
+% %
 % % init_params_1 = [.02 .9877 -.06];
 % % lower_bounds = [0.001 0.9 -1];
 % % upper_bounds = [0.2 .999 0];
-% % 
+% %
 % % [fittedparameters_fmincon, cost_fmincon, exitflag_fmincon] = fmincon(@(params) clock_logistic_fitsubject(params, rts_obs', rew_obs'), init_params_1, [], [], [], [], lower_bounds, upper_bounds, [], fmincon_options);
-% % 
+% %
 % % [~, fitted_object] = clock_logistic_fitsubject(-.09, rts_obs', rew_obs');
 % % fitted_object.cost_total
 % % [~, fitted_object] = clock_logistic_fitsubject(-.06, rts_obs', rew_obs');
 % % fitted_object.cost_total
-% % 
+% %
 % % plot(1:50, fitted_object.rts_obs)
 % % hold on;
 % % plot(1:50, fitted_object.rts_pred, 'b')
