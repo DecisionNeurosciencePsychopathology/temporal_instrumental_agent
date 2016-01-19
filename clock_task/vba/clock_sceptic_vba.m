@@ -44,7 +44,9 @@ else
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
-    e
+    elseif strcmp(me(1:6),'dombax')==1
+        data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+    vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
     else
         data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
     vbadir = '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba';

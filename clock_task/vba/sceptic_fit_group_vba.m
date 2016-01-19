@@ -17,7 +17,7 @@ else
     if strcmp(me,'Alex')==1
         behavfiles = glob('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/*.csv');
     elseif strcmp(me(1:6),'dombax')==1
-        behavfiles = glob('/Users/dombax/clock_analysis/fmri/behavior_files/*.csv');
+        behavfiles = glob('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/*.csv');
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
     end
