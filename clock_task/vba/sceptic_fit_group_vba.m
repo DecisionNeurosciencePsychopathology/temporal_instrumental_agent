@@ -74,7 +74,7 @@ else
         p.stop;
     end
     filename = 'group_model_comparison';
-    save(filename,'L');
+    save(filename);
 end
 % save grp grp;
 % %%
