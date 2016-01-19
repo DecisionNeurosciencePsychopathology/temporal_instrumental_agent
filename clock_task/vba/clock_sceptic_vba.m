@@ -37,13 +37,17 @@ n_phi = 1;
 os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+    vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+    vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
+    e
     else
         data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
+    vbadir = '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba';
     end
 end
 
@@ -255,6 +259,8 @@ u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
+cd(vbadir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');

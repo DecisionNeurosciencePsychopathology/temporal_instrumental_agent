@@ -16,13 +16,15 @@ else
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         behavfiles = glob('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/*.csv');
+    elseif strcmp(me(1:6),'dombax')==1
+        behavfiles = glob('/Users/dombax/clock_analysis/fmri/behavior_files/*.csv');
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
     end
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility'};  % 'kalman_logistic'};
+modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 
 %% set parameters
 nbasis = 4;
@@ -57,9 +59,9 @@ if fit_single_model
     filename = sprintf('grp_%s%d',model);
     save(filename);
 else
-    %% continue where I left off earlier
-    load L_n=64
-    for sub = 64:length(behavfiles)
+%     %% continue where I left off earlier
+%     load L_n=64
+    for sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
