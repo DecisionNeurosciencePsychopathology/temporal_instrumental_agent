@@ -35,8 +35,8 @@ function  [ gx ] = clock_tc_observation(hidden,phi,u,inG)
 
 %pull out input parameters
 RT = u(1); %current RT
-RT_prev = u(2); %previous RT (not used here in evolution function)
-% reward = u(3); %reward obtained on trial t
+RT_prev = u(2); %previous RT
+% reward = u(3); %reward obtained on trial t (not used in observation function)
 % rew_max = u(4); %max reward up to trial t
 % rew_std = u(5); %reward standard deviation up to trial t
 
