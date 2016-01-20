@@ -75,8 +75,8 @@ options.inG.multinomial = multinomial;
 options.inG.nbasis = n_basis;
 options.inG.maxRT = range_RT;
 %%
-options.TolFun = 1e-8;
-options.GnTolFun = 1e-8;
+options.TolFun = 1e-6;
+options.GnTolFun = 1e-6;
 options.verbose=1;
 options.DisplayWin=1;
 
