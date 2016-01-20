@@ -20,8 +20,8 @@ rew_rng_seed = 99;
 
 graphics = 0;
 if ~graphics
-options.DisplayWin = 0;
-options.GnFigs = 0;
+    options.DisplayWin = 0;
+    options.GnFigs = 0;
 end
 %% set up dim defaults
 n_theta = 1;
@@ -43,6 +43,7 @@ else
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+<<<<<<< Updated upstream
     vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
@@ -50,6 +51,12 @@ else
     else
         data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
     vbadir = '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba';
+=======
+    elseif strcmpi(me(1:14),'alexdombrovski')
+        data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+    else
+        data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+>>>>>>> Stashed changes
     end
 end
 
@@ -130,7 +137,9 @@ switch model
         h_name = @h_sceptic_fixed;
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+%         priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
+
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
