@@ -9,7 +9,7 @@ function  [ gx ] = g_sceptic_continuous(x_t,phi,u,inG)
 % OUTPUT
 % - gx : RT
 
-K = unifinv(fastnormcdf(phi(1)), - inG.maxRT, inG.maxRT); %uniform transform
+K = unifinv(fastnormcdf(phi(1)), - inG.maxRT./2, inG.maxRT./2); %uniform transform
 lambda = 1 ./ (1+exp(-phi(2))); %exponential transform to 0..1
 
 gaussmat=inG.gaussmat;
@@ -24,6 +24,6 @@ v_func = sum(v); %subjective value by timestep as a sum of all basis functions
 
 best_rts = mean(find(v_func==max(v_func)));
 
-gx = best_rts + K + lambda*RT_prev;
+gx = wmean([best_rts + K, RT_prev], [1-lambda, lambda],2);
 
 

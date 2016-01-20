@@ -49,7 +49,7 @@ else
         vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
-        vbadir = '/Users/alexdombrovski/code/clock_smoothoperator/clock_task/vba';
+        vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     end
@@ -57,7 +57,7 @@ end
 
 options.inF.fit_nbasis = 0;
 range_RT = 400;
-n_steps = 40;
+n_steps = 4000;
 n_t = size(data,1);
 n_runs = n_t/50;
 trialsToFit = 1:n_t;
@@ -115,7 +115,7 @@ if multisession %improves fits moderately
         options.multisession.fixed.phi = 'all';
         %
         % allow unique initial values for each run?
-        %                  options.multisession.fixed.X0 = 'all';
+        options.multisession.fixed.X0 = 'all';
     end
     
 end
@@ -132,8 +132,8 @@ switch model
         h_name = @h_sceptic_fixed;
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
-        %         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+%         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
         
         
         %kalman learning rule (no free parameter); softmax choice over value curve
