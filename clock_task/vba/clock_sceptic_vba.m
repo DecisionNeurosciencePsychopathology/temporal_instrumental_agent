@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multisession,fixed_params_across_runs,fit_propspread)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -20,8 +20,8 @@ rew_rng_seed = 99;
 
 graphics = 0;
 if ~graphics
-options.DisplayWin = 0;
-options.GnFigs = 0;
+    options.DisplayWin = 0;
+    options.GnFigs = 0;
 end
 %% set up dim defaults
 n_theta = 1;
@@ -43,19 +43,21 @@ else
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-    vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
+        vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-    vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
+        vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
+    elseif strcmpi(me(1:14),'alexdombrovski')
+        data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
+        vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
     else
-        data = readtable('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_10637_tc_tcExport.csv','Delimiter',',','ReadVariableNames',true);
-    vbadir = '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba';
+        data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     end
 end
 
 options.inF.fit_nbasis = 0;
 range_RT = 400;
-n_steps = 40;
+% n_steps = 4000;
 n_t = size(data,1);
 n_runs = n_t/50;
 trialsToFit = 1:n_t;
@@ -71,10 +73,10 @@ options.inF.ntimesteps = n_steps;
 options.inG.ntimesteps = n_steps;
 options.inG.multinomial = multinomial;
 options.inG.nbasis = n_basis;
-
+options.inG.maxRT = range_RT;
 %%
-options.TolFun = 1e-8;
-options.GnTolFun = 1e-8;
+options.TolFun = 1e-6;
+options.GnTolFun = 1e-6;
 options.verbose=1;
 options.DisplayWin=1;
 
@@ -113,13 +115,10 @@ if multisession %improves fits moderately
         options.multisession.fixed.phi = 'all';
         %
         % allow unique initial values for each run?
-        %                  options.multisession.fixed.X0 = 'all';
+        options.multisession.fixed.X0 = 'all';
     end
     
 end
-
-%Define observation function
-g_name = @g_sceptic;
 
 
 
@@ -134,6 +133,8 @@ switch model
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
+%         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
+        
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
@@ -212,18 +213,30 @@ if multinomial
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
     options.binomial = 1;
+    priors.muPhi = zeros(dim.n_phi,1); % exp tranform
     priors.SigmaPhi = 1e1*eye(dim.n_phi);
+    % Inputs
+    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+    % Observation function
+    g_name = @g_sceptic;
+    
 else
+    n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
     dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi, 'n_t', n_t);
     y = (data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
     priors.a_alpha = Inf;
     priors.b_alpha = 0;
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
-    priors.SigmaPhi = 0*eye(dim.n_phi);
+    priors.muPhi = [0, 0];
+    priors.SigmaPhi = diag([1,1]);
     options.binomial = 0;
     options.sources(1) = struct('out',1,'type',0);
-    
+    prev_rt = [0 y(1:end-1)];
+    % Inputs
+    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; prev_rt];
+    % Observation function
+    g_name = @g_sceptic_continuous;
     
 end
 %
@@ -252,17 +265,14 @@ options.skipf(1) = 1;
 
 %% priors
 priors.muTheta = zeros(dim.n_theta,1);
-priors.muPhi = zeros(dim.n_phi,1); % exp tranform
 priors.SigmaTheta = 1e1*eye(dim.n_theta);
 options.priors = priors;
-
-%User data (rts) and feedback (score)
-u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
 cd(vbadir);
 %% save output figure
 % h = figure(1);
-% savefig(h,sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+% savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
 save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');

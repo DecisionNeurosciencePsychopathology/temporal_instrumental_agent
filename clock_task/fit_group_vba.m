@@ -17,6 +17,8 @@ else
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         behavfiles = glob('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/*.csv');
+    elseif strcmpi(me(1:14),'alexdombrovski')
+        behavfiles = glob('/Users/alexdombrovski/code/clock_smoothoperator/clock_task/subjects/*.csv');
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
     end

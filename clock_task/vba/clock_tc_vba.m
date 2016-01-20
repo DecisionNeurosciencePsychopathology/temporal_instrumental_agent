@@ -30,7 +30,7 @@ multisession = 1;
 fixed_params_across_runs = 1;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
-data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
 rts = data{trialsToFit, 'rt'};
 rewards = data{trialsToFit, 'score'};
 
