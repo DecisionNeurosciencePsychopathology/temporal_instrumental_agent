@@ -32,7 +32,7 @@ multinomial = 1;
 multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 1;
-
+n_steps = 20;
 
 % get ID list
 id = NaN(length(behavfiles));
@@ -50,7 +50,7 @@ if fit_single_model
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
-        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
+        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
         L(sub) = out.F;
         value(:,:,sub) = out.suffStat.muX;
         p.progress;

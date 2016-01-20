@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis,multinomial,multisession,fixed_params_across_runs,fit_propspread)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -57,7 +57,7 @@ end
 
 options.inF.fit_nbasis = 0;
 range_RT = 400;
-n_steps = 4000;
+% n_steps = 4000;
 n_t = size(data,1);
 n_runs = n_t/50;
 trialsToFit = 1:n_t;
@@ -274,5 +274,5 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 cd(vbadir);
 %% save output figure
 % h = figure(1);
-% savefig(h,sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+% savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
 save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
