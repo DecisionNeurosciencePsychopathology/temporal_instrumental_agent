@@ -228,7 +228,8 @@ else
     priors.b_alpha = 0;
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
-    priors.muPhi = [0, 0];
+    priors.muPhi = [0, 0];  % K, lambda
+%     priors.SigmaPhi = diag([0,1]); % get rid of the K
     priors.SigmaPhi = diag([1,1]);
     options.binomial = 0;
     options.sources(1) = struct('out',1,'type',0);
@@ -265,7 +266,7 @@ options.skipf(1) = 1;
 
 %% priors
 priors.muTheta = zeros(dim.n_theta,1);
-priors.SigmaTheta = 1e1*eye(dim.n_theta);
+priors.SigmaTheta = zeros*eye(dim.n_theta); % lower the learning rate variance -- it tends to be low in the posterior
 options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 

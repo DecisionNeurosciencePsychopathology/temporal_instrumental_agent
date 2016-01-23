@@ -27,15 +27,15 @@ end
 modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 
 %% set parameters
-nbasis = 4;
+nbasis = 16;
 multinomial = 1;
 multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 1;
-n_steps = 20;
+n_steps = 50;
 
 % get ID list
-id = NaN(length(behavfiles));
+id = NaN(length(behavfiles),1);
 
 %% main loop
 % L = NaN(length(modelnames),length(behavfiles));
@@ -45,7 +45,7 @@ grp = struct([]);
 fit_single_model = 0;
 if fit_single_model
     model = 'fixed'; % will run to get value and prediction errors.
-    p = ProgressBar(sub);
+    %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
@@ -53,27 +53,27 @@ if fit_single_model
         [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
         L(sub) = out.F;
         value(:,:,sub) = out.suffStat.muX;
-        p.progress;
+        %         p.progress;
     end
-    p.stop;
+    %     p.stop;
     filename = sprintf('grp_%s%d',model);
     save(filename);
 else
-%     %% continue where I left off earlier
-%     load L_n=64
-    for sub = 1:length(behavfiles)
-        str = behavfiles{sub};
-        id(sub) = str2double(str(isstrprop(str,'digit')));
-        fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
-        p = ProgressBar(sub);
-        parfor m=1:length(modelnames)
-            model = char(modelnames(m));
-            fprintf('Fitting %s to %d',model,id(sub))
-            [posterior,out] = clock_sceptic_vba(id(sub),char(modelnames(m)),nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread);
+    %     %% continue where I left off earlier
+    %     load L_n=64
+    for m=1:length(modelnames)
+        model = char(modelnames(m));
+        %         p = ProgressBar(length(behavfiles));
+        parfor sub=1:length(behavfiles)
+            str = behavfiles{sub};
+            id(sub) = str2double(str(isstrprop(str,'digit')));
+            fprintf('Fitting %s subject %d \r',model,sub)
+            %             p.progress;
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps);
             L(m,sub) = out.F;
-            p.progress;
         end
-        p.stop;
+        %         p.stop;
+        
     end
     filename = 'group_model_comparison';
     save(filename);
