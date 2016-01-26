@@ -27,12 +27,12 @@ end
 modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 
 %% set parameters
-nbasis = 16;
+nbasis = 4;
 multinomial = 1;
 multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 1;
-n_steps = 50;
+n_steps = 10;
 
 % get ID list
 id = NaN(length(behavfiles),1);
@@ -42,21 +42,21 @@ id = NaN(length(behavfiles),1);
 % parpool
 grp = struct([]);
 
-fit_single_model = 0;
+fit_single_model = 1;
 if fit_single_model
-    model = 'fixed'; % will run to get value and prediction errors.
+    model = 'kalman_uv_sum'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
         [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
-        L(sub) = out.F;
+        L_kalman_logistic(sub) = out.F;
         value(:,:,sub) = out.suffStat.muX;
         %         p.progress;
     end
     %     p.stop;
-    filename = sprintf('grp_%s%d',model);
+    filename = sprintf('grp_%s%d_nbasis%d_nsteps%d',model,nbasis,n_steps);
     save(filename);
 else
     %     %% continue where I left off earlier

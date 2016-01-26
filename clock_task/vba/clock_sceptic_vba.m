@@ -162,7 +162,7 @@ switch model
         end
         n_phi  = 2;  %Beta and discrim
         %Different observation function than other kalman models
-        g_name = @g_sceptic_logistic;
+%         g_name = @g_sceptic_logistic;
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis); %This is Discrim not Beta for this model
@@ -218,8 +218,12 @@ if multinomial
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
     % Observation function
+    switch model
+        case 'kalman_logistic'
+                    g_name = @g_sceptic_logistic;
+        otherwise
     g_name = @g_sceptic;
-    
+    end
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
     dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi, 'n_t', n_t);
