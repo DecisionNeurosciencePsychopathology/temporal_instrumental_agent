@@ -34,6 +34,8 @@ fixed_params_across_runs = 1;
 fit_propspread = 1;
 n_steps = 10;
 
+u_aversion = 1; % allow for uncertainty aversion in UV_sum
+
 % get ID list
 id = NaN(length(behavfiles),1);
 
@@ -50,13 +52,13 @@ if fit_single_model
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d of %d \r',sub,length(behavfiles))
-        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
+        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion);
         L_kalman_logistic(sub) = out.F;
         value(:,:,sub) = out.suffStat.muX;
         %         p.progress;
     end
     %     p.stop;
-    filename = sprintf('grp_%s%d_nbasis%d_nsteps%d',model,nbasis,n_steps);
+    filename = sprintf('grp_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
     save(filename);
 else
     %     %% continue where I left off earlier
@@ -69,7 +71,7 @@ else
             id(sub) = str2double(str(isstrprop(str,'digit')));
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps);
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion);
             L(m,sub) = out.F;
         end
         %         p.stop;

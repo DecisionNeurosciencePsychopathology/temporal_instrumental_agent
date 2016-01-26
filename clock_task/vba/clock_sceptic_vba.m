@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -10,7 +10,8 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 % multisession: treats runs/conditions as separate, helps fit (do not allow X0 to vary though)
 % fixed_params_across_runs -- self-explanatory
 % fit_propspread -- makes temporal generalization within the eligibility trace a free parameter
-
+% n_steps:      number of time bins
+% u_aversion:   allow for uncertainty (ambiguity) aversion for UV_sum
 %%
 close all
 
@@ -87,6 +88,11 @@ options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
 options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
+
+%% uncertainty aversion for UV_sum
+if nargin<9
+    u_aversion = 0;
+end
 
 %% set up basis
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
@@ -187,7 +193,7 @@ switch model
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
-        
+        options.inF.u_aversion = u_aversion;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -270,7 +276,7 @@ options.skipf(1) = 1;
 
 %% priors
 priors.muTheta = zeros(dim.n_theta,1);
-priors.SigmaTheta = zeros*eye(dim.n_theta); % lower the learning rate variance -- it tends to be low in the posterior
+priors.SigmaTheta = 1e1*eye(dim.n_theta); % lower the learning rate variance -- it tends to be low in the posterior
 options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 
@@ -280,4 +286,4 @@ cd(vbadir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
