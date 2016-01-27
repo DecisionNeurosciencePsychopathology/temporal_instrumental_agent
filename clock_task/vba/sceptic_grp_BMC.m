@@ -9,14 +9,26 @@ cd('/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/g
 load('group_model_comparison_L');
 % cd('/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc/');
 
-sceptic.L = L;
-sceptic.modelnames = modelnames;
-%% Define 'fixed' as the first family, 'kalman', as the second
-options.families{1} = find(strcmpi(sceptic.modelnames, 'fixed'));
-options.families{2} = find(~strcmpi(sceptic.modelnames, 'fixed'));
+%% really manual 2-model comparison
+L(1,:) = L_tight_tau;
+L(2,:) = L_kalman_uv_sum;
+models = {'tight tau' 'no aversion'};
 
-[posterior,out] = VBA_groupBMC(sceptic.L,options);
+sceptic.L = L;
+sceptic.modelnames = models;
+
+
+% %% Define 'fixed' as the first family, 'kalman', as the second
+% options.families{1} = find(strcmpi(sceptic.modelnames, 'fixed'));
+% options.families{2} = find(~strcmpi(sceptic.modelnames, 'fixed'));
+% 
+% [posterior,out] = VBA_groupBMC(sceptic.L,options);
+
+%% Define 'fixed' as the first family, 'kalman', as the second
+
+[posterior,out] = VBA_groupBMC(sceptic.L);
+
 
 %% save output figure
-h = figure(1);
-savefig(h,sprintf('VBA_group_BMC_nbasis16_nsteps50'))
+h = figure(4);
+savefig(h,sprintf('VBA_group_BMC_nbasis4_nsteps10_m1=aversion_supertight_tau_m2=aversion_tight_tau_m3_no_aversion'))

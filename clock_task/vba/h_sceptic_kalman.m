@@ -37,7 +37,7 @@ if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
 %% allow uncertainty aversion in UV_sum?
 if inF.kalman.kalman_uv_sum, 
     if inF.u_aversion
-    tau = theta(1)./10; % scale it down a bit
+    tau = theta(1)./1000; % scale it down a bit
     else
     tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); 
     end
