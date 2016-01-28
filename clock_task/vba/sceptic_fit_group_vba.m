@@ -20,8 +20,11 @@ else
         group_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
     elseif strcmp(me(1:6),'dombax')==1
         behavfiles = glob('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/*.csv');
+        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
+        addpath('/Users/dombax/temporal_instrumental_agent/clock_task/','/Users/dombax/code/')
     end
 end
 
@@ -29,12 +32,12 @@ end
 modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 
 %% set parameters
-nbasis = 4;
+nbasis = 16;
 multinomial = 1;
 multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 1;
-n_steps = 10;
+n_steps = 40;
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
 
@@ -84,6 +87,6 @@ else
         
     end
     cd(group_dir);
-    filename = 'final_group_model_comparison_with_tau1000';
+    filename = sprintf('grp_L_%s%d_nbasis%d_nsteps%d_uaversion%d_sigmatau1000e-1',model,nbasis,n_steps, u_aversion);
     save(filename);
 end

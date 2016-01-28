@@ -45,12 +45,18 @@ else
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
+                results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
+        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
         vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
+        results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     end
@@ -282,8 +288,8 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
-cd(vbadir);
+cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
