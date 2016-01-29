@@ -1,48 +1,3 @@
-function [p,tbl,stats] =analyze_subjects(fitted_vars)
-
-models=fieldnames(fitted_vars.subj_fitting); 
-pick = [1 2 3 6]; % skip Q and Frank for now;
-models = models(pick);
-y=[];
-%Plotting loop to show subject parameter space for each model
-for i=1:length(models);
-    model=models{i};
-    [~,names]=getOrginalParams(model);
-    num_params = size(fitted_vars.subj_fitting.(model).best_parameters,2);
-    param_str=[];
-    for j=1:num_params
-       %fig_num = fig_num+1; 
-       figure(i)
-       subplot(num_params,1,j)
-       hist(fitted_vars.subj_fitting.(model).best_parameters(:,j),20);
-       title(['Paramter space for ', model, ' parameter ', names{j}])
-       param_str =[param_str '%.2f '];
-    end
-      if ~strcmp(model,'kalman_softmax')
-       subplot(num_params+1,1,j)
-
-       scatter(fitted_vars.subj_fitting.(model).best_parameters(:,j),fitted_vars.subj_fitting.(model).best_parameters(:,j-1));
-       xlabel(['Parameter: ', names{j}]);
-       ylabel(['Parameter: ', names{j-1}]);
-      end
-    fprintf('Model: %s\n', model)
-    fprintf('Number of Parameters: %d\n', num_params)
-    fprintf(['Mean of Parameters: ',param_str,'\n\n'],mean(fitted_vars.noise_params.(model).best_parameters))
-    
-    if strcmp(model,'qlearning')
-        factr = 100;
-    else
-        factr=1;
-    end
-    
-    y(:,i) = fitted_vars.subj_fitting.(model).best_cost.*factr;
-end
-
-[p,tbl,stats] = anova1(y,models);
-
-
-
-
 function [params,names]=getOrginalParams(agent)
 %JW 11/11:
 %Beta's were fixed at .1 at the time of writing this, also gamma and lambda
@@ -71,8 +26,8 @@ switch agent
         names={'lambda';   'epsilon';   'alphaG';   'alphaN';  'K';   'nu';  'rho';};
     case 'kalman_uv_sum'
         %All condition params via Michael's email
-        params =[0.62416337 0.69507251]; %prop_spread  beta  discrim
-        names={'prop_spread';'discrim'};
+        params =[0.62416337 0.69507251]; %prop_spread  beta  tau
+        names={'prop_spread';'tau'};
     case 'kalman_uv_sum_kl'
         %All condition params via Michael's email
         params =[0.27298721 0.611199892 2.15673530 2.2536939758]; %prop_spread  beta  tau kappa lambda

@@ -11,18 +11,13 @@ function  [fx] = h_qlearning(x_t, theta, u, inF)
 % OUT:
 %   - fx: Q values (100x1, [1:50] waits, [51:100] quits)
 
+%persistent Q;
+
 %Set up free paramters -- epsilon might need to go in the ovservation function
 alpha = 1./(1+exp(-theta(1)));
-epsilon = 1./(1+exp(-theta(2)));
+%epsilon = 1./(1+exp(-theta(2)));
 gamma = .99;
 lambda = .99;
-
-%Need to figure out a way for this to work...
-if u(3)==2;
-    action_list = inF.random_actions;
-else
-    %action_lsit = the output from g_qlearning
-end
 
 %Set up variables from inputs
 ntimesteps = inF.ntimesteps;
@@ -47,7 +42,8 @@ next_time_step = 1; %initialize the next position to the start
 % 1) choose initial action at current position using an epsilon greedy policy derived from Q
 %a = action_list(1);
 
-[qmax, a] = chooseAction(epsilon, Q(time_step,:), time_step, ntimesteps);
+%Not needed right now
+%[qmax, a] = chooseAction(epsilon, Q(time_step,:), time_step, ntimesteps);
 
 episodeFinished = 0;
 exit_criteria_1=0;
@@ -60,52 +56,53 @@ while(episodeFinished == 0 && time_step < ntimesteps)
     
     next_time_step = time_step+1; %next timestep
     
-    if a == 2 %i.e., quit
-        exit_criteria_2=1;
-    end
+    %     if a == 2 %i.e., quit
+    %         exit_criteria_2=1;
+    %     end
     
     %Determine qmax for the next action, actions are predetermined based on
     %value from Q.
     %[qmax,a_next] = max(Q(next_time_step,:)); %qmax is the maximum value of Q, a is its index/position
-    [qmax, a_next] = chooseAction(epsilon, Q(next_time_step,:), next_time_step, ntimesteps);
+    %[qmax, a_next] = chooseAction(epsilon, Q(next_time_step,:), next_time_step, ntimesteps);
     
-    
-    %Quick sanity check just in case
-%     if a_next ~= action_list(next_time_step)
-%         warning('Should have taken the opposite action!')
-%     end
     
     % update Q for prior location (t-1) based on payoff at this location (t)
-    curQ = Q(time_step, a); % working estimate of expected value at location(t-1), action(t-1)
+    %curQ = Q(time_step, a); % working estimate of expected value at location(t-1), action(t-1)
+    curQ = Q(time_step, 1); % working estimate of expected value at location(t-1), action(t-1)
     
     %Q-learning updates the curQ estimate based on the highest expected payoff for the next action (greedy)
     %This is an off policy decision because we have an epsilon greedy policy, not greedy
-    nextQ = qmax;
+    %nextQ = qmax;
+    nextQ = max(Q(next_time_step, :));
     
     %Update rule
     if time_step<= rt_obs
         %Quits
         if time_step==rt_obs
+            %Added this since choose action is no longer used
+            curQ = Q(time_step, 2); %Overwrite current value of curQ
             delta = rew-curQ;
-            Q(time_step,2) = Q(time_step,2) + alpha*delta; %I had to had code in the 1's and 2's for this part of the script
+            Q(time_step,2) = Q(time_step,2) + alpha*delta; %I had to code in the 1's and 2's for this part of the script
             if time_step==1
                 %Q(:,a) = Q(:,a) + alpha*delta*e(time_step,:)'; %This was the line i was not sure about being correct
             else
                 Q(:,1) = Q(:,1) + alpha*delta*e(time_step-1,:)';
             end
             exit_criteria_1=1;
-            %Waits
+            exit_criteria_2=1;
+        %Waits
         else
             %delta = r+gamma*nextQ-curQ;
             delta = 0+gamma*nextQ-curQ;
-            Q(:,a) = Q(:,a) + alpha*delta*e(time_step,:)';
+            Q(:,1) = Q(:,1) + alpha*delta*e(time_step,:)';
+            %Q(:,a) = Q(:,a) + alpha*delta*e(time_step,:)';
         end
     end
     
     %update time step
     time_step = next_time_step;
-    %a = action_list(time_step);
-    a = a_next;
+
+    %a = a_next;
     step = step + 1;
     
     
@@ -115,25 +112,25 @@ while(episodeFinished == 0 && time_step < ntimesteps)
         episodeFinished=1;
     end
 end
-fx = [Q(1:ntimesteps);Q(1+ntimesteps:end)];
+fx = [Q(1:ntimesteps) Q(1+ntimesteps:end)]';
 
-if sum(sum(isnan(fx'),2))>0 || sum(sum(isinf(fx'),2))>0
-    stop=1;
-end
+%fx = (fx-min(fx(:))) ./ (max(fx(:)-min(fx(:))));
+% dfdx = fx * zeros(1,length(fx));
+% dfdP = 0;
 
-function [qmax, a] = chooseAction(epsilon, Q, t, ntimesteps)
-%Function will return the max value at current timestep and the
-%appropriate action, based on value or a e-greedy policy
-%choose an action based on epsilon greedy strategy
-%does not permit selection of actions that move off the grid
-
-[qmax, a] =  max(Q); %qmax is the maximum value of Q, a is its index/position
-
-randomNormal = rand(1000,1);
-if(randomNormal(randi(length(randomNormal),1)) <= epsilon)
-    if rand>(1-(1/(ntimesteps-t)))
-        a=2;
-    else
-        a=1;
-    end
-end
+% function [qmax, a] = chooseAction(epsilon, Q, t, ntimesteps)
+% %Function will return the max value at current timestep and the
+% %appropriate action, based on value or a e-greedy policy
+% %choose an action based on epsilon greedy strategy
+% %does not permit selection of actions that move off the grid
+%
+% [qmax, a] =  max(Q); %qmax is the maximum value of Q, a is its index/position
+% %
+% % randomNormal = rand(1000,1);
+% % if(randomNormal(randi(length(randomNormal),1)) <= epsilon)
+% %     if rand>(1-(1/(ntimesteps-t)))
+% %         a=2;
+% %     else
+% %         a=1;
+% %     end
+% % end

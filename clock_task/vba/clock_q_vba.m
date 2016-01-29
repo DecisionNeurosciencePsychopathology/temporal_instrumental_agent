@@ -1,4 +1,4 @@
-function [posterior,out] = clock_q_vba(id,showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps)
+function [posterior,out] = clock_q_vba(id,showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,grp_flag)
 %Working draft of getting q learning to work with vba toolbox
 
 %Set data directory
@@ -14,6 +14,11 @@ else
         fprintf('\nError: please go to the vba directory and run this command')
     end
 end
+
+if grp_flag
+    vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
+end
+
 
 n_t = 400; %400 trials
 trialsToFit = 1:n_t;
@@ -46,7 +51,7 @@ if ~graphics
     options.GnFigs = 0;
 end
 %% set up dim defaults
-n_theta = 2;
+n_theta = 1;
 n_phi = 1;
 range_RT = 40; %Smaller bin size
 n_t = size(data,1);
@@ -66,7 +71,7 @@ options.inG.maxRT = range_RT;
 options.TolFun = 1e-6;
 options.GnTolFun = 1e-6;
 options.verbose=1;
-options.DisplayWin=1;
+%options.DisplayWin=1;
 %%
 options.inF.first_iteration = 1;
 options.inF.random_actions = randi(2,n_steps,1);
@@ -98,7 +103,7 @@ priors.SigmaX0 = zeros(n_hidden_states);
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.01*n_steps/range_RT)';
     rtrnd(rtrnd==0)=1;
-    dim = struct('n',n_hidden_states,'n_theta',n_hidden_variables,'n_phi',n_phi,'p',n_steps);
+    dim = struct('n',n_hidden_states,'n_theta',n_theta,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
@@ -157,11 +162,11 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
-cd(vbadir);
+%cd(vbadir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-% save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+save([vbadir '/' sprintf('%d_multinomial%d_multisession%d_fixedParams%d_q_vba_fit', id, multinomial,multisession,fixed_params_across_runs)], 'posterior', 'out');
 
 
 
