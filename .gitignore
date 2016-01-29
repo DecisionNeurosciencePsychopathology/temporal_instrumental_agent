@@ -6,3 +6,5 @@
 #R.matlab worker files
 InputStreamByteWrapper.class
 MatlabServer.m
+
+*vba_fit.mat
