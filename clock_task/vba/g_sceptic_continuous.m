@@ -9,7 +9,8 @@ function  [ gx ] = g_sceptic_continuous(x_t,phi,u,inG)
 % OUTPUT
 % - gx : RT
 
-K = unifinv(fastnormcdf(phi(1)), - inG.maxRT./2, inG.maxRT./2); %uniform transform
+% K = unifinv(fastnormcdf(phi(1)), - inG.maxRT./2, inG.maxRT./2); %uniform transform
+K = phi(1).*inG.maxRT./10; % straight Gaussian to speed up the fitting
 lambda = 1 ./ (1+exp(-phi(2))); %exponential transform to 0..1
 
 gaussmat=inG.gaussmat;

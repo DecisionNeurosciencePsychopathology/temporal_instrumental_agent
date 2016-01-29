@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -10,7 +10,8 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 % multisession: treats runs/conditions as separate, helps fit (do not allow X0 to vary though)
 % fixed_params_across_runs -- self-explanatory
 % fit_propspread -- makes temporal generalization within the eligibility trace a free parameter
-
+% n_steps:      number of time bins
+% u_aversion:   allow for uncertainty (ambiguity) aversion for UV_sum
 %%
 close all
 
@@ -44,12 +45,18 @@ else
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
+                results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
+        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
         vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
+        results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     end
@@ -87,6 +94,11 @@ options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
 options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
+
+%% uncertainty aversion for UV_sum
+if nargin<9
+    u_aversion = 0;
+end
 
 %% set up basis
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
@@ -162,7 +174,7 @@ switch model
         end
         n_phi  = 2;  %Beta and discrim
         %Different observation function than other kalman models
-        g_name = @g_sceptic_logistic;
+%         g_name = @g_sceptic_logistic;
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis); %This is Discrim not Beta for this model
@@ -187,7 +199,7 @@ switch model
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
-        
+        options.inF.u_aversion = u_aversion;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -218,8 +230,12 @@ if multinomial
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
     % Observation function
+    switch model
+        case 'kalman_logistic'
+                    g_name = @g_sceptic_logistic;
+        otherwise
     g_name = @g_sceptic;
-    
+    end
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
     dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi, 'n_t', n_t);
@@ -228,7 +244,8 @@ else
     priors.b_alpha = 0;
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
-    priors.muPhi = [0, 0];
+    priors.muPhi = [0, 0];  % K, lambda
+%     priors.SigmaPhi = diag([0,1]); % get rid of the K
     priors.SigmaPhi = diag([1,1]);
     options.binomial = 0;
     options.sources(1) = struct('out',1,'type',0);
@@ -265,14 +282,14 @@ options.skipf(1) = 1;
 
 %% priors
 priors.muTheta = zeros(dim.n_theta,1);
-priors.SigmaTheta = 1e1*eye(dim.n_theta);
+priors.SigmaTheta = 1e1*eye(dim.n_theta); % lower the learning rate variance -- it tends to be low in the posterior
 options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
-cd(vbadir);
+cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');

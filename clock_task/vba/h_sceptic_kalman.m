@@ -33,8 +33,15 @@ if inF.kalman.kalman_sigmavolatility
     z = x_t(hidden_state_index(:,3)); %Volatility
 end
 if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
-if inF.kalman.kalman_uv_sum, tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); end
 
+%% allow uncertainty aversion in UV_sum?
+if inF.kalman.kalman_uv_sum, 
+    if inF.u_aversion
+    tau = theta(1)./1000; % scale it down a bit
+    else
+    tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); 
+    end
+end
 
 %Define hidden states
 %Value should always be the first while uncertainey should always be the
@@ -131,8 +138,12 @@ fx(hidden_state_index(:,2)) = (1 - e.*k).*(sigma + z);
 %I think this is correct [tau * hidden state value + (1-tau) * hidden state uncertainty]
 if inF.kalman.kalman_uv_sum
     mu = mu + k.*delta;
+    if inF.u_aversion
+        fx(hidden_state_index(:,1))= mu + tau.*sigma; %mix together value and uncertainty according to tau
+    else
     fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
     %fx(1:nbasis)=tau.*mu + (1-tau).*fx(nbasis+1:end); %mix together value and uncertainty according to tau
+    end
 elseif inF.kalman.kalman_sigmavolatility
     %Update value
     fx(hidden_state_index(:,1)) = mu + k.*delta;

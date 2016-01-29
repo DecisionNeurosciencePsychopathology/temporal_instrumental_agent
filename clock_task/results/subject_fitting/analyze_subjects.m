@@ -1,4 +1,4 @@
-function [p,tbl,stats] =see_subject_params(fitted_vars)
+function [p,tbl,stats] =analyze_subjects(fitted_vars)
 
 models=fieldnames(fitted_vars.subj_fitting); 
 pick = [1 2 3 6]; % skip Q and Frank for now;
