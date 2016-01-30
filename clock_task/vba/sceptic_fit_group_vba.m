@@ -51,7 +51,7 @@ id = NaN(length(behavfiles),1);
 % parpool
 grp = struct([]);
 
-fit_single_model = 0;
+fit_single_model = 1;
 if fit_single_model
     model = 'kalman_uv_sum'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
@@ -67,7 +67,7 @@ if fit_single_model
     end
     %     p.stop;
     cd(group_dir);
-    filename = sprintf('grp_%s%d_nbasis%d_nsteps%d_uaversion%d_sigmatau1000e-1',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
     save(filename);
 else
     %     %% continue where I left off earlier

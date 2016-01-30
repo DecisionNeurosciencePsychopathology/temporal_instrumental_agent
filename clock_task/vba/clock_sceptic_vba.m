@@ -49,7 +49,7 @@ else
 
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        vbadir = '/Users/dombax/temporal_instrumental_agent/clock_task/vba';
+        vbadir = '/Volumes/bek/vba_results/uv_sum';
         results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 
     elseif strcmpi(me(1:14),'alexdombrovski')
