@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -85,7 +85,7 @@ options.inG.maxRT = range_RT;
 options.TolFun = 1e-6;
 options.GnTolFun = 1e-6;
 options.verbose=1;
-options.DisplayWin=1;
+% options.DisplayWin=1;
 
 %% set up kalman defaults
 options.inF.kalman.processnoise = 0;
@@ -98,6 +98,9 @@ options.inF.kalman.kalman_uv_sum = 0;
 %% uncertainty aversion for UV_sum
 if nargin<9
     u_aversion = 0;
+    saveresults = 1;
+elseif nargin<10
+    saveresults = 1;
 end
 
 %% set up basis
@@ -288,8 +291,10 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
+if saveresults
 cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
 save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+end

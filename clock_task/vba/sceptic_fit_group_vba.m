@@ -24,7 +24,8 @@ else
         group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
-        addpath('/Users/dombax/temporal_instrumental_agent/clock_task/','/Users/dombax/code/')
+        addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
+        addpath(genpath('/Users/dombax/code/'));
     end
 end
 
@@ -40,6 +41,7 @@ fit_propspread = 1;
 n_steps = 40;
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
+saveresults = 0; %don't save to prevent script from freezing on Thorndike
 
 % get ID list
 id = NaN(length(behavfiles),1);
@@ -78,9 +80,9 @@ else
             id(sub) = str2double(str(isstrprop(str,'digit')));
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion);
-            cd(results_dir);
-            parsave(sprintf('output_%d',id(sub)));
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults);
+%             cd(results_dir);
+%             parsave(sprintf('output_%d',id(sub)),posterior,out);
             L(m,sub) = out.F;
         end
         %         p.stop;
