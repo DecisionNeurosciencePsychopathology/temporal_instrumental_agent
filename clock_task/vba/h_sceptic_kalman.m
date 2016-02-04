@@ -28,18 +28,29 @@ hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
 %model.
 if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
 if inF.kalman.kalman_sigmavolatility
-    gamma = 1./(1+exp(-theta(1)));
-    phi = 1./(1+exp(-theta(2)));
+    gamma = 1./(1+exp(-theta(2)));
+    phi = 1./(1+exp(-theta(1)));
     z = x_t(hidden_state_index(:,3)); %Volatility
 end
+if inF.kalman.kalman_uv_sum_sig_vol
+    gamma = 1./(1+exp(-theta(2)));
+    phi = 1./(1+exp(-theta(3)));
+    %     if inF.u_aversion
+    %         tau = theta(3)./1000; % scale it down a bit
+    %     else
+    %         tau = 1./(1+exp(-theta(3)-log(inF.sigma_noise)));
+    %     end
+    %     z = x_t(hidden_state_index(:,3)); %Volatility
+end
 if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
+if inF.kalman.kalman_uv_fixed, alpha = 1./(1+exp(-theta(2))); end %Alpha should always be two as tau should always be 1
 
 %% allow uncertainty aversion in UV_sum?
-if inF.kalman.kalman_uv_sum, 
+if inF.kalman.kalman_uv_sum || inF.kalman.kalman_uv_sum_sig_vol || inF.kalman.kalman_uv_fixed
     if inF.u_aversion
-    tau = theta(1)./1000; % scale it down a bit
+        tau = theta(1)./1000; % scale it down a bit
     else
-    tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise))); 
+        tau = 1./(1+exp(-theta(1)-log(inF.sigma_noise)));
     end
 end
 
@@ -49,7 +60,7 @@ end
 mu=x_t(hidden_state_index(:,1)); %Value
 sigma = x_t(hidden_state_index(:,2)); %Uncertainty
 
- 
+
 % mu=x_t(1:nbasis); %Value
 % sigma = x_t(nbasis+1:end); %Uncertainty
 
@@ -124,8 +135,8 @@ k = (sigma + Q)./(sigma + Q + sigma_noise);
 %SIGMA
 fx(hidden_state_index(:,2)) = (1 - e.*k).*(sigma + z);
 
-% 
-% 
+%
+%
 % %THIS need to be fx(whatever) to update next timestep
 % z = gamma.*z + phi.*abs(sum(delta));
 
@@ -135,20 +146,42 @@ fx(hidden_state_index(:,2)) = (1 - e.*k).*(sigma + z);
 %u=sigma'*ones(1,inF.ntimesteps) .* inF.gaussmat;
 %u_func = sum(sigma); %vector of uncertainties by timestep
 
+
+
 %I think this is correct [tau * hidden state value + (1-tau) * hidden state uncertainty]
 if inF.kalman.kalman_uv_sum
+    %Update the value
     mu = mu + k.*delta;
     if inF.u_aversion
         fx(hidden_state_index(:,1))= mu + tau.*sigma; %mix together value and uncertainty according to tau
     else
-    fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
-    %fx(1:nbasis)=tau.*mu + (1-tau).*fx(nbasis+1:end); %mix together value and uncertainty according to tau
+        fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
+        %fx(1:nbasis)=tau.*mu + (1-tau).*fx(nbasis+1:end); %mix together value and uncertainty according to tau
     end
 elseif inF.kalman.kalman_sigmavolatility
     %Update value
     fx(hidden_state_index(:,1)) = mu + k.*delta;
     %Track smooth estimate of volatility according to unsigned PE history
     fx(hidden_state_index(:,3)) = gamma.*z + phi.*abs(sum(delta));
+elseif inF.kalman.kalman_uv_sum_sig_vol
+    %Update the value
+    mu = mu + k.*delta;
+    if inF.u_aversion
+        fx(hidden_state_index(:,1))= mu + tau.*sigma; %mix together value and uncertainty according to tau
+    else
+        fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
+    end
+    fx(hidden_state_index(:,3)) = gamma.*z + phi.*abs(sum(delta));
+    
+elseif inF.kalman.kalman_uv_fixed
+    %Track sigma use fixed value update, so we'll need alpha in the mix
+    mu = mu + alpha.*delta;
+    if inF.u_aversion
+        fx(hidden_state_index(:,1))= mu + tau.*sigma; %mix together value and uncertainty according to tau
+    else
+        fx(hidden_state_index(:,1))=tau.*mu + (1-tau).*sigma; %mix together value and uncertainty according to tau
+    end
+    
 else
     % What our final for kalman will be is x_t + k_ij * delta so we need to
     % compute k

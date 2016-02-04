@@ -19,7 +19,7 @@ global rew_rng_state
 rew_rng_seed = 99;
 
 
-graphics = 0;
+graphics = 1;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -39,6 +39,7 @@ os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
+    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\corrected_uv_sum';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
@@ -94,6 +95,8 @@ options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
 options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
+options.inF.kalman.kalman_uv_sum_sig_vol = 0;
+options.inF.kalman.kalman_uv_fixed = 0;
 
 %% uncertainty aversion for UV_sum
 if nargin<9
@@ -129,7 +132,7 @@ if multisession %improves fits moderately
         options.multisession.fixed.theta = 'all';
         options.multisession.fixed.phi = 'all';
         %
-        % allow unique initial values for each run?
+        % allow unique initial values for each run?x
         options.multisession.fixed.X0 = 'all';
     end
     
@@ -138,7 +141,6 @@ end
 
 
 %Determine which evolution funciton to use
-
 options.inF.kalman.(model)=1; %Declare which model to use if kalman
 
 switch model
@@ -198,11 +200,33 @@ switch model
         
         %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
     case 'kalman_uv_sum'
+        n_phi  = 2;  %Beta and Tau
+        hidden_variables = 2; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        h_name = @h_sceptic_kalman;
+        %options.inF.u_aversion = u_aversion;
+        options.inG.u_aversion = u_aversion;
+        
+    case 'kalman_uv_sum_sig_vol'
+        %n_phi  = 2;  %Beta and Tau
+        n_theta = 3; %sigma gamma tau
+        hidden_variables = 3; %tracks value and uncertainty and volatility
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        h_name = @h_sceptic_kalman;
+        options.inF.u_aversion = u_aversion;
+        options.inG.u_aversion = u_aversion;
+        
+    case 'kalman_uv_fixed'
+        n_theta = 2; %tau alpha
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
         options.inF.u_aversion = u_aversion;
+        options.inG.u_aversion = u_aversion;
+        
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -210,6 +234,10 @@ switch model
 end
 
 options.inF.hidden_state = hidden_variables;
+
+%Map the necessary options from F to G
+options.inG.hidden_state = options.inF.hidden_state;
+options.inG.kalman = options.inF.kalman;
 
 
 if multinomial
@@ -296,5 +324,5 @@ cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_corrected', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
