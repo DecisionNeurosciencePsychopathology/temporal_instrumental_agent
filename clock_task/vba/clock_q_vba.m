@@ -45,7 +45,7 @@ data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Del
 %%
 close all
 
-graphics = 0;
+graphics = 1;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -53,7 +53,8 @@ end
 %% set up dim defaults
 n_theta = 1;
 n_phi = 1;
-range_RT = 40; %Smaller bin size
+%range_RT = 40; %Smaller bin size
+range_RT = n_steps; %Smaller bin size
 n_t = size(data,1);
 n_runs = n_t/50;
 trialsToFit = 1:n_t;
@@ -101,7 +102,7 @@ priors.muX0 = zeros(n_hidden_states,1);
 priors.SigmaX0 = zeros(n_hidden_states);
 
 if multinomial
-    rtrnd = round(data{trialsToFit,'rt'}*0.01*n_steps/range_RT)';
+    rtrnd = [range_RT/2 round(data{trialsToFit(1:end-1),'rt'}*0.01*n_steps/range_RT)'];
     rtrnd(rtrnd==0)=1;
     dim = struct('n',n_hidden_states,'n_theta',n_theta,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
