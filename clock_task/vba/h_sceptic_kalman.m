@@ -43,10 +43,10 @@ if inF.kalman.kalman_uv_sum_sig_vol
     %     z = x_t(hidden_state_index(:,3)); %Volatility
 end
 if inF.kalman.kalman_uv_logistic, tradeoff = 1./(1+exp(-theta(1))); end
-if inF.kalman.kalman_uv_fixed, alpha = 1./(1+exp(-theta(2))); end %Alpha should always be two as tau should always be 1
+if inF.kalman.fixed_uv, alpha = 1./(1+exp(-theta(2))); end %Alpha should always be two as tau should always be 1
 
 %% allow uncertainty aversion in UV_sum?
-if inF.kalman.kalman_uv_sum || inF.kalman.kalman_uv_sum_sig_vol || inF.kalman.kalman_uv_fixed
+if inF.kalman.kalman_uv_sum || inF.kalman.kalman_uv_sum_sig_vol || inF.kalman.fixed_uv
     if inF.u_aversion
         tau = theta(1)./1000; % scale it down a bit
     else
@@ -173,7 +173,7 @@ elseif inF.kalman.kalman_uv_sum_sig_vol
     end
     fx(hidden_state_index(:,3)) = gamma.*z + phi.*abs(sum(delta));
     
-elseif inF.kalman.kalman_uv_fixed
+elseif inF.kalman.fixed_uv
     %Track sigma use fixed value update, so we'll need alpha in the mix
     mu = mu + alpha.*delta;
     if inF.u_aversion

@@ -96,7 +96,7 @@ options.inF.kalman.kalman_logistic = 0;
 options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
 options.inF.kalman.kalman_uv_sum_sig_vol = 0;
-options.inF.kalman.kalman_uv_fixed = 0;
+options.inF.kalman.fixed_uv = 0;
 
 %% uncertainty aversion for UV_sum
 if nargin<9
@@ -218,7 +218,7 @@ switch model
         options.inF.u_aversion = u_aversion;
         options.inG.u_aversion = u_aversion;
         
-    case 'kalman_uv_fixed'
+    case 'fixed_uv'
         n_theta = 2; %tau alpha
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
@@ -324,5 +324,5 @@ cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_corrected', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
