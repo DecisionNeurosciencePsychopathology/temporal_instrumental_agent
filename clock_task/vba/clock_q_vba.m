@@ -16,7 +16,8 @@ else
 end
 
 if grp_flag
-    vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
+    %vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
+    vbadir= '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 end
 
 
@@ -34,7 +35,7 @@ end
 %% fit as multiple runs
 %multisession = 1;
 % fix parameters across runs
-fixed_params_across_runs = 1;
+%fixed_params_across_runs = 1;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % os = computer;
