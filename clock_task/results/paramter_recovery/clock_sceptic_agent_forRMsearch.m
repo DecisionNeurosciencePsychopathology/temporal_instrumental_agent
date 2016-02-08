@@ -22,6 +22,7 @@ function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,co
 %  11) kalman_kl_softmax:       kalman learning rule; KL discounting of value curve by PEs
 %  12) kalman_processnoise_kl:  kalman learning rule; PEs enhance gain through process noise Q; KL discounting of value curve by PEs; softmax
 %  13) kalman_uv_sum_kl;        kalman learning rule; V and U are mixed by tau; KL discounting of value curve by PEs; softmax choice over U+V
+%  14) fixed_uv;                fixed learning rate (alpha) for PE+ and PE-; V and U are mixed by tau; softmax choice over U+V
 
 if nargin < 2, agent = 'fixedLR_softmax'; end
 if nargin < 3, rngseeds=[98 83 66 10]; end
@@ -145,6 +146,10 @@ elseif strcmpi(agent, 'kalman_uv_sum_kl')
     tau = params(3);
     kappa = params(4);
     lambda = params(5);
+elseif strcmpi(agent, 'fixed_uv')
+    beta = params(2);
+    tau = params(3);
+    alpha = params(4);          %learning rate for PE+ (0..1)
 end
 
 if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
@@ -320,7 +325,13 @@ for i = 1:ntrials
         
         %Update reward expectation. AD: Would it be better for the delta to be the difference between the reward
         %and the point value estimate at the RT(i)?
-        mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
+        
+        %Needed to add if statement for fixed_uv case
+        if ismember(agent, {'fixed_uv'})
+            mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
+        else
+            mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
+        end
         
         %Track smooth estimate of volatility according to unsigned PE history
         z_i(i+1) = gamma.*z_i(i) + phi.*abs(sum(delta_ij(i,:)));
@@ -396,7 +407,7 @@ for i = 1:ntrials
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
             v_final = v_func; % just use value curve for choice
-        elseif strcmpi(agent, 'kalman_uv_sum')
+        elseif strcmpi(agent, 'kalman_uv_sum') || strcmpi(agent, 'fixed_uv')
             uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
