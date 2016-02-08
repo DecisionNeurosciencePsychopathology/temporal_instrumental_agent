@@ -35,10 +35,12 @@ modelnames = group_data.modelnames;
 
 if family_flag
     % %% Define 'fixed' as the first family, 'kalman', as the second, q third
-    options.families{1} = find(strcmpi(modelnames, 'fixed')); 
+    idx = strfind(modelnames, 'fixed');
+    %options.families{1} = find(strcmpi(modelnames, 'fixed')); 
+    options.families{1} = find(not(cellfun('isempty', idx))); 
     idx = strfind(modelnames, 'kalman');
     options.families{2} = find(not(cellfun('isempty', idx)));
-    %options.families{3} = find(strcmpi(modelnames, 'qlearning'));
+    options.families{3} = find(strcmpi(modelnames, 'qlearning'));
     [posterior,out] = VBA_groupBMC(sceptic.L,options);
 end
 
