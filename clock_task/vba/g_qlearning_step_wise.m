@@ -5,7 +5,8 @@ beta = exp(phi);
 
 ntimesteps = inG.ntimesteps;
 %Grab only the quit values
-v=x(ntimesteps+1:end);
+%v=x(ntimesteps+1:end);
+v=reshape(x,ntimesteps,2);
 % if isempty(v_quit)
 %     v_quit=x(2)*ones(1,ntimesteps);
 % else

@@ -16,8 +16,8 @@ else
 end
 
 if grp_flag
-    %vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
-    vbadir= '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+    vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
+    %vbadir= '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 end
 
 
@@ -46,7 +46,7 @@ data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Del
 %%
 close all
 
-graphics = 1;
+graphics = showfig;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -124,7 +124,7 @@ if multinomial
     %u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
     u = [rtrnd; data{trialsToFit, 'score'}'; (1:n_t)];
     % Observation function
-    g_name = @g_qlearning;
+    g_name = @g_qlearning_step_wise;
     
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
@@ -168,7 +168,7 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save([vbadir '/' sprintf('%d_multinomial%d_multisession%d_fixedParams%d_q_vba_fit', id, multinomial,multisession,fixed_params_across_runs)], 'posterior', 'out');
+save([vbadir '/' sprintf('%d_multinomial%d_multisession%d_fixedParams%d_q_vba_fit_stepWise_obfx', id, multinomial,multisession,fixed_params_across_runs)], 'posterior', 'out');
 
 
 
