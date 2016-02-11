@@ -39,7 +39,7 @@ os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\corrected_uv_sum';
+    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
@@ -97,6 +97,7 @@ options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
 options.inF.kalman.kalman_uv_sum_sig_vol = 0;
 options.inF.kalman.fixed_uv = 0;
+options.inF.kalman.kalman_sigmavolatility_local =0;
 
 %% uncertainty aversion for UV_sum
 if nargin<9
@@ -196,6 +197,7 @@ switch model
         hidden_variables = 3; %tracks value and uncertainty and volatility
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
         h_name = @h_sceptic_kalman;
         
         %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
@@ -226,6 +228,14 @@ switch model
         h_name = @h_sceptic_kalman;
         options.inF.u_aversion = u_aversion;
         options.inG.u_aversion = u_aversion;
+        
+    case 'kalman_sigmavolatility_local'
+        n_theta = 1;
+        hidden_variables = 3; %tracks value and uncertainty and volatility
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = 1; %If 1 gamma will be 1-phi
+        h_name = @h_sceptic_kalman;
         
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');

@@ -27,8 +27,12 @@ hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
 %Set the proper paramters NOTE gamma is first then phi for sigma volatility
 %model.
 if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
-if inF.kalman.kalman_sigmavolatility
-    gamma = 1./(1+exp(-theta(2)));
+if inF.kalman.kalman_sigmavolatility || inF.kalman.kalman_sigmavolatility_local
+    if inF.no_gamma
+        gamma = 1-phi;
+    else
+        gamma = 1./(1+exp(-theta(2)));
+    end
     phi = 1./(1+exp(-theta(1)));
     z = x_t(hidden_state_index(:,3)); %Volatility
 end
@@ -163,6 +167,16 @@ elseif inF.kalman.kalman_sigmavolatility
     fx(hidden_state_index(:,1)) = mu + k.*delta;
     %Track smooth estimate of volatility according to unsigned PE history
     fx(hidden_state_index(:,3)) = gamma.*z + phi.*abs(sum(delta));
+elseif inF.kalman.kalman_sigmavolatility_local
+    %Update value
+    fx(hidden_state_index(:,1)) = mu + k.*delta;
+    
+    %Overwrite the sigma term
+    fx(hidden_state_index(:,2)) = (1 - e.*k).*sigma + z;
+    
+    %Track smooth estimate of volatility according to unsigned PE history
+    %locally instead of globally
+    fx(hidden_state_index(:,3)) = (1-e).*z + e.*(gamma*z + phi.*abs(sum(delta)));
 elseif inF.kalman.kalman_uv_sum_sig_vol
     %Update the value
     mu = mu + k.*delta;
