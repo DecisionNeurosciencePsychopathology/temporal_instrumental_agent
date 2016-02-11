@@ -98,6 +98,7 @@ options.inF.kalman.kalman_uv_sum = 0;
 options.inF.kalman.kalman_uv_sum_sig_vol = 0;
 options.inF.kalman.fixed_uv = 0;
 options.inF.kalman.kalman_sigmavolatility_local =0;
+options.inF.kalman.kalman_sigmavolatility_precision=0;
 
 %% uncertainty aversion for UV_sum
 if nargin<9
@@ -240,9 +241,21 @@ switch model
         else
             n_theta = 2;
         end
-            
         h_name = @h_sceptic_kalman;
         
+    case 'kalman_sigmavolatility_precision'
+        %n_theta = 2;
+        hidden_variables = 3; %tracks value and uncertainty and volatility
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        options.inF.priors = priors;
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
+        if options.inF.no_gamma
+            n_theta = 1;
+        else
+            n_theta = 2;
+        end
+        h_name = @h_sceptic_kalman;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
