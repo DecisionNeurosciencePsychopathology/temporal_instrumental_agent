@@ -230,11 +230,17 @@ switch model
         options.inG.u_aversion = u_aversion;
         
     case 'kalman_sigmavolatility_local'
-        n_theta = 1;
+        %n_theta = 2;
         hidden_variables = 3; %tracks value and uncertainty and volatility
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = 1; %If 1 gamma will be 1-phi
+        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
+        if options.inF.no_gamma
+            n_theta = 1;
+        else
+            n_theta = 2;
+        end
+            
         h_name = @h_sceptic_kalman;
         
     otherwise
