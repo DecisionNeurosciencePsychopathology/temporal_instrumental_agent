@@ -53,10 +53,10 @@ end
 
 %% Clean up model strings to make graphic look pretty
 % modelnames = cellfun(@strrep, modelnames', repmat({'_'},length(modelnames),1), repmat({' '},length(modelnames),1), 'UniformOutput', false);
-% for i = 1:length(out.options.handles.ha)-1
-%     xlabel(out.options.handles.ha(i),'models')
-%     set(out.options.handles.ha(i),'xtick',1:length(modelnames), 'XTickLabel',char(modelnames))
-% end
+for i = 1:length(out.options.handles.ha)-1
+    xlabel(out.options.handles.ha(i),'models')
+    set(out.options.handles.ha(i),'xtick',1:length(modelnames), 'XTickLabel',char(modelnames))
+end
 
 
 %% save output figure

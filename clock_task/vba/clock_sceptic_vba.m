@@ -15,11 +15,11 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 %%
 close all
 
-global rew_rng_state
+global rew_rng_state no_gamma
 rew_rng_seed = 99;
 
 
-graphics = 1;
+graphics = 0;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -51,7 +51,7 @@ else
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Volumes/bek/vba_results/uv_sum';
-        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        results_dir = '/Volumes/bek/vba_results/sigma_volatility_variants';
 
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
@@ -235,7 +235,7 @@ switch model
         hidden_variables = 3; %tracks value and uncertainty and volatility
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
+        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
         if options.inF.no_gamma
             n_theta = 1;
         else
@@ -249,7 +249,7 @@ switch model
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         options.inF.priors = priors;
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
+        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
         if options.inF.no_gamma
             n_theta = 1;
         else

@@ -53,7 +53,7 @@ grp = struct([]);
 
 fit_single_model = 1;
 if fit_single_model
-    model = 'kalman_uv_sum'; % will run to get value and prediction errors.
+    model = 'kalman_sigmavolatility_local'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
