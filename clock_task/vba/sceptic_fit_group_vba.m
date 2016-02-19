@@ -20,8 +20,11 @@ else
         group_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
     elseif strcmp(me(1:6),'dombax')==1
         behavfiles = glob('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/*.csv');
-        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        results_dir = '/Volumes/bek/vba_results/';
         group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
+        addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
+        addpath(genpath('/Users/dombax/code/'));
+
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
         addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
@@ -53,15 +56,15 @@ grp = struct([]);
 
 fit_single_model = 1;
 if fit_single_model
-    model = 'kalman_sigmavolatility_local'; % will run to get value and prediction errors.
+    model = 'fixed_decay'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
-        fprintf('Fitting subject %d \r',sub)
+        fprintf('Fitting subject %d id: %d \r',sub, id(sub))
         [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion);
         L(sub) = out.F;
-        tau(sub) = posterior.muTheta(1);
+%         tau(sub) = posterior.muTheta(1);
 %         value(:,:,sub) = out.suffStat.muX;
         %         p.progress;
     end

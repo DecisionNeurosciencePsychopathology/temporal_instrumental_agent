@@ -16,8 +16,10 @@ else
 end
 
 if grp_flag
-    vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
+    %vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
     %vbadir= '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+    vbadir = '/Volumes/bek/vba_results/qlearning_vba_results/individual_results';
+    
 end
 
 
@@ -147,7 +149,7 @@ else
     %u = [(data{trialsToFit, 'rt'}*0.01*n_steps/range_RT)'; data{trialsToFit, 'score'}'; (1:n_t)];
     u = [rtrnd; data{trialsToFit, 'score'}'; (1:n_t)];
     % Observation function
-    g_name = @g_qlearning;
+    g_name = @g_qlearning_step_wise;
     
 end
 

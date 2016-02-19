@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults, graphics)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -15,11 +15,23 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 %%
 close all
 
+%% uncertainty aversion for UV_sum
+if nargin<9
+    u_aversion = 0;
+    saveresults = 1;
+    graphics = 0;
+elseif nargin<10
+    saveresults = 1;
+    graphics = 0;
+elseif nargin<11
+    graphics = 0;
+end
+
+
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
 
 
-graphics = 0;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -100,13 +112,6 @@ options.inF.kalman.fixed_uv = 0;
 options.inF.kalman.kalman_sigmavolatility_local =0;
 options.inF.kalman.kalman_sigmavolatility_precision=0;
 
-%% uncertainty aversion for UV_sum
-if nargin<9
-    u_aversion = 0;
-    saveresults = 1;
-elseif nargin<10
-    saveresults = 1;
-end
 
 %% set up basis
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
@@ -153,7 +158,14 @@ switch model
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
 %         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
-        
+
+    case 'fixed_decay'
+        h_name = @h_sceptic_fixed_decay;
+        hidden_variables = 1; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        n_theta = 2; %learning rate and decay outside of the eligibility trace
+
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'

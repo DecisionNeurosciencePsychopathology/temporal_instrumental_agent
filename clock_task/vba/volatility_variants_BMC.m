@@ -34,3 +34,22 @@ end
 h = figure(4);
 file_str=input('What do you want save the figure as? ', 's');
 saveas(h,[file_str])
+
+
+%  without UV_sum
+
+modelnames = {'sigVol'; 'sigVolLocal'; 'sigVolLocalNogamma'; 'sigVolLocPrecisionNogamma'};
+L(1,:) = sigmavolatility.L;
+L(2,:) = sig_vol_local.L;
+L(3,:) = sig_vol_local_no_gamma.L;
+L(4,:) = sig_vol_local_no_gamma_precision.L;
+
+[posterior,out] = VBA_groupBMC(L);
+
+
+for i = 1:4
+    xlabel(out.options.handles.ha(i),'models')
+    set(out.options.handles.ha(i),'xtick',1:length(modelnames), 'XTickLabel',char(modelnames))
+end
+
+

@@ -12,14 +12,15 @@ clear variables;
 behavfiles = glob('../subjects/*.csv');
 % results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 %group_dir = 'E:\data\clock_task\vba\qlearning_vba_results';
-group_dir = 'E:\data\clock_task\vba\group_bmc';
+%group_dir = 'E:\data\clock_task\vba\group_bmc';
+group_dir = '/Volumes/bek/vba_results/group_bmc';
 
 
 %% chose models to fit
 modelnames = {'qlearning'};
 
 %% set parameters
-nbasis = 4;
+nbasis = 16;
 multinomial = 1;
 multisession = 1;
 fixed_params_across_runs = 1;
@@ -61,6 +62,6 @@ if fit_single_model
     end
     %     p.stop;
     cd(group_dir);
-    filename = sprintf('grp_%s_nsteps_%d',model,n_steps);
+    filename = sprintf('grp_%s_nsteps_%d_stepWise',model,n_steps);
     save(filename);
 end
