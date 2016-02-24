@@ -105,15 +105,15 @@ priors.muX0 = zeros(n_hidden_states,1);
 priors.SigmaX0 = zeros(n_hidden_states);
 
 if multinomial
-    rtrnd = [range_RT/2 round(data{trialsToFit(1:end-1),'rt'}*0.01*n_steps/range_RT)'];
+    rtrnd = [round(data{trialsToFit(1:end-1),'rt'}*0.01*n_steps/range_RT)'];
     rtrnd(rtrnd==0)=1;
     dim = struct('n',n_hidden_states,'n_theta',n_theta,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
     y = zeros(n_steps, length(trialsToFit));
-    for i = trialsToFit
-        y(rtrnd(i), i) = 1;
+    for i = 2:length(trialsToFit)
+        y(rtrnd(i), i-1) = 1;
     end
     priors.a_alpha = Inf;   % infinite precision prior
     priors.b_alpha = 0;

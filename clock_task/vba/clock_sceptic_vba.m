@@ -63,7 +63,7 @@ else
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Volumes/bek/vba_results/uv_sum';
-        results_dir = '/Volumes/bek/vba_results/sigma_volatility_variants';
+        results_dir = '/Volumes/bek/vba_results/';
 
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
@@ -268,6 +268,22 @@ switch model
             n_theta = 2;
         end
         h_name = @h_sceptic_kalman;
+    case 'win_stay_lose_switch'
+        n_phi  = 2;  %Beta and precision
+        n_theta = 0;
+        h_name = @h_dummy;
+        hidden_variables = 0; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inG.stay = 0;
+    case 'stay'
+        n_phi  = 2;  %Beta and precision
+        n_theta = 0;
+        h_name = @h_dummy;
+        hidden_variables = 0; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inG.stay = 1;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -289,8 +305,8 @@ if multinomial
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
     y = zeros(n_steps, length(trialsToFit));
-    for i = trialsToFit
-        y(rtrnd(i), i) = 1;
+    for i = 2:length(trialsToFit)
+        y(rtrnd(i), i-1) = 1;
     end
     priors.a_alpha = Inf;   % infinite precision prior
     priors.b_alpha = 0;
@@ -304,9 +320,13 @@ if multinomial
     % Observation function
     switch model
         case 'kalman_logistic'
-                    g_name = @g_sceptic_logistic;
+            g_name = @g_sceptic_logistic;
+        case 'win_stay_lose_switch'
+            g_name = @g_WSLS;
+        case 'stay'
+            g_name = @g_WSLS;
         otherwise
-    g_name = @g_sceptic;
+            g_name = @g_sceptic;
     end
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
@@ -365,5 +385,5 @@ cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('SHIFTED_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
