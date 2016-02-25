@@ -163,7 +163,7 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon')
     priors.muTheta = [0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
 
-    priors.muPhi = [0, 0, 0, 0, 0]; %K, Lambda, Nu, Rho
+    priors.muPhi = [0, 0, 0, 0, 0]; %K, Lambda, Nu, Rho, Epsilon
     priors.SigmaPhi = diag([1, 15, 15, 1, 1]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT

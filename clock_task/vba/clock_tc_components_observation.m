@@ -136,7 +136,7 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
         %epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 2, 2);
         %uniform 0..80000 variant
         %epsilon = unifinv(normcdf(phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 0, 80000);
-        epsilon = unifinv(fastnormcdf(phi(5)), 0, 80000);
+        epsilon = unifinv(fastnormcdf(phi(5)), 0, 10000);
         %epsilon = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(5), 'linear'), 0, 80000);
 
         gx = gx + epsilon*explore;
