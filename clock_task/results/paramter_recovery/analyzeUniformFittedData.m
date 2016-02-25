@@ -1,4 +1,6 @@
 function analyzeUniformFittedData(org_data,fitted_data)
+%Reutrn scatter plots of fitted data from rmsearch and residuals
+%ex analyzeUniformFittedData(uniform_test_data,uniform_fitted_results)
 
 model_names = fieldnames(org_data);
 
@@ -11,6 +13,8 @@ for i = 1:length(model_names)
     %Special qlearning case!
     if strcmpi(model_names{i},'qlearning')
         idx=logical([0 1 1 0]);
+    elseif strcmpi(model_names{i},'franktc_fixed')
+        idx=logical([0 1 1 1 0 0 1]);
     end
     
     %Select only the fitted params

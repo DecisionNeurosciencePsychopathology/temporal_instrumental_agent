@@ -4,10 +4,12 @@
 close all;
 
 %Set path to data storage on bek
-file_path = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc/';
+file_path = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc/high_res/final_results/';
 %data_file = 'group_model_comparison_L';
 %data_file = 'grp_kalman_16_nbasis_40_nsteps_1_uasversion_with_q';
-data_file = 'grp_L_kalman_logistic16_nbasis40_nsteps1_uaversion';
+%data_file = 'grp_L_kalman_logistic16_nbasis40_nsteps1_uaversion';
+% data_file = 'L9_fixed_ksoft_kprocnoise_kuvsum_ksigvol_kuvlog_fixeduv_q_fixeddecay.mat';
+data_file = 'L9_with_qstep_fixed_decay';
 
 %Load in proper data file
 group_data=load([file_path data_file]);
@@ -28,10 +30,12 @@ family_flag =1;
 % L(2,:) = L_kalman_uv_sum;
 % models = {'tight tau' 'no aversion'};
 
-sceptic.L = group_data.L;
+sceptic.L = group_data.L9;
 %sceptic.modelnames = models;
 
-modelnames = group_data.modelnames;
+% modelnames = group_data.modelnames;
+modelnames = {'fixed' 'kalmanSoftmax' 'kalmanProcessnoise' 'kalmanUVsum' 'kalmanSigmavolatility' 'kalmanLogistic' 'fixedUV' 'Qstep' 'fixedDecay'};
+
 
 if family_flag
     % %% Define 'fixed' as the first family, 'kalman', as the second, q third
@@ -40,7 +44,7 @@ if family_flag
     options.families{1} = find(not(cellfun('isempty', idx))); 
     idx = strfind(modelnames, 'kalman');
     options.families{2} = find(not(cellfun('isempty', idx)));
-    options.families{3} = find(strcmpi(modelnames, 'qlearning'));
+    options.families{3} = find(strcmpi(modelnames, 'Qstep'));
     [posterior,out] = VBA_groupBMC(sceptic.L,options);
 end
 
@@ -53,10 +57,10 @@ end
 
 %% Clean up model strings to make graphic look pretty
 % modelnames = cellfun(@strrep, modelnames', repmat({'_'},length(modelnames),1), repmat({' '},length(modelnames),1), 'UniformOutput', false);
-% for i = 1:length(out.options.handles.ha)-1
-%     xlabel(out.options.handles.ha(i),'models')
-%     set(out.options.handles.ha(i),'xtick',1:length(modelnames), 'XTickLabel',char(modelnames))
-% end
+for i = 1:length(out.options.handles.ha)-2
+    xlabel(out.options.handles.ha(i),'models')
+    set(out.options.handles.ha(i),'xtick',1:length(modelnames), 'XTickLabel',char(modelnames))
+end
 
 
 %% save output figure

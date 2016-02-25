@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults, graphics)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -15,11 +15,23 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 %%
 close all
 
-global rew_rng_state
+%% uncertainty aversion for UV_sum
+if nargin<9
+    u_aversion = 0;
+    saveresults = 1;
+    graphics = 0;
+elseif nargin<10
+    saveresults = 1;
+    graphics = 0;
+elseif nargin<11
+    graphics = 0;
+end
+
+
+global rew_rng_state no_gamma
 rew_rng_seed = 99;
 
 
-graphics = 1;
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
@@ -39,7 +51,7 @@ os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\corrected_uv_sum';
+    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
@@ -51,7 +63,7 @@ else
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Volumes/bek/vba_results/uv_sum';
-        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        results_dir = '/Volumes/bek/vba_results/';
 
     elseif strcmpi(me(1:14),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
@@ -97,14 +109,9 @@ options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
 options.inF.kalman.kalman_uv_sum_sig_vol = 0;
 options.inF.kalman.fixed_uv = 0;
+options.inF.kalman.kalman_sigmavolatility_local =0;
+options.inF.kalman.kalman_sigmavolatility_precision=0;
 
-%% uncertainty aversion for UV_sum
-if nargin<9
-    u_aversion = 0;
-    saveresults = 1;
-elseif nargin<10
-    saveresults = 1;
-end
 
 %% set up basis
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
@@ -151,7 +158,14 @@ switch model
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
 %         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
-        
+
+    case 'fixed_decay'
+        h_name = @h_sceptic_fixed_decay;
+        hidden_variables = 1; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        n_theta = 2; %learning rate and decay outside of the eligibility trace
+
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
@@ -196,6 +210,7 @@ switch model
         hidden_variables = 3; %tracks value and uncertainty and volatility
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
         h_name = @h_sceptic_kalman;
         
         %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
@@ -227,6 +242,48 @@ switch model
         options.inF.u_aversion = u_aversion;
         options.inG.u_aversion = u_aversion;
         
+    case 'kalman_sigmavolatility_local'
+        %n_theta = 2;
+        hidden_variables = 3; %tracks value and uncertainty and volatility
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
+        if options.inF.no_gamma
+            n_theta = 1;
+        else
+            n_theta = 2;
+        end
+        h_name = @h_sceptic_kalman;
+        
+    case 'kalman_sigmavolatility_precision'
+        %n_theta = 2;
+        hidden_variables = 3; %tracks value and uncertainty and volatility
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        options.inF.priors = priors;
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
+        if options.inF.no_gamma
+            n_theta = 1;
+        else
+            n_theta = 2;
+        end
+        h_name = @h_sceptic_kalman;
+    case 'win_stay_lose_switch'
+        n_phi  = 2;  %Beta and precision
+        n_theta = 0;
+        h_name = @h_dummy;
+        hidden_variables = 0; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inG.stay = 0;
+    case 'stay'
+        n_phi  = 2;  %Beta and precision
+        n_theta = 0;
+        h_name = @h_dummy;
+        hidden_variables = 0; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        options.inG.stay = 1;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -248,8 +305,8 @@ if multinomial
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
     y = zeros(n_steps, length(trialsToFit));
-    for i = trialsToFit
-        y(rtrnd(i), i) = 1;
+    for i = 2:length(trialsToFit)
+        y(rtrnd(i), i-1) = 1;
     end
     priors.a_alpha = Inf;   % infinite precision prior
     priors.b_alpha = 0;
@@ -263,9 +320,13 @@ if multinomial
     % Observation function
     switch model
         case 'kalman_logistic'
-                    g_name = @g_sceptic_logistic;
+            g_name = @g_sceptic_logistic;
+        case 'win_stay_lose_switch'
+            g_name = @g_WSLS;
+        case 'stay'
+            g_name = @g_WSLS;
         otherwise
-    g_name = @g_sceptic;
+            g_name = @g_sceptic;
     end
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
@@ -324,5 +385,5 @@ cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('SHIFTED_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end

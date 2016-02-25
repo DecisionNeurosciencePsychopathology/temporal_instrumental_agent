@@ -29,6 +29,26 @@ ntrials = 50;
 ntimesteps = 500;
 nbasis = 24;
 
+%Frank params
+%Fixed params taken from Michael's posterior via VBA analysis
+lambda_fixed=0.2556;
+epsilon_init=3000;
+alphaG_init=0.3;
+alphaN_init=0.3;
+K_fixed=636.7221;
+nu_fixed=0.2402;
+rho_init=300;
+lambda_bounds=[0 1];
+epsilon_bounds=[0 100000];
+alphaG_bounds=[0.01 5];
+alphaN_bounds=[0.01 5];
+K_bounds=[1 5000];
+nu_bounds=[0 5000];
+rho_bounds=[0 10000];
+
+
+
+
 
 fixedLR_softmax.init_params =  [prop_spread_init,   .1]; %prop_spread, beta, alpha
 fixedLR_softmax.lower_bounds = [prop_spread_bounds(1),  lr_bounds(1)];
@@ -219,6 +239,28 @@ franktc.clock_options=struct();
 franktc.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test(params,num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,franktc.name,0,optmat);
 a(16) = franktc;
 
+%fixed_uv
+fixed_uv.init_params =  [prop_spread_init, 0.6,  .1]; %prop_spread, tau, alpha
+fixed_uv.lower_bounds = [prop_spread_bounds(1), 0,  lr_bounds(1)];
+fixed_uv.upper_bounds = [prop_spread_bounds(2), 1,  lr_bounds(2)];
+fixed_uv.k = length(fixed_uv.init_params); %number of free parameters
+fixed_uv.name = 'fixed_uv'; %add explicit name parameter since each field in struct gets pulled out separately
+fixed_uv.parnames = {'prop_spread', 'beta', 'tau', 'alpha'};
+fixed_uv.clock_options=struct();
+fixed_uv.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([params(1) beta_init params(2) params(3)],...
+    num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,fixed_uv.name,sigma_noise_input);
+a(17) = fixed_uv;
+
+franktc_fixed.init_params = [epsilon_init, alphaG_init, alphaN_init, rho_init];
+franktc_fixed.lower_bounds = [epsilon_bounds(1), alphaG_bounds(1), alphaN_bounds(1), rho_bounds(1)];
+franktc_fixed.upper_bounds = [epsilon_bounds(2), alphaG_bounds(2), alphaN_bounds(2), rho_bounds(2)];
+franktc_fixed.k = length(franktc_fixed.init_params); %number of free parameters
+franktc_fixed.name = 'franktc_fixed';
+franktc_fixed.parnames = {'lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho'};
+franktc_fixed.clock_options=struct();
+franktc_fixed.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([lambda_fixed params(1) params(2) params(3) K_fixed nu_fixed params(4)],...
+    num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,franktc_fixed.name,0,optmat);
+a(18) = franktc_fixed;
 end
 
 

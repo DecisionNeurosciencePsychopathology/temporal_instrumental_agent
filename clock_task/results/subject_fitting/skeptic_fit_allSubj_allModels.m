@@ -77,10 +77,12 @@ num_start_pts=25;
 % 14) 'qlearning' x
 % 15) 'sarsa'
 % 16) 'franktc' x
+% 17 'fixed_uv'
+% 18 'frank_fixed'
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [1 5 6 8 9 14 16];
+models = [17 18];
 
 
 % a(models(i)).name = {};
@@ -170,7 +172,7 @@ for sub = 1:length(data) %Start with 8 since it died
         
         
         %% fit the model with a full range of RTs
-        if strcmpi(a(models(i)).name,'franktc') || strcmpi(a(models(i)).name,'qlearning') || strcmpi(a(models(i)).name,'sarsa')
+        if ismember(a(models(i)).name,{'franktc', 'franktc_fixed'}) || strcmpi(a(models(i)).name,'qlearning') || strcmpi(a(models(i)).name,'sarsa')
             optmat=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).optmat;
             a = initialize_stability_struct(id,test_data,rngseeds,0,optmat);
         else

@@ -36,14 +36,14 @@ for run=1:length(runs);
     else
         rts_obs = test_data(1,:);
         rews = test_data(2,:);
-        if strcmpi(agent,'franktc') || strcmpi(agent,'qlearning') || strcmpi(agent,'sarsa')
+        if ismember(agent,{'franktc', 'franktc_fixed'}) || strcmpi(agent,'qlearning') || strcmpi(agent,'sarsa')
             optmat.sample = zeros(1,ntimesteps); %rest the optmat sampling back to 0 for each run
         end
         cond='IEV';
     end
     
     %cost = cost + skeptic_fitsubject_all_models(params, rts_obs', rew_obs', rngseeds, nbasis, ntimesteps, trial_plots, minrt, maxrt, modelname);
-    if strcmpi(agent,'franktc')
+    if ismember(agent,{'franktc', 'franktc_fixed'})
         priors.V=0; %initialize expected value for first trial to prior (possibly from previous run)
         priors.Go=0; %initialize Go for first trial
         priors.NoGo=0; %initialize NoGo for first trial

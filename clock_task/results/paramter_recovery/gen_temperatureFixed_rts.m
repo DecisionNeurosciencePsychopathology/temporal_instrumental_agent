@@ -52,11 +52,14 @@ ntimesteps=500;
 reversal=0;
 
 a = initialize_stability_struct();
-
-if uniform_flag
-     [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,data_sets,a);
-else
-    [params,priors,rtbounds] = getAgentParams(agent);
+try
+    if uniform_flag
+        [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,data_sets,a);
+    else
+        [params,priors,rtbounds] = getAgentParams(agent);
+    end
+catch
+    error('Couldn''t obtain model information')
 end
 
 %10-15-15 So we've decided that each contingency will have a fixed sigma
@@ -101,7 +104,7 @@ end
         end
         
         
-        if (strcmp(agent,'franktc'))
+        if strfind(agent,'frank')>0 %(strcmp(agent,'franktc') || strcmp(agent,'franktc_fixed'))
             [cost_og(i),~, ret.(['set_' num2str(i)])]=TC_Alg_forward(params(j,:), priors, optmat(i), rngseeds, ntrials,rtbounds); %No rtbounds arg default is 0-5000ms
             ret.(['set_' num2str(i)]).rts = ret.(['set_' num2str(i)]).rtpred';
             ret.(['set_' num2str(i)]).rew_i = ret.(['set_' num2str(i)]).rew;
@@ -195,6 +198,14 @@ fix_gamma = repmat(fix_gamma,n,1);
 fix_lambda = .99;
 fix_lambda = repmat(fix_lambda,n,1);
 
+%Frank fixed parameters
+lambda_fixed=0.2556;
+K_fixed=636.7221;
+nu_fixed=0.2402;
+lambda_fixed = repmat(lambda_fixed,n,1);
+K_fixed = repmat(K_fixed,n,1);
+nu_fixed = repmat(nu_fixed,n,1);
+
 %Set agent parameters
 switch agent
     case 'fixedLR_softmax'
@@ -204,7 +215,7 @@ switch agent
         params = [prop_spread beta alpha]; %prop_spread  beta  alpha
     case 'fixedLR_egreedy' %Model not useful
         rng(2);
-        params = []; 
+        params = [];
     case 'kalman_softmax'
         rng(3);
         prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
@@ -252,6 +263,19 @@ switch agent
     case 'sarsa' %Model not useful
         rng(11);
         params =[]; %gamma, alpha, epsilon lambda
+    case 'fixed_uv'
+        rng(12);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        tau = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        alpha = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
+        params = [prop_spread beta tau alpha]; %prop_spread  beta  alpha
+    case 'franktc_fixed'
+        rng(13);
+        epsilon = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        alphaG = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        alphaN = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
+        rho = genParamInRange(a(a_index).lower_bounds(4),a(a_index).upper_bounds(4),n);
+        params = [lambda_fixed,epsilon,alphaG,alphaN,K_fixed,nu_fixed,rho]; %lambda   epsilon   alphaG   alphaN  K   nu  rho
     otherwise
         error('Not any agent I''ve heard of');
 

@@ -1,7 +1,7 @@
 %loads in subjects' data and fits SCEPTIC models using VBA;
 
 % close all;
-clear variables;
+clear;
 %curpath = fileparts(mfilename('fullpath'));
 
 %behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
@@ -20,8 +20,11 @@ else
         group_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
     elseif strcmp(me(1:6),'dombax')==1
         behavfiles = glob('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/*.csv');
-        results_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        results_dir = '/Volumes/bek/vba_results/';
         group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
+        addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
+        addpath(genpath('/Users/dombax/code/'));
+
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
         addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
@@ -30,7 +33,7 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 
 %% set parameters
 nbasis = 16;
@@ -53,21 +56,21 @@ grp = struct([]);
 
 fit_single_model = 1;
 if fit_single_model
-    model = 'kalman_uv_sum'; % will run to get value and prediction errors.
+    model = 'fixed_decay'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
-        fprintf('Fitting subject %d \r',sub)
+        fprintf('Fitting subject %d id: %d \r',sub, id(sub))
         [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion);
         L(sub) = out.F;
-        tau(sub) = posterior.muTheta(1);
+        gamma_decay(sub) = posterior.muTheta(2);
 %         value(:,:,sub) = out.suffStat.muX;
         %         p.progress;
     end
     %     p.stop;
     cd(group_dir);
-    filename = sprintf('grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
     save(filename);
 else
     %     %% continue where I left off earlier
@@ -89,6 +92,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('grp_L_%s%d_nbasis%d_nsteps%d_uaversion%d_sigmatau1000e-1',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_CORRECT_grp_L_%s%d_nbasis%d_nsteps%d_uaversion',model,nbasis,n_steps, u_aversion);
     save(filename);
 end
