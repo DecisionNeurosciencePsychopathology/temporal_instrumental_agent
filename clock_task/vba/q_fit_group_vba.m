@@ -13,7 +13,7 @@ behavfiles = glob('../subjects/*.csv');
 % results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 %group_dir = 'E:\data\clock_task\vba\qlearning_vba_results';
 %group_dir = 'E:\data\clock_task\vba\group_bmc';
-group_dir = '/Volumes/bek/vba_results/group_bmc';
+ group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
 
 
 %% chose models to fit
@@ -27,7 +27,7 @@ fixed_params_across_runs = 1;
 fit_propspread = 1;
 n_steps = 40;
 showfig = 0;
-grp_flag = 1;
+saveresults = 1;
 
 
 % get ID list
@@ -49,14 +49,14 @@ grp = struct([]);
     
 fit_single_model = 1;
 if fit_single_model
-    model = 'qlearning'; %Define model
+    model = 'qlearning_step'; %Define model
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d \r',sub)
-        [posterior,out] = clock_q_vba(id(sub),showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,grp_flag)
+        [posterior,out] = clock_q_vba(id(sub),showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,saveresults)
         L(sub) = out.F;
-        tau(sub) = posterior.muTheta(1);
+        %tau(sub) = posterior.muTheta(1);
 %         value(:,:,sub) = out.suffStat.muX;
         %         p.progress;
     end

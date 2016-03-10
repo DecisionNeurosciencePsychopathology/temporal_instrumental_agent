@@ -1,30 +1,26 @@
-function [posterior,out] = clock_q_vba(id,showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,grp_flag)
+function [posterior,out] = clock_q_vba(id,showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,saveresults)
 %Working draft of getting q learning to work with vba toolbox
 
 %Set data directory
-if ~isempty(strfind(pwd,'vba'))
-    vbadir = pwd;
-else
-    command = 'find . -iname ''vba''';
-    try
-        [~,cmdout]=system(command);
-        cd(cmdout)
-        vbadir = pwd;
-    catch
-        fprintf('\nError: please go to the vba directory and run this command')
-    end
-end
+% if ~isempty(strfind(pwd,'vba'))
+%     vbadir = pwd;
+% else
+%     command = 'find . -iname ''vba''';
+%     try
+%         [~,cmdout]=system(command);
+%         cd(cmdout)
+%         vbadir = pwd;
+%     catch
+%         fprintf('\nError: please go to the vba directory and run this command')
+%     end
+% end
 
-if grp_flag
+if saveresults
     %vbadir = 'E:\data\clock_task\vba\qlearning_vba_results\individual_results';
     %vbadir= '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-    vbadir = '/Volumes/bek/vba_results/qlearning_vba_results/individual_results';
+    results_dir = '/Volumes/bek/vba_results/';
     
 end
-
-
-n_t = 400; %400 trials
-trialsToFit = 1:n_t;
 
 if nargin < 2, showfig = 1; end
 
@@ -41,7 +37,9 @@ end
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % os = computer;
-data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+%data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv',
+%id),'Delimiter',',','ReadVariableNames',true); %This broke for some reason...
 % rts = data{trialsToFit, 'rt'};
 % rewards = data{trialsToFit, 'score'};
 
@@ -62,6 +60,7 @@ n_t = size(data,1);
 n_runs = n_t/50;
 trialsToFit = 1:n_t;
 options.inF.fit_propspread = fit_propspread;
+model = 'q_step'; %Set the model name
 
 
 %% set up models within evolution/observation Fx
@@ -105,15 +104,15 @@ priors.muX0 = zeros(n_hidden_states,1);
 priors.SigmaX0 = zeros(n_hidden_states);
 
 if multinomial
-    rtrnd = [round(data{trialsToFit(1:end-1),'rt'}*0.01*n_steps/range_RT)'];
+    rtrnd = round(data{trialsToFit(1:end),'rt'}*0.01*n_steps/range_RT)';
     rtrnd(rtrnd==0)=1;
     dim = struct('n',n_hidden_states,'n_theta',n_theta,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
     y = zeros(n_steps, length(trialsToFit));
-    for i = 2:length(trialsToFit)
-        y(rtrnd(i), i-1) = 1;
+    for i = 1:length(trialsToFit)
+        y(rtrnd(i), i) = 1;
     end
     priors.a_alpha = Inf;   % infinite precision prior
     priors.b_alpha = 0;
@@ -125,6 +124,7 @@ if multinomial
     % Inputs
     %u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
     u = [rtrnd; data{trialsToFit, 'score'}'; (1:n_t)];
+    u = [zeros(size(u,1),1) u(:,1:end-1)];
     % Observation function
     g_name = @g_qlearning_step_wise;
     
@@ -170,8 +170,13 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save([vbadir '/' sprintf('%d_multinomial%d_multisession%d_fixedParams%d_q_vba_fit_stepWise_obfx', id, multinomial,multisession,fixed_params_across_runs)], 'posterior', 'out');
-
+if saveresults
+    cd(results_dir);
+    %% save output figure
+    % h = figure(1);
+    % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+    save(sprintf('SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+end
 
 
 

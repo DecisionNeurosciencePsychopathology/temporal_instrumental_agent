@@ -8,3 +8,6 @@ InputStreamByteWrapper.class
 MatlabServer.m
 
 *vba_fit.mat
+*.fig
+
+*.mat

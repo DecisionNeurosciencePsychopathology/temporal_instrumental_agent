@@ -215,12 +215,11 @@ switch model
         
         %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
     case 'kalman_uv_sum'
-        n_phi  = 2;  %Beta and Tau
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         h_name = @h_sceptic_kalman;
-        %options.inF.u_aversion = u_aversion;
+        options.inF.u_aversion = u_aversion;
         options.inG.u_aversion = u_aversion;
         
     case 'kalman_uv_sum_sig_vol'
@@ -305,8 +304,8 @@ if multinomial
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
     y = zeros(n_steps, length(trialsToFit));
-    for i = 2:length(trialsToFit)
-        y(rtrnd(i), i-1) = 1;
+    for i = 1:length(trialsToFit)
+        y(rtrnd(i), i) = 1;
     end
     priors.a_alpha = Inf;   % infinite precision prior
     priors.b_alpha = 0;
@@ -317,6 +316,7 @@ if multinomial
     priors.SigmaPhi = 1e1*eye(dim.n_phi);
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+    u = [zeros(size(u,1),1) u(:,1:end-1)];
     % Observation function
     switch model
         case 'kalman_logistic'
@@ -344,6 +344,7 @@ else
     prev_rt = [0 y(1:end-1)];
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; prev_rt];
+    u = [zeros(size(u,1),1) u(:,1:end-1)];
     % Observation function
     g_name = @g_sceptic_continuous;
     
@@ -385,5 +386,5 @@ cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('SHIFTED_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf('SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
