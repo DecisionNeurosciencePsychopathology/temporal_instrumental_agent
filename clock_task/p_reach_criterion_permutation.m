@@ -1,6 +1,6 @@
 %% calculate probability of k consecutive "corrects" in a sequence of n trials
 
-k = 4; % e.g. hexanacci number for k=6
+k = 6; % e.g. hexanacci number for k=6
 n = 50; % number of trials +2
 
 
@@ -19,7 +19,9 @@ n = 50; % number of trials +2
 n_perm = 1000000;
 
 parfor i = 1:n_perm
-    seq = round(rand(1,n).*4)
+    rawseq = rand(1,n).*4
+    seq = round(rawseq)
+    %% find runs
     a = (diff(seq));
     v = find(conv(double(a==0),ones(1,k),'valid')==k); %// find k zeros
     if isempty(v)
@@ -28,7 +30,17 @@ parfor i = 1:n_perm
     v = v([true diff(v)>n]); %// remove similar indices, indicating n+1, n+2... zeros
     count(i) = length(v)
     end
+    %% find climbs
+    b=diff(rawseq);
+    rt_increases = b<0;
+    climbs = find(conv(double(rt_increases==0),ones(1,k),'valid')==k); %// find k zeros
+    if isempty(climbs)
+        climb_count(i) = 0;
+    else
+    climbs = climbs([true diff(climbs)>n]); %// remove similar indices, indicating n+1, n+2... zeros
+    climb_count(i) = length(climbs)
+    end
 end
-
+p_climb = mean(climb_count)
 p = mean(count)
 figure(99); clf; hist(count);
