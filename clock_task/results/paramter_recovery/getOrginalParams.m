@@ -48,15 +48,17 @@ switch agent
         params =[0.239363,0.260227]; %gamma, alpha, epsilon lambda
         names={'alpha'; 'epsilon';};
     case 'fixed_uv'
-        %All condition params via Michael's email
-        %params =[0.989816,0.239363,0.260227,0.9453975]; %gamma, alpha, epsilon lambda
+        %Just a place holder
         params =[0.239363,0.260227]; %gamma, alpha, epsilon lambda
         names={'prop_spread'; 'tau'; 'alpha';};
     case 'franktc_fixed'
-        %All condition params via Michael's email
-        %params =[0.989816,0.239363,0.260227,0.9453975]; %gamma, alpha, epsilon lambda
+        %Just a place holder
         params =[0.239363,0.260227]; %gamma, alpha, epsilon lambda
         names={'epsilon';   'alphaG';   'alphaN';  'rho';};
+    case 'fixed_decay'
+        %Just a place holder
+        params =[0.239363,0.260227]; %gamma, alpha, epsilon lambda
+        names={'prop_spread'; 'alpha'; 'gamma'; };
     otherwise
         error('Not any agent I''ve heard of');
 end

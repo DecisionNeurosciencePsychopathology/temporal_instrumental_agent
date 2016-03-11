@@ -1,6 +1,6 @@
 function fit_all_subs_all_models(modelname,sub,subject_param_data,optimal_param_data)
 
-if nargin<3
+if nargin<=3
     num_plots = 1;
     data = subject_param_data;
 else
@@ -9,10 +9,11 @@ else
 end
 factor = [.4 .0003]; %two monitor set up, splits up the figures
 
+try
 for i = 1:num_plots
     %It was getting annoying moving the figs constantly
-    set(0,'DefaultFigureUnits','normalized', ...
-        'DefaultFigurePosition', [1-i*factor(i),.3,.35,.5]);
+%     set(0,'DefaultFigureUnits','normalized', ...
+%         'DefaultFigurePosition', [1-i*factor(i),.3,.35,.5]);
     figure(i); clf;
     ret = data(i,:);
     unrew_rts = NaN(size(ret.rt_obs));
@@ -33,14 +34,20 @@ for i = 1:num_plots
     hold off;
     title([modelname,' Red: actual RT, Blue: predicted RT ' str]);
     ax2=subplot(3,1,2);
-    contourf(1:ret.ntrials, 1:ret.ntimesteps, ret.v_it(1:ret.ntrials,:)'); colorbar('southoutside');hold on;
+    contourf(1:ret.ntrials, 1:ret.ntimesteps, log(ret.v_it(1:ret.ntrials,:))'); colorbar('southoutside');hold on;
     scatter(1:ret.ntrials, ret.rt_obs,ret.rew_obs+10, 'r','Filled');
     scatter(1:ret.ntrials, unrew_rts,'b', 'Filled'); hold off;
     title('Value map; red: rewards, blue: omissions');
     colormap(ax2,summer);
     
     if strfind(modelname, 'fixed')
-        
+    ax3=subplot(3,1,3);
+    contourf(1:ret.ntrials, 1:ret.ntimesteps, log(ret.p_choice(1:ret.ntrials,:))'); colorbar('southoutside');hold on;
+    %scatter(1:ret.ntrials, ret.p_choice, 'k','Filled');
+     scatter(1:ret.ntrials, ret.rt_obs, ret.rew_obs+10, 'r','Filled');
+     scatter(1:ret.ntrials, unrew_rts,'b', 'Filled'); hold off;
+    title('P choice');
+    colormap(ax3,summer);
         
     elseif  strfind(modelname, 'kalman_processnoise')
         ax3 = subplot(4,1,3);
@@ -74,4 +81,6 @@ end
 
 
 waitforbuttonpress;
+catch
+    error('Kick out!')
 end

@@ -276,6 +276,12 @@ switch agent
         alphaN = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
         rho = genParamInRange(a(a_index).lower_bounds(4),a(a_index).upper_bounds(4),n);
         params = [lambda_fixed,epsilon,alphaG,alphaN,K_fixed,nu_fixed,rho]; %lambda   epsilon   alphaG   alphaN  K   nu  rho
+    case 'fixed_decay'
+        rng(14);
+        prop_spread = genParamInRange(a(a_index).lower_bounds(1),a(a_index).upper_bounds(1),n);
+        alpha = genParamInRange(a(a_index).lower_bounds(2),a(a_index).upper_bounds(2),n);
+        gamma = genParamInRange(a(a_index).lower_bounds(3),a(a_index).upper_bounds(3),n);
+        params = [prop_spread beta alpha gamma]; %prop_spread  beta  alpha
     otherwise
         error('Not any agent I''ve heard of');
 

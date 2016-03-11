@@ -66,6 +66,10 @@ explore_rng_state=rng;
 % % %     ntimesteps = maxrt - minrt;
 %end
 
+if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
+
+%define radial basis
+[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 
 %populate free parameters for the requested agent/model
@@ -150,12 +154,16 @@ elseif strcmpi(agent, 'fixed_uv')
     beta = params(2);
     tau = params(3);
     alpha = params(4);          %learning rate for PE+ (0..1)
+elseif strcmpi(agent, 'fixed_decay')
+%I was taking the values directly from the posterior at this point for
+%plotting
+%     beta = exp(params(2)); %Should be fixed
+%     alpha = 1./(1+exp(-params(3)));
+%     gamma = (1./(1+exp(-params(4))))./1;
+    beta = params(2); %Should be fixed
+    alpha = params(3);
+    gamma = params(4);
 end
-
-if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
-
-%define radial basis
-[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
 %it can also be a struct, in which case this defines the lookup table for sequential samples from a contingency of interest.
@@ -203,6 +211,7 @@ mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all G
 z_i(1) = 0;        %no initial expected volatility.
 
 despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
+decay_ij =      zeros(ntrials, nbasis);     % decay factor applied to eligibility trace
 
 %noise in the reward signal: sigma_rew. In the Frank model, the squared SD of the Reward vector represents the noise in
 %the reward signal, which is part of the Kalman gain. This provides a non-arbitrary initialization for sigma_rew, such
@@ -299,6 +308,13 @@ for i = 1:ntrials
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
         mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
+    elseif strcmpi(agent, 'fixed_decay')        
+        %% introduce decay
+        decay_ij(i,:) = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        
+        mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:) + decay_ij(i,:);
+        ret.decay = decay_ij; %Save the decay for plotting
+        
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
         if (max(delta_ij(i,:))) > 0
@@ -405,7 +421,7 @@ for i = 1:ntrials
         
         %compute final value function to use for choice
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
-                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
+                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', 'fixed_decay'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum') || strcmpi(agent, 'fixed_uv')
             uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
@@ -489,6 +505,7 @@ p_chosen = [ntimesteps/2 p_chosen]; %Until I talk to Alex about this indexing is
 cost = sum((rt_obs-p_chosen(1:ntrials)).^2); %maximize choice probabilities
 
 ret.nbasis = nbasis;
+ret.p_choice = p_choice;
 ret.ntimesteps = ntimesteps;
 ret.mu_ij = mu_ij;
 ret.sigma_ij = sigma_ij;

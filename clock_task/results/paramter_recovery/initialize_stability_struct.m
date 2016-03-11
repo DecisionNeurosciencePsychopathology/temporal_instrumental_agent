@@ -251,6 +251,7 @@ fixed_uv.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([para
     num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,fixed_uv.name,sigma_noise_input);
 a(17) = fixed_uv;
 
+%Frank fixed
 franktc_fixed.init_params = [epsilon_init, alphaG_init, alphaN_init, rho_init];
 franktc_fixed.lower_bounds = [epsilon_bounds(1), alphaG_bounds(1), alphaN_bounds(1), rho_bounds(1)];
 franktc_fixed.upper_bounds = [epsilon_bounds(2), alphaG_bounds(2), alphaN_bounds(2), rho_bounds(2)];
@@ -261,6 +262,18 @@ franktc_fixed.clock_options=struct();
 franktc_fixed.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([lambda_fixed params(1) params(2) params(3) K_fixed nu_fixed params(4)],...
     num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,franktc_fixed.name,0,optmat);
 a(18) = franktc_fixed;
+
+%fixed decay
+fixed_decay.init_params =  [prop_spread_init, .1, .6]; %prop_spread, alpha, gamma
+fixed_decay.lower_bounds = [prop_spread_bounds(1), lr_bounds(1), 0];
+fixed_decay.upper_bounds = [prop_spread_bounds(2), lr_bounds(2), 1];
+fixed_decay.k = length(fixed_decay.init_params); %number of free parameters
+fixed_decay.name = 'fixed_decay'; %add explicit name parameter since each field in struct gets pulled out separately
+fixed_decay.parnames = {'prop_spread', 'beta', 'alpha', 'gamma'};
+fixed_decay.clock_options=struct();
+fixed_decay.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([params(1) beta_init params(2) params(3)],...
+    num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,fixed_decay.name,sigma_noise_input);
+a(19) = fixed_decay;
 end
 
 

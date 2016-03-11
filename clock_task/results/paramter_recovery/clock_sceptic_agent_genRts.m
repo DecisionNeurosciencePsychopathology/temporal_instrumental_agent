@@ -137,6 +137,10 @@ elseif strcmpi(agent, 'fixed_uv')
     beta = params(2);
     tau = params(3);
     alpha = params(4);          %learning rate for PE+ (0..1)
+elseif strcmpi(agent, 'fixed_decay')
+    beta = params(2); %Should be fixed
+    alpha = params(3);
+    gamma = params(4);
 end
 
 if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); end
@@ -283,6 +287,11 @@ for i = 1:ntrials
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
         mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
+    elseif strcmpi(agent, 'fixed_decay')
+        %% introduce decay
+        decay_ij(i,:) = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        
+        mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:) + decay_ij(i,:);
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
         if (max(delta_ij(i,:))) > 0
@@ -388,7 +397,7 @@ for i = 1:ntrials
         
         %compute final value function to use for choice
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
-                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
+                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', 'fixed_decay'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum') || strcmpi(agent, 'fixed_uv')
             uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
