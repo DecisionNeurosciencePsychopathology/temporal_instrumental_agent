@@ -137,8 +137,8 @@ k = (sigma + Q)./(sigma + Q + sigma_noise);
 
 %Update posterior variances on the basis of Kalman gains, what used to be
 %SIGMA
-fx(hidden_state_index(:,2)) = (1 - e.*k).*(sigma + z);
-
+sigma = (1 - e.*k).*(sigma + z);
+fx(hidden_state_index(:,2)) = sigma;
 %
 %
 % %THIS need to be fx(whatever) to update next timestep
