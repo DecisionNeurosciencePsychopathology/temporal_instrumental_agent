@@ -1,4 +1,4 @@
-%  runs group model comparison on SCEPTIC log model evidence data from sceptic_fit_group_vba.m
+model%  runs group model comparison on SCEPTIC log model evidence data from sceptic_fit_group_vba.m
 
 % clear variables;
 close all;
@@ -42,7 +42,7 @@ if family_flag
     idx = strfind(modelnames, 'fixed');
     %options.families{1} = find(strcmpi(modelnames, 'fixed')); 
     options.families{1} = find(not(cellfun('isempty', idx))); 
-    idx = strfind(modelnames, 'kalman');
+    idx = strfind(modelnames, 'kalman');out
     options.families{2} = find(not(cellfun('isempty', idx)));
     options.families{3} = find(strcmpi(modelnames, 'Qstep'));
     [posterior,out] = VBA_groupBMC(sceptic.L,options);

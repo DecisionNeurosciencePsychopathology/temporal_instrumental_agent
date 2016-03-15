@@ -79,10 +79,11 @@ num_start_pts=25;
 % 16) 'franktc' x
 % 17 'fixed_uv'
 % 18 'frank_fixed'
+% 19 'fixed_decay'
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [17 18];
+models = [19];
 
 
 % a(models(i)).name = {};
