@@ -22,6 +22,11 @@ function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond
 %  11) kalman_kl_softmax:       kalman learning rule; KL discounting of value curve by PEs
 %  12) kalman_processnoise_kl:  kalman learning rule; PEs enhance gain through process noise Q; KL discounting of value curve by PEs; softmax
 %  13) kalman_uv_sum_kl;        kalman learning rule; V and U are mixed by tau; KL discounting of value curve by PEs; softmax choice over U+V
+%  14) kalman_uv_sum_negtau: same as kalman_uv_sum, but use V + tau*U parameterization where tau can be free (positive or negative). Permits ambiguity aversion
+%  15) kalman_uv_sum_discount: use the V + tau*U parameterization, but store uncertainty-discounted value into the V vector (discounted).
+%  16) fixedLR_decay: current winning model for empirical data (fixedLR plus decay outside of temporal generalization function)
+%  17) kalman_sigmavolatility_local: Track volatility for each basis separately.
+%  18) kalman_sigmavolatility_precision: Use precision-weighted prediction errors to scale perceived volatility.
 
 if nargin < 2, agent = 'fixedLR_softmax'; end
 if nargin < 3, rngseeds=[98 83 66 10]; end
@@ -95,6 +100,7 @@ u_jt =          zeros(nbasis, ntimesteps);  % uncertainty of each basis for each
 u_it =          zeros(ntrials,ntimesteps);  % history of uncertainty by trial at each timestep
 uv_it =         zeros(ntrials,ntimesteps);  % history of UV (value incorporating exploration bonus) by trial at each timestep
 z_i =           nan(1, ntrials);            % smooth volatility function in kalman_sigmavolatility model (not wrt basis function)
+z_ij =          nan(ntrials, nbasis);       % smooth volatility function in kalman_sigmavolatility_local model (wrt basis function)
 %delta_func =    zeros(1,ntrials);
 %v_max_to_plot=  zeros(1,ntrials);
 p_choice    =   nan(ntrials,ntimesteps);    % model-predicted probabilities of choosing each possible rt according to softmax
@@ -106,7 +112,8 @@ sigma_ij =      zeros(ntrials, nbasis);     %Standard deviations of Gaussians (u
 Q_ij =          zeros(ntrials, nbasis);     %Process noise (i.e., noise/change in the system dynamics with time)
 
 mu_ij(1,:) =    0; %expected reward on first trial is initialized to 0 for all Gaussians.
-z_i(1) = 0;        %no initial expected volatility. 
+z_ij(1,:)  =    0; %initial volatility estimate at each basis (under local model)
+z_i(1)     =    0; %no initial expected volatility. 
 
 %despair = zeros(1,ntrials);                 %despair/volatility to detect reversals
 
@@ -149,8 +156,9 @@ if ismember(agent, {'kalman_uv_logistic', 'fixedLR_egreedy', 'fixedLR_egreedy_gr
 end
 
 %setup random number generator for softmax function if relevant
-if ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
-        'kalman_sigmavolatility', 'kalman_uv_sum', 'fixedLR_kl_softmax', ...
+if ismember(agent, {'fixedLR_softmax', 'fixedLR_decay', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+        'kalman_sigmavolatility', 'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision', ...
+        'kalman_uv_sum', 'kalman_uv_sum_negtau', 'kalman_uv_sum_discount', 'fixedLR_kl_softmax', ...
         'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl'})
     
     %setup a random number stream to be used by the softmax choice rule to make choices consistent during optimization
@@ -181,21 +189,6 @@ for i = 1:ntrials
     %this is essentially summing the area under the curve of each truncated RBF weighted by the truncated
     %Gaussian spread function.
     e_ij(i,:) = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 2);
-    
-    %%NB: broken for now
-%     if reversal==1 && i==ntrials/2+1
-%         %Optimal param reversal hack
-%         vperm_run = m.vperm_run; %Currently this only exsists for the reversal runs
-%         if strcmp(m.name, 'IEV')
-%             m=mDEV; %if it is IEV after x trials switch
-%             m.lookup = m.lookup(:,vperm_run);
-%             cond = m.name;
-%         else
-%             m=mIEV; %else it is DEV after x traisl switch to IEV
-%             m.lookup = m.lookup(:,vperm_run);
-%             cond = m.name;
-%         end        
-%     end
 
     if usecstruct
         [rew_i(i), ev_i(i), cstruct] = getNextRew(rts(i), cstruct);
@@ -212,7 +205,11 @@ for i = 1:ntrials
 
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
-        mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);
+        mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);        
+    elseif strcmpi(agent, 'fixedLR_decay')
+        %this agent decays the value of basis functions outside of the temporal generalization
+        decay = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:) + decay;
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
         if (max(delta_ij(i,:))) > 0
@@ -235,14 +232,28 @@ for i = 1:ntrials
         k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);       
         
         %Update posterior variances on the basis of Kalman gains
-        sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*(sigma_ij(i,:) + z_i(i));
+        sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*(sigma_ij(i,:))
         
         %Update reward expectation. AD: Would it be better for the delta to be the difference between the reward
         %and the point value estimate at the RT(i)?
         mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
         
+        %this agent discounts the value representation in the learning rule
+        if strcmpi(agent, 'kalman_uv_sum_discount'), mu_ij(i+1,:) = mu_ij(i+1,:) + p.tau*sigma_ij(i+1,:); end
+        
         %Track smooth estimate of volatility according to unsigned PE history
-        z_i(i+1) = p.gamma.*z_i(i) + p.phi.*abs(sum(delta_ij(i,:)));
+        if strcmpi(agent, 'kalman_sigmavolatility')
+            z_i(i+1) = p.gamma.*z_i(i) + p.phi.*abs(sum(delta_ij(i,:))); 
+            sigma_ij(i+1,:) = sigma_ij(i+1,:) + z_i(i); %NB: z_i increment now falls outside of eligibility function
+        end
+        
+        %local volatility (per basis function)
+        if ismember(agent, {'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision'})
+            %use the prior variance: current variance ratio to scale effect of PE on volatility (precision weighting)
+            if strcmpi(agent, 'kalman_sigmavolatility_local_precision'), precision=sigma_noise./sigma_ij(i,:); else precision=1.0; end
+            z_ij(i+1,:) = (1 - e_ij(i,:)).*z_ij(i,:) + e_ij(i,:).*(p.gamma.*z_ij(i,:) + precision.*p.phi.*delta_ij(i,:)); 
+            sigma_ij(i+1,:) = sigma_ij(i+1,:) + z_ij(i,:); %NB: z_ij increment now falls outside of eligibility function
+        end
         
         %Uncertainty is a function of Kalman uncertainties.
         u_jt=sigma_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat;        
@@ -253,19 +264,6 @@ for i = 1:ntrials
     %compute summed/evaluated value function across all timesteps
     v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
     v_func = sum(v_jt); %subjective value by timestep as a sum of all basis functions
-    
-    %% How does the agent detect a reversal?  E.g. by seeing a lot of PE-.  These, in turn, inflate a
-    %  'despair' parameter (analogous to Behrens's volatility [2005]).
-    % first get the PE-(i)
-    % removing despair computation for now since it is not used and mean call is relatively slow
-    %mean_delta(i) = mean(delta_ij(i,:));
-    %mean_delta_minus(i) = mean_delta(i)*(mean_delta(i)<0);
-    %despair(i+1) = .95*despair(i) - mean_delta_minus(i);
-    
-    %Prediction errors
-    %delta_func(i)=sum(delta_ij(i,:));
-    %v_max_to_plot(i) = max(v_func)*50;
-    %k_top_plot(i) = sum(k_ij(i,:));
     
     if i == ntrials, break; end %do not compute i+1 choice on the final trial (invalid indexing problem)
     
@@ -317,12 +315,25 @@ for i = 1:ntrials
         
         %compute final value function to use for choice
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
-                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility'})
+                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', ...
+                'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision', 'fixedLR_decay'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum')
             uv_func=p.tau*v_func + (1-p.tau)*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
+        elseif strcmpi(agent, 'kalman_uv_sum_negtau')
+            %same as kalman_uv_sum, but let tau be unconstrained, allowing for negative (ambiguity averse) preferences
+            uv_func=v_func + p.tau*u_func; %mix together value and uncertainty according to tau
+            v_final = uv_func;
+            uv_it(i+1,:) = uv_func;
+        elseif strcmpi(agent, 'kalman_uv_sum_discount')
+            %same as kalman_uv_sum_negtau, but it carries forward the UV function as V into the next trial
+            %this essentially discounts (with negative tau) value by uncertainty in the agents representation
+            
+            %the discounting happens above in the evolution/learning step
+            %here, the v function is already a mixture of U and V according to tau
+            v_final = v_func;
         elseif ismember(agent, {'kalman_kl_softmax', 'fixedLR_kl_softmax', 'kalman_processnoise_kl'})
             v_final= v_func + discount;
             %v_it_undisc(i+1,:) = v_func; %not implemented here yet
@@ -353,7 +364,6 @@ for i = 1:ntrials
                 rts(i+1) = rt_exploit; %need to unify this with kalman_uv_logistic above...
             end
         else
-            %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
             p_choice(i,:) = (exp((v_final-max(v_final))/p.beta)) / (sum(exp((v_final-max(v_final))/p.beta))); %Divide by temperature
             %if (all(v_final==0)), v_final=rand(1, length(v_final)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
@@ -400,4 +410,5 @@ ret.uv_it = uv_it;
 ret.rew_i = rew_i;
 ret.ev_i = ev_i;
 ret.z_i = z_i;
+ret.z_ij = z_ij;
 ret.p_choice=p_choice;

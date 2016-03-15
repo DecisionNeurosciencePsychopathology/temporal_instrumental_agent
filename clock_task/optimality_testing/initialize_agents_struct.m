@@ -132,6 +132,51 @@ kalman_uv_sum_kl.parnames = {'prop_spread', 'beta', 'tau', 'kappa', 'lambda'};
 kalman_uv_sum_kl.clock_options=struct();
 a(13) = kalman_uv_sum_kl;
 
+kalman_uv_sum_negtau.init_params = [prop_spread_init, beta_init, 0.0]; %prop_spread, beta, tau
+kalman_uv_sum_negtau.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), -1000];
+kalman_uv_sum_negtau.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), 1000];
+kalman_uv_sum_negtau.k = length(kalman_uv_sum_negtau.init_params); %number of free parameters
+kalman_uv_sum_negtau.name = 'kalman_uv_sum_negtau'; %add explicit name parameter since each field in struct gets pulled out separately
+kalman_uv_sum_negtau.parnames = {'prop_spread', 'beta', 'tau'};
+kalman_uv_sum_negtau.clock_options=struct();
+a(14) = kalman_uv_sum_negtau;
+
+kalman_uv_sum_discount.init_params = [prop_spread_init, beta_init, 0.0]; %prop_spread, beta, tau
+kalman_uv_sum_discount.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), -200];
+kalman_uv_sum_discount.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), 200];
+kalman_uv_sum_discount.k = length(kalman_uv_sum_discount.init_params); %number of free parameters
+kalman_uv_sum_discount.name = 'kalman_uv_sum_discount'; %add explicit name parameter since each field in struct gets pulled out separately
+kalman_uv_sum_discount.parnames = {'prop_spread', 'beta', 'tau'};
+kalman_uv_sum_discount.clock_options=struct();
+a(15) = kalman_uv_sum_discount;
+
+fixedLR_decay.init_params = [prop_spread_init, beta_init, 0.1, 0]; %prop_spread, beta, alpha, gamma
+fixedLR_decay.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), lr_bounds(1), -25];
+fixedLR_decay.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), lr_bounds(2), 25]; %gamma is inverse logit transformed in get_sceptic_parameters
+fixedLR_decay.k = length(fixedLR_decay.init_params); %number of free parameters
+fixedLR_decay.name = 'fixedLR_decay'; %add explicit name parameter since each field in struct gets pulled out separately
+fixedLR_decay.parnames = {'prop_spread', 'beta', 'alpha', 'gamma'};
+fixedLR_decay.clock_options=struct();
+a(16) = fixedLR_decay;
+
+kalman_sigmavolatility_local.init_params = [prop_spread_init, beta_init, 0.5, 0.8]; %prop_spread, beta, phi, gamma
+kalman_sigmavolatility_local.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), 0, 0];
+kalman_sigmavolatility_local.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), 50, 0.99];
+kalman_sigmavolatility_local.k = length(kalman_sigmavolatility.init_params); %number of free parameters
+kalman_sigmavolatility_local.name = 'kalman_sigmavolatility_local'; %add explicit name parameter since each field in struct gets pulled out separately
+kalman_sigmavolatility_local.parnames = {'prop_spread', 'beta', 'phi', 'gamma'};
+kalman_sigmavolatility_local.clock_options=struct();
+a(17) = kalman_sigmavolatility_local;
+
+kalman_sigmavolatility_local_precision.init_params = [prop_spread_init, beta_init, 0.5, 0.8]; %prop_spread, beta, phi, gamma
+kalman_sigmavolatility_local_precision.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), 0, 0];
+kalman_sigmavolatility_local_precision.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), 50, 0.99];
+kalman_sigmavolatility_local_precision.k = length(kalman_sigmavolatility.init_params); %number of free parameters
+kalman_sigmavolatility_local_precision.name = 'kalman_sigmavolatility_local_precision'; %add explicit name parameter since each field in struct gets pulled out separately
+kalman_sigmavolatility_local_precision.parnames = {'prop_spread', 'beta', 'phi', 'gamma'};
+kalman_sigmavolatility_local_precision.clock_options=struct();
+a(18) = kalman_sigmavolatility_local_precision;
+
 %Load in clock options
 load('optimality_testing/clock_options.mat');
 
@@ -142,7 +187,7 @@ qlearning.k = length(qlearning.init_params); %number of free parameters
 qlearning.name = 'qlearning';
 qlearning.parnames = {'gamma', 'alpha', 'epsilon', 'lambda'};
 qlearning.clock_options=clock_options;
-a(14) = qlearning;
+a(19) = qlearning;
 
 sarsa.init_params = [0.9 0.2 0.08 0.99];
 sarsa.lower_bounds = [0.8 0.01 0.01 0.90];
@@ -152,7 +197,7 @@ sarsa.name = 'sarsa';
 sarsa.parnames = {'gamma', 'alpha', 'epsilon', 'lambda'};
 sarsa.clock_options=clock_options;
 sarsa.clock_options.agent = 'sarsa';
-a(15) = sarsa;
+a(20) = sarsa;
 
 franktc.init_params = [ 0.2, 3000, 0.3, 0.3, 1000, 0.1, 300 ];
 franktc.lower_bounds = [ 0, 0, 0.01, 0.01, 1, 0, 0 ];
@@ -161,7 +206,6 @@ franktc.k = length(franktc.init_params); %number of free parameters
 franktc.name = 'franktc';
 franktc.parnames = {'lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho'};
 franktc.clock_options=struct();
-a(16) = franktc;
-
+a(21) = franktc;
 
 end

@@ -102,7 +102,7 @@ elseif strcmpi(agent, 'kalman_processnoise')
         p.beta  = params(2);          %temperature parameter scaling preference among alternatives in softmax (.001..2)
         p.omega = params(3);          %scaling of process noise Q by PE.
     end
-elseif strcmpi(agent, 'kalman_sigmavolatility')
+elseif ismember(agent, {'kalman_sigmavolatility', 'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision'})
     %Learning: kalman filter, gain initialized to 0.5 with Bayesian update (roughly exponential decay); no representation of uncertainty
     %Choice: softmax function of value to select among alternatives
     %Additional: Prediction errors increase uncertainty (sigma) by a smooth function of PEs according to a second learning rate, phi.
@@ -171,6 +171,24 @@ elseif strcmpi(agent, 'kalman_uv_sum_kl')
         p.tau = params(3);
         p.kappa = params(4);
         p.lambda = params(5);
+    end
+elseif ismember(agent, {'kalman_uv_sum_discount', 'kalman_uv_sum_negtau'})
+    if useastruct
+        p.tau  = params(strcmpi(astruct.parnames, 'tau'));
+    else
+        p.beta = params(2);
+        p.tau = params(3);
+        p.kappa = params(4);
+        p.lambda = params(5);
+    end
+elseif strcmpi(agent, 'fixedLR_decay')
+    if useastruct
+        p.alpha  = params(strcmpi(astruct.parnames, 'alpha'));
+        p.gamma = 1/(1+exp(-params(strcmpi(astruct.parnames, 'gamma')))); %exponentiate to convert to 0-1 scaling
+    else
+        p.beta = params(2);
+        p.alpha = params(3);
+        p.gamma = params(4);
     end
 end
 

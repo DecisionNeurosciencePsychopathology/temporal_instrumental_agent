@@ -16,17 +16,10 @@ function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multi
 close all
 
 %% uncertainty aversion for UV_sum
-if nargin<9
-    u_aversion = 0;
-    saveresults = 1;
-    graphics = 0;
-elseif nargin<10
-    saveresults = 1;
-    graphics = 0;
-elseif nargin<11
-    graphics = 0;
-end
-
+if nargin < 7, fit_propspread = 0; end
+if nargin < 9, u_aversion = 0; end
+if nargin < 10, saveresults = 1; end
+if nargin < 11, graphics = 0; end
 
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
@@ -65,13 +58,14 @@ else
         vbadir = '/Volumes/bek/vba_results/uv_sum';
         results_dir = '/Volumes/bek/vba_results/';
 
-    elseif strcmpi(me(1:14),'alexdombrovski')
+    elseif strcmpi(me(1:(min(length(me), 14))),'alexdombrovski')
         data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
         vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
         results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+        results_dir = '/Users/michael/vba_out';
     end
 end
 
@@ -284,6 +278,14 @@ switch model
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         options.inG.stay = 1;
+    case 'kalman_monster'
+        hidden_variables = 3; %value, uncertainty, and local volatility
+        n_phi = 2; %beta and tau
+        n_theta = 4; %gamma, phi, alpha, kappa
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
+        options.inF.priors = priors;
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        h_name = @h_sceptic_kalman_monster;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
@@ -325,6 +327,8 @@ if multinomial
             g_name = @g_WSLS;
         case 'stay'
             g_name = @g_WSLS;
+        case 'kalman_monster'
+            g_name = @g_sceptic_monster;
         otherwise
             g_name = @g_sceptic;
     end
@@ -378,12 +382,19 @@ priors.SigmaTheta = 1e1*eye(dim.n_theta); % lower the learning rate variance -- 
 options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 
+onsets=NaN(1,size(y,2));
+for mm=1:size(y,2)
+    pos = find(y(:,mm)==1);
+    if isempty(pos), pos=NaN; end
+    onsets(mm) = pos;
+end
+
+
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
 if saveresults
-cd(results_dir);
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf('SHIFTED_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+save(sprintf([results_dir, '/SHIFTED_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
