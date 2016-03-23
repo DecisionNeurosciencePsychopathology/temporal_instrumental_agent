@@ -3,6 +3,9 @@
 % question 2: did the kalmans fit worse on 'dislodged' subjects?
 
 %% read in global max (6 consecutive trials) and dislodgement (6 consecutive off-max post global max) data
+
+cd('/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting');
+
 load('subject_rt_distribution_output');
 subs = fields(subj_data);
 for ct=1:length(subs)
