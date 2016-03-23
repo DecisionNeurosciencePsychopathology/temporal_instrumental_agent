@@ -34,11 +34,12 @@ end
 
 %% chose models to fit
 %modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
-modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+%modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+modelnames = {'fixed_uv' 'kalman_uv_sum'}; %Rerun uncertainty models using corrected sigma update
 %% set parameters
 nbasis = 16;
 multinomial = 1;
-multisession = 1;
+multisession = 0;
 fixed_params_across_runs = 1;
 fit_propspread = 1;
 n_steps = 40;
@@ -54,9 +55,9 @@ id = NaN(length(behavfiles),1);
 % parpool
 grp = struct([]);
 
-fit_single_model = 0;
+fit_single_model = 1;
 if fit_single_model
-    model = 'fixed_uv'; % will run to get value and prediction errors.
+    model = 'fixed_decay'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
     parfor sub = 1:length(behavfiles)
         str = behavfiles{sub};
@@ -71,7 +72,7 @@ if fit_single_model
     end
     %     p.stop;
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('nonMULTI_SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
     save(filename);
 else
     %     %% continue where I left off earlie_r
@@ -93,6 +94,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%s%d_nbasis%d_nsteps%d_uaversion_not_allModels',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%s%d_nbasis%d_nsteps%d_uaversion_not_allModels_corrected_sigma',model,nbasis,n_steps, u_aversion);
     save(filename);
 end

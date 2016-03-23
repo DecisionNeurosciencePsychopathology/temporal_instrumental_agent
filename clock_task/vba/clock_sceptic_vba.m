@@ -397,5 +397,10 @@ if saveresults
 %% save output figure
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+<<<<<<< Updated upstream
 save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
+=======
+save(sprintf('SHIFTED_U_CORRECT_SIGMA_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+end
+>>>>>>> Stashed changes

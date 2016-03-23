@@ -1,4 +1,4 @@
-model%  runs group model comparison on SCEPTIC log model evidence data from sceptic_fit_group_vba.m
+%  runs group model comparison on SCEPTIC log model evidence data from sceptic_fit_group_vba.m
 
 % clear variables;
 close all;
@@ -9,7 +9,7 @@ file_path = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_resu
 %data_file = 'grp_kalman_16_nbasis_40_nsteps_1_uasversion_with_q';
 %data_file = 'grp_L_kalman_logistic16_nbasis40_nsteps1_uaversion';
 % data_file = 'L9_fixed_ksoft_kprocnoise_kuvsum_ksigvol_kuvlog_fixeduv_q_fixeddecay.mat';
-data_file = 'L9_with_qstep_fixed_decay';
+data_file = 'L9_FINAL_USHIFTED_CORRECTLY_with_qstep_fixedDecay';
 
 %Load in proper data file
 group_data=load([file_path data_file]);
@@ -30,11 +30,12 @@ family_flag =1;
 % L(2,:) = L_kalman_uv_sum;
 % models = {'tight tau' 'no aversion'};
 
-sceptic.L = group_data.L9;
+sceptic.L = group_data.L;
+%sceptic.L = group_data.L9;
 %sceptic.modelnames = models;
 
-% modelnames = group_data.modelnames;
-modelnames = {'fixed' 'kalmanSoftmax' 'kalmanProcessnoise' 'kalmanUVsum' 'kalmanSigmavolatility' 'kalmanLogistic' 'fixedUV' 'Qstep' 'fixedDecay'};
+modelnames = group_data.modelnames;
+%modelnames = {'fixed' 'kalmanSoftmax' 'kalmanProcessnoise' 'kalmanUVsum' 'kalmanSigmavolatility' 'kalmanLogistic' 'fixedUV' 'Qstep' 'fixedDecay'};
 
 
 if family_flag
@@ -42,7 +43,7 @@ if family_flag
     idx = strfind(modelnames, 'fixed');
     %options.families{1} = find(strcmpi(modelnames, 'fixed')); 
     options.families{1} = find(not(cellfun('isempty', idx))); 
-    idx = strfind(modelnames, 'kalman');out
+    idx = strfind(modelnames, 'kalman');
     options.families{2} = find(not(cellfun('isempty', idx)));
     options.families{3} = find(strcmpi(modelnames, 'Qstep'));
     [posterior,out] = VBA_groupBMC(sceptic.L,options);
