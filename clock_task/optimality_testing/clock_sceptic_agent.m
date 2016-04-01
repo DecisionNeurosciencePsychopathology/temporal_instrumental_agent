@@ -29,7 +29,7 @@ function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond
 %  18) kalman_sigmavolatility_precision: Use precision-weighted prediction errors to scale perceived volatility.
 
 if nargin < 2, agent = 'fixedLR_softmax'; end
-if nargin < 3, rngseeds=[98 83 66 10]; end
+if nargin < 3, rngseeds=[98 83 66 10 21]; end
 if nargin < 4, cond = 'DEV'; end
 if nargin < 5, ntrials=100; end
 if nargin < 6, nbasis = 24; end
@@ -232,7 +232,7 @@ for i = 1:ntrials
         k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);       
         
         %Update posterior variances on the basis of Kalman gains
-        sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*(sigma_ij(i,:))
+        sigma_ij(i+1,:) = (1 - e_ij(i,:).*k_ij(i,:)).*(sigma_ij(i,:));
         
         %Update reward expectation. AD: Would it be better for the delta to be the difference between the reward
         %and the point value estimate at the RT(i)?

@@ -4,8 +4,8 @@ agents = initialize_agents_struct;
 %agentnames = fieldnames(agents);
 %nagents = length(agentnames);
 nagents = length(agents);
-noptim = 120; %optimize parameters 120x
-ntrials = 100;
+noptim = 100; %optimize parameters 120x
+ntrials = 60;
 nbasis = 24;
 ntimesteps = 500;
 
@@ -220,7 +220,8 @@ else psstr=''; end
 
 costs=NaN(noptim, nagents, ncond);
 pars=cell(noptim, nagents, ncond);
-poolobj=parpool(pool,ncpus);
+%poolobj=parpool(pool,ncpus);
+poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 ifiles=cell(1, noptim);
 parfor i = 1:noptim
 %for i = 1:noptim
