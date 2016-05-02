@@ -46,13 +46,18 @@ for j = 1:nbasis
 end
 
 %version of gaussian where each function has AUC = 1.0 (PDF representation). Not currently used (MH Sep2015)
-%maxauc_all=max(sum(gaussmat, 2));
+maxauc_all=max(sum(gaussmat, 2));
 %gaussmat_pdf=gaussmat./maxauc_all;
 
 %normalize RBFs to each have AUC = 1.0 within observed time interval
 %this is essentially a truncated Gaussian basis such that AUC = 1.0 for all basis functions within the discrete interval
 maxauc_each=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
 gaussmat_trunc=gaussmat./maxauc_each;
+%gaussmat_trunc=gaussmat_pdf;
+
+%basis functions at the edge are too sharp -- the agent is inflating value toward infinity. Need to soften the tails.
+%what if it's AUC=1.0 divided by some proportion of basis in the interval such that less gets downweighted?
+
 
 if plot_rbf == 1
     figure(20); plot(tvec,gaussmat); title('Regular RBF');

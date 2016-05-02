@@ -1,4 +1,4 @@
-function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond, ntrials, nbasis, ntimesteps, reversal)
+function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond, ntrials, nbasis, ntimesteps, cliffpullback)
 % This is the primary script that attempts to solve clock contingencies using variants of the sceptic agent.
 % Variants are described using the parameter agent, which determines the behavior of the forward model.
 % This script is used for testing the optimality of variants of sceptic for solving clock contingencies.
@@ -34,7 +34,7 @@ if nargin < 4, cond = 'DEV'; end
 if nargin < 5, ntrials=100; end
 if nargin < 6, nbasis = 24; end
 if nargin < 7, ntimesteps=500; end
-if nargin < 8, reversal = 0; end %No reversal by default
+if nargin < 8, cliffpullback = 0; end %No pullback by default
 
 %load relevant parameters for this agent into the p struct
 [p, agent] = get_sceptic_parameters(params, agent); %if agent is a structure on input, just the agent name string is returned at output
@@ -208,7 +208,7 @@ for i = 1:ntrials
         mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);        
     elseif strcmpi(agent, 'fixedLR_decay')
         %this agent decays the value of basis functions outside of the temporal generalization
-        decay = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        decay = -p.gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
         mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:) + decay;
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
@@ -236,10 +236,15 @@ for i = 1:ntrials
         
         %Update reward expectation. AD: Would it be better for the delta to be the difference between the reward
         %and the point value estimate at the RT(i)?
-        mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
+        if ismember(agent, {'fixed_uv', 'fixed_uv_discount'})
+            %this model uses the fixed LR on the value side, but still tracks uncertainty according to Kalman.
+            mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);
+        else
+            mu_ij(i+1,:) = mu_ij(i,:) + k_ij(i,:).*delta_ij(i,:);
+        end
         
-        %this agent discounts the value representation in the learning rule
-        if strcmpi(agent, 'kalman_uv_sum_discount'), mu_ij(i+1,:) = mu_ij(i+1,:) + p.tau*sigma_ij(i+1,:); end
+        %these two agents discount the value representation in the learning rule
+        if ismember(agent, {'kalman_uv_sum_discount', 'fixed_uv_discount'}), mu_ij(i+1,:) = mu_ij(i+1,:) + p.tau*sigma_ij(i+1,:); end
         
         %Track smooth estimate of volatility according to unsigned PE history
         if strcmpi(agent, 'kalman_sigmavolatility')
@@ -322,12 +327,12 @@ for i = 1:ntrials
             uv_func=p.tau*v_func + (1-p.tau)*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
-        elseif strcmpi(agent, 'kalman_uv_sum_negtau')
+        elseif ismember(agent, {'kalman_uv_sum_negtau', 'fixed_uv'})
             %same as kalman_uv_sum, but let tau be unconstrained, allowing for negative (ambiguity averse) preferences
             uv_func=v_func + p.tau*u_func; %mix together value and uncertainty according to tau
             v_final = uv_func;
             uv_it(i+1,:) = uv_func;
-        elseif strcmpi(agent, 'kalman_uv_sum_discount')
+        elseif ismember(agent, {'kalman_uv_sum_discount', 'fixed_uv_discount'})
             %same as kalman_uv_sum_negtau, but it carries forward the UV function as V into the next trial
             %this essentially discounts (with negative tau) value by uncertainty in the agents representation
             
@@ -363,6 +368,9 @@ for i = 1:ntrials
             else
                 rts(i+1) = rt_exploit; %need to unify this with kalman_uv_logistic above...
             end
+        elseif strcmpi(agent, 'null')
+            rts(i+1) = randi([1, ntimesteps],1);
+            v_final = zeros(1,ntimesteps);
         else
             %NB: all other models use a softmax choice rule over the v_final curve.
             p_choice(i,:) = (exp((v_final-max(v_final))/p.beta)) / (sum(exp((v_final-max(v_final))/p.beta))); %Divide by temperature
@@ -370,6 +378,12 @@ for i = 1:ntrials
             rts(i+1) = randsample(softmax_stream, tvec, 1, true, p_choice(i,:));
         end
         
+    end
+    
+    if rts(i+1) > (max(tvec) - cliffpullback)
+        rts(i+1) = max(tvec) - cliffpullback;
+    elseif rts(i+1) < (min(tvec) + cliffpullback)
+        rts(i+1) = min(tvec) + cliffpullback;
     end
     
     %populate v_it for tracking final value function
