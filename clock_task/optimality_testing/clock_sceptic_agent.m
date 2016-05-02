@@ -208,7 +208,7 @@ for i = 1:ntrials
         mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:);        
     elseif strcmpi(agent, 'fixedLR_decay')
         %this agent decays the value of basis functions outside of the temporal generalization
-        decay = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        decay = -p.gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
         mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:) + decay;
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
