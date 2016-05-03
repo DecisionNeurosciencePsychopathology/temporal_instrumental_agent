@@ -141,6 +141,25 @@ kalman_sigmavolatility_local_precision.parnames = {'prop_spread', 'beta', 'phi',
 kalman_sigmavolatility_local_precision.clock_options=struct();
 a(14) = kalman_sigmavolatility_local_precision;
 
+fixed_uv.init_params = [prop_spread_init, beta_init, 0.1, 0.0]; %prop_spread, beta, alpha, tau
+fixed_uv.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), lr_bounds(1), -1000];
+fixed_uv.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), lr_bounds(2), 1000];
+fixed_uv.k = length(fixed_uv.init_params); %number of free parameters
+fixed_uv.name = 'fixed_uv'; %add explicit name parameter since each field in struct gets pulled out separately
+fixed_uv.parnames = {'prop_spread', 'beta', 'alpha', 'tau'};
+fixed_uv.clock_options=struct();
+a(15) = fixed_uv;
+
+fixed_uv_discount.init_params = [prop_spread_init, beta_init, 0.1, 0.0]; %prop_spread, beta, alpha tau
+fixed_uv_discount.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), lr_bounds(1), -1000];
+fixed_uv_discount.upper_bounds = [prop_spread_bounds(2), beta_bounds(2), lr_bounds(2), 1000];
+fixed_uv_discount.k = length(fixed_uv_discount.init_params); %number of free parameters
+fixed_uv_discount.name = 'fixed_uv_discount'; %add explicit name parameter since each field in struct gets pulled out separately
+fixed_uv_discount.parnames = {'prop_spread', 'beta', 'alpha', 'tau'};
+fixed_uv_discount.clock_options=struct();
+a(16) = fixed_uv_discount;
+
+
 %Load in clock options
 load('optimality_testing/clock_options.mat');
 
@@ -151,7 +170,7 @@ qlearning.k = length(qlearning.init_params); %number of free parameters
 qlearning.name = 'qlearning';
 qlearning.parnames = {'gamma', 'alpha', 'epsilon', 'lambda'};
 qlearning.clock_options=clock_options;
-a(15) = qlearning;
+a(17) = qlearning;
 
 sarsa.init_params = [0.9 0.2 0.08 0.99];
 sarsa.lower_bounds = [0.8 0.01 0.01 0.90];
@@ -161,7 +180,7 @@ sarsa.name = 'sarsa';
 sarsa.parnames = {'gamma', 'alpha', 'epsilon', 'lambda'};
 sarsa.clock_options=clock_options;
 sarsa.clock_options.agent = 'sarsa';
-a(16) = sarsa;
+a(18) = sarsa;
 
 franktc.init_params = [ 0.2, 3000, 0.3, 0.3, 1000, 0.1, 300 ];
 franktc.lower_bounds = [ 0, 0, 0.01, 0.01, 1, 0, 0 ];
@@ -170,7 +189,7 @@ franktc.k = length(franktc.init_params); %number of free parameters
 franktc.name = 'franktc';
 franktc.parnames = {'lambda', 'epsilon', 'alphaG', 'alphaN', 'K', 'nu', 'rho'};
 franktc.clock_options=struct();
-a(17) = franktc;
+a(19) = franktc;
 
 %DEPRECATED MODELS
 fixedLR_kl_softmax.init_params = [prop_spread_init, beta_init, 0.1, 0.1, 0.1]; %prop_spread, beta, alpha, kappa, lambda
@@ -180,7 +199,7 @@ fixedLR_kl_softmax.k = length(fixedLR_kl_softmax.init_params); %number of free p
 fixedLR_kl_softmax.name = 'fixedLR_kl_softmax'; %add explicit name parameter since each field in struct gets pulled out separately
 fixedLR_kl_softmax.parnames = {'prop_spread', 'beta', 'alpha', 'kappa', 'lambda'};
 fixedLR_kl_softmax.clock_options=struct();
-a(18) = fixedLR_kl_softmax;
+a(20) = fixedLR_kl_softmax;
 
 kalman_kl_softmax.init_params = [prop_spread_init, beta_init, 0.1, 0.1]; %prop_spread, beta, kappa, lambda
 kalman_kl_softmax.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), kl_bounds(1), kl_bounds(1)];
@@ -189,7 +208,7 @@ kalman_kl_softmax.k = length(kalman_kl_softmax.init_params); %number of free par
 kalman_kl_softmax.name = 'kalman_kl_softmax'; %add explicit name parameter since each field in struct gets pulled out separately
 kalman_kl_softmax.parnames = {'prop_spread', 'beta', 'kappa', 'lambda'};
 kalman_kl_softmax.clock_options=struct();
-a(19) = kalman_kl_softmax;
+a(21) = kalman_kl_softmax;
 
 kalman_processnoise_kl.init_params = [prop_spread_init, beta_init, 1, 0.1, 0.1]; %prop_spread, beta, omega, kappa, lambda
 kalman_processnoise_kl.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), omega_bounds(1), 0, 0];
@@ -198,7 +217,7 @@ kalman_processnoise_kl.k = length(kalman_processnoise_kl.init_params); %number o
 kalman_processnoise_kl.name = 'kalman_processnoise_kl'; %add explicit name parameter since each field in struct gets pulled out separately
 kalman_processnoise_kl.parnames = {'prop_spread', 'beta', 'omega', 'kappa', 'lambda'};
 kalman_processnoise_kl.clock_options=struct();
-a(20) = kalman_processnoise_kl;
+a(22) = kalman_processnoise_kl;
 
 kalman_uv_sum_kl.init_params = [prop_spread_init, beta_init, 0.6, 0.1, 0.1]; %prop_spread, beta, tau, kappa, lambda
 kalman_uv_sum_kl.lower_bounds = [prop_spread_bounds(1), beta_bounds(1), 0, kl_bounds(1), kl_bounds(1)];
@@ -207,7 +226,6 @@ kalman_uv_sum_kl.k = length(kalman_uv_sum_kl.init_params); %number of free param
 kalman_uv_sum_kl.name = 'kalman_uv_sum_kl'; %add explicit name parameter since each field in struct gets pulled out separately
 kalman_uv_sum_kl.parnames = {'prop_spread', 'beta', 'tau', 'kappa', 'lambda'};
 kalman_uv_sum_kl.clock_options=struct();
-a(21) = kalman_uv_sum_kl;
-
+a(23) = kalman_uv_sum_kl;
 
 end

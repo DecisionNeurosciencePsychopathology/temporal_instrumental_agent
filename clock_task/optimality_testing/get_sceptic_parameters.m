@@ -190,6 +190,17 @@ elseif strcmpi(agent, 'fixedLR_decay')
         p.alpha = params(3);
         p.gamma = params(4);
     end
+elseif ismember(agent, {'fixed_uv', 'fixed_uv_discount'})
+    if useastruct
+        p.alpha  = params(strcmpi(astruct.parnames, 'alpha'));
+        p.tau  = params(strcmpi(astruct.parnames, 'tau'));
+    else
+        p.beta = params(2);
+        p.alpha = params(3);
+        p.tau = params(4);
+    end
+elseif strcmpi(agent, 'null')
+   %no parameters
 end
 
 if p.prop_spread < 0 || p.prop_spread > 1, error('prop_spread outside of bounds'); end
