@@ -1,9 +1,10 @@
 library(R.matlab)
 library(lattice)
 library(reshape2)
-matdir <- "/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output"
+#matdir <- "/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output"
 setwd(file.path(getMainDir(), "temporal_instrumental_agent", "clock_task", "optimality_testing"))
-completed <- list.files(matdir, pattern="optimize_output.*\\.mat", full.names=TRUE)
+#completed <- list.files(matdir, pattern="optimize_output.*\\.mat", full.names=TRUE)
+completed <- list.files("output", pattern="optimize_output.*\\.mat", full.names=TRUE)
 contorder <- c("IEV", "DEV", "QUADUP", "IEVLINPROB", "DEVLINPROB", "ALL") #order of contingencies fit in MATLAB optmat
 
 allFits <- list()
@@ -56,11 +57,18 @@ combCosts <- do.call(rbind, lapply(allFits, function(model) {
       d
     }))
 
+combCosts$model.costs <- -1*combCosts$model.costs #more is better
+
 m <- melt(combCosts, id.vars="model")
 library(ggplot2)
-pdf("Optimal costs_sinusoid.pdf", width=15, height=10)
+pdf("Optimal costs_sinusoid_stackedbars.pdf", width=15, height=10)
 ggplot(m, aes(x=value, fill=model)) + facet_wrap(~variable, scales="free") + geom_histogram() + scale_fill_hue("Model") + theme_bw(base_size=16) #scale_fill_brewer("Model", palette="Set3")
 dev.off()
+
+pdf("Optimal costs_sinusoid.pdf", width=15, height=10)
+ggplot(combCosts, aes(x=model, y=model.costs)) + geom_boxplot() + theme_bw(base_size=16) + theme(axis.text.x=element_text(angle=90)) + ylab("Total points") #scale_fill_brewer("Model", palette="Set3")
+dev.off()
+
 
 #look at mean and median costs across optimizations
 #definitely suggests preference for UV sum and UV logistic models
@@ -72,3 +80,8 @@ lapply(allFits, function(model) {
       mpars <- melt(model$pars, id.vars="cont")
       tapply(mpars$value, list(mpars$cont, mpars$variable), median)
     })
+
+summary(mm <- aov(model.costs ~ model, combCosts))
+tuk <- TukeyHSD(mm)
+plot(tuk)
+tuk

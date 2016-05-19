@@ -269,6 +269,7 @@ for i = 1:ntrials
     %compute summed/evaluated value function across all timesteps
     v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
     v_func = sum(v_jt); %subjective value by timestep as a sum of all basis functions
+    v_it(i,:) = v_func; %return value vector
     
     if i == ntrials, break; end %do not compute i+1 choice on the final trial (invalid indexing problem)
     

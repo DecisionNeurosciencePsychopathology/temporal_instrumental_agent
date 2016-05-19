@@ -4,10 +4,11 @@ cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimali
 optfiles = glob('output/optimize_output*.mat');
 
 nreps = 100;
-nbest = 2; %number of parameter sets to test
+nbest = 8; %number of parameter sets to test
 ntimesteps=500;
-ntrials = 600;
+ntrials = [30 45 60 75 90 110 150 200 300 400 500 600];
 cliffpullback=20;
+plots=false;
 
 %draw a random sample from the phase-shifted sinusoids for each replication
 ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
@@ -38,13 +39,13 @@ for k = 1:length(keep)
     thisCont=[];
     thisCont.name = ['sinusoid' num2str(keep(k))];
     thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
-    thisCont.lookup = zeros(ntimesteps, ntrials); %lookup table of timesteps and outcomes
+    thisCont.lookup = zeros(ntimesteps, max(ntrials)); %lookup table of timesteps and outcomes
     thisCont.ev = allshift(keep(k),:,1);
     thisCont.prb = allshift(keep(k),:,2);
     thisCont.mag = allshift(keep(k),:,3);
     
-    rvec = rand(ntimesteps, ntrials);
-    for t = 1:ntrials
+    rvec = rand(ntimesteps, max(ntrials));
+    for t = 1:max(ntrials)
         thisCont.lookup(:,t) = (allshift(keep(k),:,2) > rvec(:,t)') .* allshift(keep(k),:,3);
     end
     
@@ -52,11 +53,6 @@ for k = 1:length(keep)
 end
 
 nagents=length(optfiles);
-
-costs=NaN(nagents, nreps, nbest);
-%v_it=NaN(nagents, nreps, ntrials, ntimesteps);
-rts = NaN(nagents, nreps, nbest, ntrials);
-%ret = cell(nagents, nreps); 
 
 priors.V = 0; %don't give agent any insight into previous values (no SCEPTIC receives this boost)
 priors.Go = 0;
@@ -72,6 +68,9 @@ priors.NoGo = 0;
 %    subplot(3,1,3);
 %    plot(optmat(i).ev);
 %end
+
+%storage structure for output
+oresults=struct();
 
 for o = 1:(length(optfiles) + 1)
     if o <= length(optfiles);
@@ -92,42 +91,44 @@ for o = 1:(length(optfiles) + 1)
         %candidates = candidates(ind, :); %sort in terms of low to high (good to bad) costs)
         
         %plot parameters for best 10 optimizations
-        fig = figure;
-        npars = size(candidates, 2);
-        for jj = 1:npars
-            subplot(npars, 1, jj);
-            if jj==npars
-                plot(1:size(candidates, 1), candidates(:,jj));
-                title('total cost');
-            else
-                bar(candidates(:,jj));
-                title(sprintf('%s',a.parnames{jj}), 'Interpreter', 'none');
+        if plots
+            fig = figure;
+            npars = size(candidates, 2);
+            for jj = 1:npars
+                subplot(npars, 1, jj);
+                if jj==npars
+                    plot(1:size(candidates, 1), candidates(:,jj));
+                    title('total cost');
+                else
+                    bar(candidates(:,jj));
+                    title(sprintf('%s',a.parnames{jj}), 'Interpreter', 'none');
+                end
             end
-        end
-        [~, fbase, ~] = fileparts(optfiles{o});
-        
-        print(fig,['output/' fbase '_best10.png'],'-dpng')
-        
-        %plot histograms of parameters for all optimizations
-        fig = figure;
-        allpars = cell2mat(opt.pars);
-        allpars = horzcat(allpars, opt.costs);
-        allpars = sortrows(allpars, size(allpars, 2));
-        
-        npars = size(allpars, 2);
-        for jj = 1:npars
-            subplot(npars, 1, jj);
-            if jj==npars
-                plot(1:size(allpars, 1), allpars(:,jj));
-                title('total cost');
-            else
-                hist(allpars(:,jj));
-                title(sprintf('%s',a.parnames{jj}), 'Interpreter', 'none');
+            [~, fbase, ~] = fileparts(optfiles{o});
+            
+            print(fig,['output/' fbase '_best10.png'],'-dpng')
+            
+            %plot histograms of parameters for all optimizations
+            fig = figure;
+            allpars = cell2mat(opt.pars);
+            allpars = horzcat(allpars, opt.costs);
+            allpars = sortrows(allpars, size(allpars, 2));
+            
+            npars = size(allpars, 2);
+            for jj = 1:npars
+                subplot(npars, 1, jj);
+                if jj==npars
+                    plot(1:size(allpars, 1), allpars(:,jj));
+                    title('total cost');
+                else
+                    hist(allpars(:,jj));
+                    title(sprintf('%s',a.parnames{jj}), 'Interpreter', 'none');
+                end
             end
+            [~, fbase, ~] = fileparts(optfiles{o});
+            
+            print(fig,['output/' fbase '_allopt.png'],'-dpng')
         end
-        [~, fbase, ~] = fileparts(optfiles{o});
-        
-        print(fig,['output/' fbase '_allopt.png'],'-dpng')
     else
         a.name = 'null';
         a.nbasis = 24;
@@ -140,26 +141,46 @@ for o = 1:(length(optfiles) + 1)
     %pars = cell2mat(opt.pars);
     %medpars = median(pars);
     %bestpars = pars(find(opt.costs==min(opt.costs)),:);
-    
-    for p = 1:nreps
-        seeds = randi([1 500], 1, 5);
-        optmat(p).firstrt = randi([1 500], 1, 1);
-        for q = 1:nbest
-            parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
-            if strcmpi(a.name, 'franktc')
-                %[costs(o,p), rts(o,p,:), ret{o,p}] = TC_Alg_forward(bestpars, priors, optmat(p), seeds, a.ntrials, [0 5000]);
-                [costs(o,p,q), rts(o,p,q,:), ~] = TC_Alg_forward(parsq, priors, optmat(p), seeds, ntrials, [0 5000]);
-            else
-                %[costs(o,p), v_it(o,p,:,:), rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
-                %[costs(o,p), ~, rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
-                [costs(o,p,q), ~, rts(o,p,q,:), ~] = clock_sceptic_agent(parsq, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps, cliffpullback);
-            end
+
+    %v_it=NaN(nagents, nreps, ntrials, ntimesteps);
+    %rts = NaN(length(ntrials), nreps, nbest, ntrials);
+    %ret = cell(nagents, nreps);
+
+    oresults.(a.name).costs = NaN(length(ntrials), nreps, nbest);
+    oresults.(a.name).pars  = cell(length(ntrials), nreps, nbest);
+    oresults.(a.name).rts   = cell(length(ntrials), nreps, nbest);
+    oresults.(a.name).vcorr = cell(length(ntrials), nreps, nbest);
+    for t = 1:length(ntrials)
+        %rts   = NaN(ntrials(t),1);
+        vcorr = NaN(ntrials(t),1);
+
+        for p = 1:nreps
+            seeds = randi([1 500], 1, 5);
+            optmat(p).firstrt = randi([1 500], 1, 1);
+            for q = 1:nbest
+                parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
+                oresults.(a.name).pars{t,p,q} = parsq;
+                if strcmpi(a.name, 'franktc')
+                    %[costs(o,p), rts(o,p,:), ret{o,p}] = TC_Alg_forward(bestpars, priors, optmat(p), seeds, a.ntrials, [0 5000]);
+                    [oresults.(a.name).costs(t,p,q), oresults.(a.name).rts{t,p,q}, ~] = TC_Alg_forward(parsq, priors, optmat(p), seeds, ntrials(t), [0 5000]);
+                else
+                    %[costs(o,p), v_it(o,p,:,:), rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
+                    %[costs(o,p), ~, rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
+                    [oresults.(a.name).costs(t,p,q), ~, oresults.(a.name).rts{t,p,q}, ret] = clock_sceptic_agent(parsq, a, seeds, optmat(p), ntrials(t), a.nbasis, a.ntimesteps, cliffpullback);
+                    
+                    for kk=1:size(ret.v_it,1)
+                        vcorr(kk) = corr(ret.v_it(kk,:)', optmat(p).ev');
+                    end
+                    oresults.(a.name).vcorr{t,p,q} = vcorr;
+                end
+            end            
         end
     end
 end
 
+save('/Users/michael/performance_at_optimal.mat', 'oresults', 'optmat', 'optfiles'); %'-v7.3'
 %this makes the file about 8GB!  'ret' 'v_it', 
-save('/Users/michael/bootstrap_costs_at_best10.mat', 'costs', 'rts', 'optmat', 'optfiles'); %'-v7.3'
+%save('/Users/michael/bootstrap_costs_at_best10.mat', 'costs', 'rts', 'optmat', 'optfiles'); %'-v7.3'
 
 return
 
