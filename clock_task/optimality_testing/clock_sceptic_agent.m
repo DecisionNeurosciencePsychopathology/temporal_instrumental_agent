@@ -226,7 +226,8 @@ for i = 1:ntrials
         
         %MH 8Sep2015: At the moment, we assume zero process noise in the estimated posterior error covariances, sigma_ij.
         %To model dynamic/changing systems, try dynamically enhance learning rates by scaling process noise by PE.
-        Q_ij(i,:) = p.omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
+        %NB: Need to estimate process noise on trial i+1 on the basis of PE on trial i
+        Q_ij(i+1,:) = p.omega.*abs(delta_ij(i,:)); %use abs of PE so that any large surprise enhances effective gain.
         
         %Compute the Kalman gains for the current trial (potentially adding process noise)
         k_ij(i,:) = (sigma_ij(i,:) + Q_ij(i,:))./(sigma_ij(i,:) + Q_ij(i,:) + sigma_noise);       
