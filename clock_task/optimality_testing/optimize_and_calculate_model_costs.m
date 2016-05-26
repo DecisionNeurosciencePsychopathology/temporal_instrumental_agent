@@ -4,16 +4,24 @@ agents = initialize_agents_struct;
 %agentnames = fieldnames(agents);
 %nagents = length(agentnames);
 nagents = length(agents);
-noptim = 100; %optimize parameters 120x
 ntrials = 60;
 nbasis = 24;
 ntimesteps = 500;
 
 addpath('../');
 
+noptim = getenv('noptim');
+if strcmpi(noptim, ''), noptim=100;
+else noptim=str2double(noptim); end
+
 %two current approaches: either 'typical' (IEV, DEV, QUADUP, etc.) or 'sinusoid' (phase-shifted random sinusoid)
 whichopt=getenv('whichopt');
 if strcmpi(whichopt, ''), whichopt='sinusoid'; end
+
+%whether to debug
+debug=getenv('debug');
+if strcmpi(debug, ''), debug=0;
+else debug=str2double(debug); end
 
 %whether to fix the softmax beta during optimization (and if so, what value)
 fixbeta=getenv('fixbeta');
@@ -170,6 +178,7 @@ for i = 1:nagents
     agents(i).nbasis = nbasis;
     agents(i).ntimesteps = ntimesteps;
     agents(i).ntrials = ntrials;
+    agents(i).debug = debug; %debug optimization (don't actually run GA)
     
     %handle fixed beta by removing it from agent structure when beta is a relevant parameter
     if fixbeta > 0
@@ -223,30 +232,38 @@ pars=cell(noptim, nagents, ncond);
 %poolobj=parpool(pool,ncpus);
 poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 ifiles=cell(1, noptim);
-parfor i = 1:noptim
-%for i = 1:noptim
 
-    ipars=cell(nagents, ncond);
-    icosts=NaN(nagents, ncond);
-    
-    for a = 1:nagents
-        for c = 1:ncond
-            [ipars{a, c}, icosts(a, c)] = GAoptimize(agents(a), optmat{c});
+try
+    parfor i = 1:noptim
+    %for i = 1:noptim
+        
+        ipars=cell(nagents, ncond);
+        icosts=NaN(nagents, ncond);
+        
+        for a = 1:nagents
+            for c = 1:ncond
+                [ipars{a, c}, icosts(a, c)] = GAoptimize(agents(a), optmat{c});
+            end
         end
+        
+        costs(i, :, :) = icosts;
+        pars(i, :, :) = ipars;
+        
+        %save interim progress
+        if nagents==1
+            ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_', agents(1).name, '.mat'];
+        else
+            ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_all.mat']; %all agents output
+        end
+        
+        parsave(ifiles{i}, icosts, ipars, agents); %single agent output
     end
-   
-    costs(i, :, :) = icosts;
-    pars(i, :, :) = ipars;
-    
-    %save interim progress
-    if nagents==1
-        ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_', agents(1).name, '.mat'];
-    else
-        ifiles{i} = ['output/optim_', whichopt, betastr, psstr, '_', num2str(i), '_all.mat']; %all agents output
-    end
-    
-    parsave(ifiles{i}, icosts, ipars, agents); %single agent output
+catch err
+    disp('error in optimization. killing parpool');
+    delete(poolobj);
+    rethrow(err);
 end
+
 delete(poolobj);
 
 if nagents==1

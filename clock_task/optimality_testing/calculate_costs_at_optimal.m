@@ -4,7 +4,7 @@ cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimali
 optfiles = glob('output/optimize_output*.mat');
 
 nreps = 100;
-nbest = 8; %number of parameter sets to test
+nbest = 5; %number of parameter sets to test
 ntimesteps=500;
 ntrials = [30 45 60 75 90 110 150 200 300 400 500 600];
 cliffpullback=20;
@@ -170,6 +170,12 @@ for o = 1:(length(optfiles) + 1)
                     
                     for kk=1:size(ret.v_it,1)
                         vcorr(kk) = corr(ret.v_it(kk,:)', optmat(p).ev');
+                        %plot(ret.v_it(kk,:)');
+                        %hold on
+                        %plot(optmat(p).ev', 'r');
+                        %title(sprintf('model: %s, i:%d, rt_i: %d', a.name, kk, ret.rts(kk)));
+                        %pause(0.1);
+                        %hold off
                     end
                     oresults.(a.name).vcorr{t,p,q} = vcorr;
                 end
