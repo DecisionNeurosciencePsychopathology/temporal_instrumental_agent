@@ -203,6 +203,6 @@ elseif strcmpi(agent, 'null')
    %no parameters
 end
 
-if p.prop_spread < 0 || p.prop_spread > 1, error('prop_spread outside of bounds'); end
+if isfield(p, 'prop_spread') && length(p.prop_spread) > 0 && (p.prop_spread < 0 || p.prop_spread > 1), error('prop_spread outside of bounds'); end
 
 end

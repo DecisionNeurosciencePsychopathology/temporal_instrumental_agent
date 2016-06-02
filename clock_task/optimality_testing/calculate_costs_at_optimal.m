@@ -133,6 +133,7 @@ for o = 1:(length(optfiles) + 1)
         a.name = 'null';
         a.nbasis = 24;
         a.ntimesteps = 500;
+        a.prop_spread=0; %need this to avoid problem with parameter loading
         parsq=[];
     end
         
@@ -163,6 +164,10 @@ for o = 1:(length(optfiles) + 1)
                 if strcmpi(a.name, 'franktc')
                     %[costs(o,p), rts(o,p,:), ret{o,p}] = TC_Alg_forward(bestpars, priors, optmat(p), seeds, a.ntrials, [0 5000]);
                     [oresults.(a.name).costs(t,p,q), oresults.(a.name).rts{t,p,q}, ~] = TC_Alg_forward(parsq, priors, optmat(p), seeds, ntrials(t), [0 5000]);
+                elseif strcmpi(a.name, 'qlearning')
+                    a.clock_options.episodeCount = ntrials(t);
+                    a.clock_options.ntimesteps = a.ntimesteps/10; %TD models operate on 50 timesteps, not 500, typically
+                    [oresults.(a.name).costs(t,p,q), ~, oresults.(a.name).rts{t,p,q}] = ClockWalking_3D_discountedEv_optimize(a.clock_options, optmat(p), seeds, parsq);
                 else
                     %[costs(o,p), v_it(o,p,:,:), rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
                     %[costs(o,p), ~, rts(o,p,:), ret{o,p}] = clock_sceptic_agent(bestpars, a, seeds, optmat(p), ntrials, a.nbasis, a.ntimesteps);
@@ -170,12 +175,14 @@ for o = 1:(length(optfiles) + 1)
                     
                     for kk=1:size(ret.v_it,1)
                         vcorr(kk) = corr(ret.v_it(kk,:)', optmat(p).ev');
-                        %plot(ret.v_it(kk,:)');
-                        %hold on
-                        %plot(optmat(p).ev', 'r');
-                        %title(sprintf('model: %s, i:%d, rt_i: %d', a.name, kk, ret.rts(kk)));
-                        %pause(0.1);
-                        %hold off
+                        if plots
+                            plot(ret.v_it(kk,:)');
+                            hold on
+                            plot(optmat(p).ev', 'r');
+                            title(sprintf('model: %s, i:%d, rt_i: %d', a.name, kk, ret.rts(kk)));
+                            pause(0.1);
+                            hold off
+                        end
                     end
                     oresults.(a.name).vcorr{t,p,q} = vcorr;
                 end
