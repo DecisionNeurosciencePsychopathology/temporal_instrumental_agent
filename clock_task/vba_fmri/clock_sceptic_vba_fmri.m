@@ -49,7 +49,6 @@ range_RT = 400;
 n_t = size(data,1);
 n_runs = n_t/50; %50 trials per run
 trialsToFit = 1:n_t;
-% fit_propspread = 1;
 options.inF.fit_propspread = fit_propspread;
 
 %% set up models within evolution/observation Fx
