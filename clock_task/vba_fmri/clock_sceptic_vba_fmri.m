@@ -36,8 +36,8 @@ n_phi = 1;
 % fix parameters across runs
 % fixed_params_across_runs = 1;
 
-basedir = '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects';
-results_dir = '/Users/michael/vba_out'; %output directory
+basedir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects';
+results_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/vba_fmri/vba_out';
 data = readtable(sprintf('%s/fMRIEmoClock_%d_tc_tcExport.csv', basedir, id),'Delimiter',',','ReadVariableNames',true);
 
 %% u is 2 x ntrials where first row is rt and second row is reward
@@ -163,9 +163,4 @@ if saveresults
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
     save(sprintf([results_dir, '/SHIFTED_U_CORRECT_%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
-
-%now refit the data at the optimized parameters, saving vectors for PEs, V function (over all basis functions), decay.
-%What outputs are needed from the model?
-%PE 
-
 
