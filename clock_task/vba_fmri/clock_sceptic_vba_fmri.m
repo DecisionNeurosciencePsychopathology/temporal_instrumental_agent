@@ -31,11 +31,6 @@ end
 n_theta = 1;
 n_phi = 1;
 
-%% fit as multiple runs
-% multisession = 1;
-% fix parameters across runs
-% fixed_params_across_runs = 1;
-
 basedir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects';
 results_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/vba_fmri/vba_out';
 data = readtable(sprintf('%s/fMRIEmoClock_%d_tc_tcExport.csv', basedir, id),'Delimiter',',','ReadVariableNames',true);
@@ -64,13 +59,14 @@ options.inG.maxRT = range_RT;
 options.TolFun = 1e-6;
 options.GnTolFun = 1e-6;
 options.verbose=1;
+options.inF.max_prop_spread = 0.0125;
 % options.DisplayWin=1;
 
 %[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(40, 16, .08);
 %save('sceptic_fmri_basis_setup.mat', 'c', 'sig', 'tvec', 'sig_spread', 'gaussmat', 'gaussmat_trunc', 'refspread');
 
-%% set up basis (fixed prop_spread of .08)?
-[~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, .08);
+%uses max prop spread parametr to obtain refspread in case where fit_propspread = 0;
+[~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, options.inF.max_prop_spread);
 
 %Set up sigma noise for every point in u or hidden state?
 rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction

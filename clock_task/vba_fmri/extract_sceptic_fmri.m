@@ -1,6 +1,12 @@
 %output relevant stats from vba fits for fmri
-%results_dir = '/Users/michael/vba_out'; %output directory
-results_dir = '/Users/michael/ics/temporal_instrumental_agent/clock_task/vba_fmri/vba_out';
+
+function [res] = extract_sceptic_fmri(results_dir)
+
+if nargin < 1, results_dir = '/Users/michael/ics/temporal_instrumental_agent/clock_task/vba_fmri/vba_out'; end
+
+[~, model_description] = fileparts(results_dir);
+
+addpath('/storage/group/mnh5174_collab/temporal_instrumental_agent'); %has glob.m
 fitfiles = glob([results_dir, '/*.mat']);
 nruns=8;
 ntrials = 50; %number of trials in a run (used for dividing according to multisession)
@@ -15,7 +21,7 @@ nsubjs = length(fitfiles);
 V = NaN(nsubjs, nruns, nbasis, ntrials);
 PE = NaN(nsubjs, nruns, nbasis, ntrials);
 D = NaN(nsubjs, nruns, nbasis, ntrials);
-pars = NaN(nsubjs, npars+1);
+pars = NaN(nsubjs, npars+2);
 
 for f = 1:length(fitfiles)
     load(fitfiles{f});
@@ -44,8 +50,14 @@ for f = 1:length(fitfiles)
     end
 
     [~, fname] = fileparts(fitfiles{f});
-    id = str2double(str(isstrprop(fname,'digit')));
-    pars(f,:) = [id, posterior.muTheta', posterior.muPhi];
+    id = str2double(fname(isstrprop(fname,'digit')));
+    pars(f,1:(length(posterior.muTheta) + length(posterior.muPhi) + 2)) = [id, out.F, posterior.muTheta', posterior.muPhi];
 end
 
-save('posterior_states_decay_nomultisession.mat', 'fitfiles', 'V', 'PE', 'D', 'pars');
+res.fitfiles = fitfiles;
+res.V = V;
+res.PE = PE;
+res.D = D;
+res.pars=pars;
+
+save(sprintf('posterior_states_decay_nomultisession_%s.mat', model_description), 'fitfiles', 'V', 'PE', 'D', 'pars');

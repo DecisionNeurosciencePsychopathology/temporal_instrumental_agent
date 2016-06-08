@@ -16,7 +16,7 @@ nbasis = 16; %16 basis functions total
 multinomial = 1;
 multisession = 0; %tend to get better fits for non-multisession
 fixed_params_across_runs = 1;
-fit_propspread = 1;
+fit_propspread = 0;
 n_steps = 40;
 
 saveresults = 1; %don't save to prevent script from freezing on Thorndike
@@ -50,8 +50,8 @@ parfor sub = 1:length(behavfiles)
     %tau(sub) = posterior.muTheta(1); %For fixed_uv
 end
 %     p.stop;
-cd(group_dir);
-filename = sprintf('nonMULTI_SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps,L);
-save(filename);
+%cd(group_dir);
+%filename = sprintf('nonMULTI_SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps,L);
+%save(filename);
 
 delete(poolobj);

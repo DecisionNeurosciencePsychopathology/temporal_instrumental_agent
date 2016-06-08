@@ -23,11 +23,15 @@ w=x_t(hidden_state_index(:,1)); %Value weight vector
 %decay = x_t(hidden_state_index(:,3)); %decay vector (not updated, just tracked)
 
 if inF.fit_propspread
-    prop_spread = 1./(1+exp(-theta(3))); %0..1 SD of Gaussian eligibility as proportion of interval
+    prop_spread = inF.max_prop_spread ./ (1+exp(-theta(3))); %0..max SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
     
     %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
     refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
+    
+    %temporarily re-break the code to check replicability
+    %sig_spread = 1./(1+exp(-theta(3)));
+    %refspread = inF.refspread;
 else 
     sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
     refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
