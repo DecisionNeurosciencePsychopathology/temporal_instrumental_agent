@@ -44,25 +44,25 @@ os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-    results_dir = 'E:\Users\wilsonj3\Google Drive\skinner\SCEPTIC\subject_fitting\vba_results\';
+    results_dir = 'E:/data/sceptic/vba_out/';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
     if strcmp(me,'Alex')==1
         data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
-                results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-
+        results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+        
     elseif strcmp(me(1:6),'dombax')==1
         data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Volumes/bek/vba_results/uv_sum';
         results_dir = '/Volumes/bek/vba_results/';
-
+        
     elseif strcmpi(me(1:(min(length(me), 14))),'alexdombrovski')
-        data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);                
+        data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
         results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-
+        
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         results_dir = '/Users/michael/vba_out';
@@ -153,15 +153,15 @@ switch model
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-%         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
-
+        %         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
+        
     case 'fixed_decay'
         h_name = @h_sceptic_fixed_decay;
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         n_theta = 2; %learning rate and decay outside of the eligibility trace
-
+        
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
@@ -189,7 +189,7 @@ switch model
         end
         n_phi  = 2;  %Beta and discrim
         %Different observation function than other kalman models
-%         g_name = @g_sceptic_logistic;
+        %         g_name = @g_sceptic_logistic;
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis); %This is Discrim not Beta for this model
@@ -343,7 +343,7 @@ else
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
     priors.muPhi = [0, 0];  % K, lambda
-%     priors.SigmaPhi = diag([0,1]); % get rid of the K
+    %     priors.SigmaPhi = diag([0,1]); % get rid of the K
     priors.SigmaPhi = diag([1,1]);
     options.binomial = 0;
     options.sources(1) = struct('out',1,'type',0);
@@ -396,8 +396,8 @@ end
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
 if saveresults
-%% save output figure
-% h = figure(1);
-% savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+    %% save output figure
+    % h = figure(1);
+    % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
+    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end

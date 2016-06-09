@@ -33,15 +33,15 @@ else
 end
 
 %% chose models to fit
-%modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
-modelnames = {'fixed_uv' 'kalman_uv_sum'}; %Rerun uncertainty models using corrected sigma update
+%modelnames = {'fixed_uv' 'kalman_uv_sum'}; %Rerun uncertainty models using corrected sigma update
 %% set parameters
 nbasis = 16;
 multinomial = 1;
 multisession = 0;
 fixed_params_across_runs = 1;
-fit_propspread = 1;
+fit_propspread = 0;
 n_steps = 40;
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
@@ -55,7 +55,7 @@ id = NaN(length(behavfiles),1);
 % parpool
 grp = struct([]);
 
-fit_single_model = 1;
+fit_single_model = 0;
 if fit_single_model
     model = 'fixed_decay'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
@@ -94,6 +94,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%s%d_nbasis%d_nsteps%d_uaversion_not_allModels_corrected_sigma',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%s%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread',model,nbasis,n_steps, u_aversion);
     save(filename);
 end
