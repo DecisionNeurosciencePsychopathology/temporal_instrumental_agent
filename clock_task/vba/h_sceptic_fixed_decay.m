@@ -19,7 +19,7 @@ if inF.fit_propspread
     
     %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
     refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
-else 
+else
     sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
     refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
 end

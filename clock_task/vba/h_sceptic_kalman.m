@@ -69,14 +69,16 @@ sigma = x_t(hidden_state_index(:,2)); %Uncertainty
 % sigma = x_t(nbasis+1:end); %Uncertainty
 
 
-
-
-
 % alpha = 1./(1+exp(-theta(1)));
 if inF.fit_propspread
-    prop_spread = 1./(1+exp(-theta(end)));
+    prop_spread = 1./(1+exp(-theta(end))); %0..1 SD of Gaussian eligibility as proportion of interval
+    sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
+    
+    %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
+    refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
 else
-    prop_spread = inF.sig_spread;
+    sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
+    refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
 end
 rt = u(1);
 reward = u(2);
@@ -96,7 +98,7 @@ fx = zeros(size(x_t));
 
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
 % elig = gaussmf(inF.tvec, [inF.sig_spread, rt]);
-elig = gaussmf(inF.tvec, [prop_spread, rt]);
+elig = gaussmf(inF.tvec, [sig_spread, rt]);
 
 
 %compute sum of area under the curve of the gaussian function
@@ -106,7 +108,7 @@ auc=sum(elig);
 %this ensures that eligibility is 0-1.0 for non-truncated update function, and can exceed 1.0 at the edge.
 %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
 %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
-elig=elig/auc*inF.refspread;
+elig=elig/auc*refspread;
 
 %compute the intersection of the Gaussian spread function with the truncated Gaussian basis.
 %this is essentially summing the area under the curve of each truncated RBF weighted by the truncated
