@@ -57,7 +57,7 @@ if ~isempty(regexp(inF.tcvariant, '_Rho|_Epsilon', 'once'))
     %expsign = hidden(10); %value not used in evolution (just set to +1/-1)
 end
 
-if length(u) > 0, RT = u(1); end 
+if ~isempty(u), RT = u(1); end 
 %RT_prev is u(2); used in observation function
 if length(u) > 2, reward = u(3); end
 if length(u) > 3, rew_max = u(4); end
@@ -101,7 +101,7 @@ if ~isempty(regexp(inF.tcvariant, '_Epsilon|_Rho', 'once'))
     end
     
     %update estimate of recent/"learned" RTlocavg
-    RTlocavg_new = RTlocavg + alphaV*(reward - RTlocavg);
+    RTlocavg_new = RTlocavg + alphaV*(RT - RTlocavg);
 end
 
 fx = []; 
@@ -117,6 +117,6 @@ if ~isempty(regexp(inF.tcvariant, '_AlphaN', 'once'))
     fx = [fx; NoGo_new];
 end
 
-if ~isempty(regexp(inF.tcvariant, '_Rho|_Epsilon'))
+if ~isempty(regexp(inF.tcvariant, '_Rho|_Epsilon', 'once'))
     fx = [fx; a_fast_new; b_fast_new; a_slow_new; b_slow_new; RTlocavg_new/inF.RTrescale; expsign_new];
 end

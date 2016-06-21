@@ -48,3 +48,33 @@ getClockGroupData <- function(path, pattern=".*tcExport.csv", idpattern="^.*/fMR
   return(allData)
 }
 
+#function to extract id, run condition, and outcome statistics
+get_fit_array <- function(fitobjs) {
+  allfits <- c()
+  for (i in 1:length(fitobjs)) {
+    cat("Loading object: ", fitobjs[i], "\n")
+    loc <- local({load(fitobjs[i]); environment()})$f_poseps #time-clock fit object
+    emo <- loc$run_condition
+    rew <- loc$rew_function
+    pars <- loc$theta[,"cur_value"]
+    
+    rw <- local({load(fitobjs[i]); environment()})$f_value #rescorla-wagner fit object
+    rewhappy <- sum(rw$Reward[which(rw$run_condition == "happy"),])
+    rewfear <- sum(rw$Reward[which(rw$run_condition == "fear"),])
+    rewscram <- sum(rw$Reward[which(rw$run_condition == "scram"),])
+    
+    evhappy <- sum(rw$ev[which(rw$run_condition == "happy"),])
+    evfear <- sum(rw$ev[which(rw$run_condition == "fear"),])
+    evscram <- sum(rw$ev[which(rw$run_condition == "scram"),])
+    
+    pars <- c(pars, rw_alphaV=rw$theta["alphaV", "cur"], rw_betaV=rw$theta["betaV", "cur"], avg_ev=mean(rw$ev), totreward=sum(rw$Reward),
+        rewhappy=rewhappy, rewfear=rewfear, rewscram=rewscram,
+        evhappy=evhappy, evfear=evfear, evscram=evscram)
+    
+    lunaid <- as.integer(sub("[^\\d]*(\\d+)_fitinfo.RData$", "\\1", fitobjs[i], perl=TRUE))
+    bpdsub <- lunaid < 10000
+    allfits <- rbind(allfits, c(lunaid=lunaid, bpd=bpdsub, pars))
+  }
+  
+  allfits <- data.frame(allfits)
+}

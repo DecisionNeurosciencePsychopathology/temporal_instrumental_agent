@@ -92,7 +92,7 @@ elseif RT < RTlocavg && RT > 0 %update fast beta (verify that RT != 0 since that
 end
 
 %update estimate of recent/"learned" RTlocavg
-RTlocavg_new = RTlocavg + alphaV*(reward - RTlocavg);
+RTlocavg_new = RTlocavg + alphaV*(RT - RTlocavg);
 
 fx = [bestRT_new/inF.RTrescale; a_fast_new; b_fast_new; a_slow_new; b_slow_new; ...
     V_new; Go_new; NoGo_new; RTlocavg_new/inF.RTrescale; expsign_new];

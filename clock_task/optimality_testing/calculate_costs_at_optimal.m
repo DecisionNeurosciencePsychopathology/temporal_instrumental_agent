@@ -6,7 +6,7 @@ optfiles = glob('output/optimize_output*.mat');
 nreps = 100;
 nbest = 5; %number of parameter sets to test
 ntimesteps=500;
-ntrials = [30 45 60 75 90 110 150 200 300 400 500 600];
+ntrials = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
 cliffpullback=20;
 plots=false;
 
@@ -134,6 +134,7 @@ for o = 1:(length(optfiles) + 1)
         a.nbasis = 24;
         a.ntimesteps = 500;
         a.prop_spread=0; %need this to avoid problem with parameter loading
+        a.fixps=1; a.fixbeta=0; %hack: fix prop spread to have the parameter lookup work
         parsq=[];
     end
         

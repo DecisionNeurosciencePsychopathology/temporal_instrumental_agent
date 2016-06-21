@@ -1,4 +1,4 @@
-function [posterior,out] = clock_tc_vba(id,showfig,model,multisession,fixed_params_across_runs)
+function [posterior,out] = clock_tc_components_vba(file,showfig,model,basedir)
 %% fits TC model to Clock Task subject data using VBA toolbox
 % example call:
 % [posterior,out]=clock_sceptic_vba(10638,'fixed',4,1,1,1)
@@ -15,7 +15,6 @@ n_runs = 8;
 trialsToFit = 1:n_t;
 
 if nargin < 2, showfig = 1; end
-
 if showfig==1
     options.DisplayWin=1;
 else
@@ -23,6 +22,8 @@ else
 end
 
 if nargin < 3, model = 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon'; end
+if nargin < 4, basedir='/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects'; end
+
 
 %% fit as multiple runs
 multisession = 1;
@@ -30,8 +31,7 @@ multisession = 1;
 fixed_params_across_runs = 1;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
-data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-%data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('%s/%s', basedir, file),'Delimiter',',','ReadVariableNames',true);
 rts = data{trialsToFit, 'rt'};
 rewards = data{trialsToFit, 'score'};
 
@@ -59,7 +59,7 @@ rtrescale = 1000; %put the RT-related hidden states on a similar scale as the ot
 %    0, ... %lambda (autocorr) is ~N(0, 15) with exponential transform. So prior mu of 0 means lambda = 0.5
 %    0, ... %nu (go for gold) is ~N(0, 15) with exponential transform and rescaled to max = 10. Prior of 0 means nu = 5
 %    0, ... %rho (mean fast/slow) is ~N(0, 1), transformed into ~gamma(2,2)*400, so a value of 0 corresponds to rho ~ 1300
-%    0, ... %epsilon (sd fast-slow explore) is ~N(0, 1), transformed into ~unif(0, 80000), so a value of 0 is an epsilon of 40000
+%    0, ... %epsilon (sd fast-slow explore) is ~N(0, 1), transformed into ~unif(0, 10000), so a value of 0 is an epsilon of 5000
 %];
 
 %priors.SigmaPhi = diag([1, 15, 15, 1, 1]); %initial variance of the phi parameters
@@ -72,7 +72,7 @@ if strcmpi(model, 'K')
     n_theta = 0; %no evolution parameters
     n_phi = 1;
     priors.muTheta = []; %rmfield(priors, {'muTheta', 'SigmaTheta'}); %just to be safe
-    prior.SigmaTheta = [];
+    priors.SigmaTheta = [];
     
     priors.muPhi = 0;
     priors.SigmaPhi = 1; %std normal K (transform to uniform)
@@ -81,7 +81,7 @@ elseif strcmpi(model, 'K_Lambda')
     n_theta = 0;
     n_phi = 2; %K and Lambda
     priors.muTheta = []; %rmfield(priors, {'muTheta', 'SigmaTheta'}); %just to be safe
-    prior.SigmaTheta = [];
+    priors.SigmaTheta = [];
     
     priors.muPhi = [0, 0]; %K, Lambda
     priors.SigmaPhi = diag([1, 15]);
@@ -90,7 +90,7 @@ elseif strcmpi(model, 'K_Lambda_Nu')
     n_theta = 0;
     n_phi = 3; %K, Lambda, Nu
     priors.muTheta = []; %rmfield(priors, {'muTheta', 'SigmaTheta'}); %just to be safe
-    prior.SigmaTheta = [];
+    priors.SigmaTheta = [];
     
     priors.muPhi = [0, 0, 0]; %K, Lambda, Nu
     priors.SigmaPhi = diag([1, 15, 15]);
@@ -198,7 +198,9 @@ options.inF.priors = priors; %copy priors into inF for parameter transformation
 options.inF.RTrescale = rtrescale; %scale bestRT hidden state into seconds (for similarity across hidden states)
 options.inG.maxNu = 10; %maximum nu for go for gold (tends to be between 0 and 1, though)
 options.inG.rhoMultiply = 400; %leads to a max rho around 10000
-options.inG.epsilonMultiply = 1600; %leads to a max epsilon around 58000
+options.inG.epsilonMultiply = 1600; %for gamma-based epsilons: leads to a max epsilon around 58000
+options.inG.maxEpsilon = 10000; %for uniform epsilon: the max of the inverse Gaussian -> Uniform transformation
+options.inG.expEpsilonMean = 1000; %for Gaussian -> exponential transformed version of Epsilon. Exponential mean of 1000 yields range 0..~10000
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 options.inG.maxRT = 4000; %maximum possible RT (used for uniform distribution)
 options.inG.meanRT = mean(rts);
@@ -212,7 +214,7 @@ options.TolFun = 1e-8;
 options.GnTolFun = 1e-8;
 options.verbose=1;
 
-rtsbyrun = reshape(rts, n_t/n_runs, n_runs)'; %convert to 8 x 50
+%rtsbyrun = reshape(rts, n_t/n_runs, n_runs)'; %convert to 8 x 50
 runsum = [0, cumsum(options.multisession.split)];
 rtslag = NaN(n_runs, n_t/n_runs);
 for i = 1:(length(runsum)-1)
@@ -254,7 +256,7 @@ if ~isempty(regexp(model, '_Nu', 'once')), posterior.transformed.nu = options.in
 if ~isempty(regexp(model, '_AlphaG', 'once')), posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1))); end
 if ~isempty(regexp(model, '_AlphaN', 'once')), posterior.transformed.alphaN = options.inF.maxAlpha / (1+exp(-posterior.muTheta(2))); end
 if ~isempty(regexp(model, '_Rho', 'once')), posterior.transformed.rho = options.inG.rhoMultiply * gaminv(fastnormcdf(posterior.muPhi(4)), 2, 2); end
-if ~isempty(regexp(model, '_Epsilon', 'once')),posterior.transformed.epsilon = unifinv(fastnormcdf(posterior.muPhi(5)), 0, 80000); end
+if ~isempty(regexp(model, '_Epsilon', 'once')),posterior.transformed.epsilon = unifinv(fastnormcdf(posterior.muPhi(5)), 0, options.inG.maxEpsilon); end
 
 %% save output figure
 %if (showfig==1)
