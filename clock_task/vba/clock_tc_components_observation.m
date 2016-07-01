@@ -35,7 +35,7 @@ function  [ gx ] = clock_tc_components_observation(hidden,phi,u,inG)
 
 %pull out input parameters
 
-if length(u) > 0, RT = u(1); end 
+if ~isempty(u), RT = u(1); end 
 if length(u) > 1, RT_prev = u(2); end
     
 %these are not used in observation function
@@ -63,7 +63,7 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
     b_fast = hidden(6);
     a_slow = hidden(7);
     b_slow = hidden(8);
-    %RTlocavg = hidden(9)*inG.RTrescale;
+    %RTlocavg = hidden(9)*inG.RTrescale; %not used in observation function
     expsign = hidden(10);
 end
 
@@ -134,11 +134,20 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
         %for now, keep a non-negative number (otherwise need to implement sticky choice)
         
         %epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 2, 2);
-        %uniform 0..80000 variant
-        %epsilon = unifinv(normcdf(phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 0, 80000);
-        epsilon = unifinv(fastnormcdf(phi(5)), 0, 10000);
-        %epsilon = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(5), 'linear'), 0, 80000);
+        
+        %uniform 0..X variant
+        %version allowing for mean and variance
+        %epsilon = unifinv(normcdf(phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 0, inG.maxEpsilon);
+        
+        %standard normal -> uniform variant (faster since it uses compiled code)
+        epsilon = unifinv(fastnormcdf(phi(5)), 0, inG.maxEpsilon);
+        
+        %for failed interpolation version (slower)
+        %epsilon = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(5), 'linear'), 0, inG.maxEpsilon);
 
+        %try exponential distribution approach with mean of 1000 to yield a 0..~10000 distribution
+        %epsilon = expinv(fastnormcdf(phi(5)), inG.expEpsilonMean)
+        
         gx = gx + epsilon*explore;
     end
 end

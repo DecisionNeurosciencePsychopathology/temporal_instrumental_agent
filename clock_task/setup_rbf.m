@@ -58,7 +58,6 @@ gaussmat_trunc=gaussmat./maxauc_each;
 %basis functions at the edge are too sharp -- the agent is inflating value toward infinity. Need to soften the tails.
 %what if it's AUC=1.0 divided by some proportion of basis in the interval such that less gets downweighted?
 
-
 if plot_rbf == 1
     figure(20); plot(tvec,gaussmat); title('Regular RBF');
     figure(21); plot(tvec,gaussmat_trunc); title('Truncated RBF');
