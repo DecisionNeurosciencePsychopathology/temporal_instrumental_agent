@@ -1,12 +1,12 @@
 function data=createParamterMatrix
 %Script to grab every variable from vba output and put it into a struct
 
-%  modelnames = {'fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
-%     'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv','qlearning'};
-
- modelnames = {'fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
+ modelnames = {'qlearning','fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
     'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv'};
-% modelnames = {'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv','qlearning'};
+
+%  modelnames = {'fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
+%     'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv'};
+% % modelnames = {'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv','qlearning'};
 %modelnames = {'kalman_processnoise'}; %Forgot omega
 
 %Grab everyone but qlearning and kalman_processnoise for now

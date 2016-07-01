@@ -63,6 +63,11 @@ else
         vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
         results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
         
+    elseif strcmp(me, 'wilsonj3')==1
+        data = readtable(sprintf('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+        results_dir = '/Volumes/bek/vba_results/';
+        vbadir = '/Volumes/bek/vba_results/uv_sum';
+        
     else
         data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
         results_dir = '/Users/michael/vba_out';

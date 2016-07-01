@@ -24,6 +24,11 @@ else
         group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
         addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
         addpath(genpath('/Users/dombax/code/'));
+    elseif strcmp(me, 'wilsonj3')==1
+        addpath(genpath('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/'));
+        behavfiles = glob('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/subjects/*.csv');
+        results_dir = '/Volumes/bek/vba_results/';
+        group_dir = '/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/vba_results/group_bmc';
 
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
@@ -33,9 +38,9 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+%modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic' 'Qstep'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
-%modelnames = {'fixed_uv' 'kalman_uv_sum'}; %Rerun uncertainty models using corrected sigma update
+modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
 %% set parameters
 nbasis = 16;
 multinomial = 1;
@@ -82,7 +87,15 @@ else
         %         p = ProgressBar(length(behavfiles));
         parfor sub=1:length(behavfiles)
             str = behavfiles{sub};
-            id(sub) = str2double(str(isstrprop(str,'digit')));
+            
+            %Really should just use regex here...
+            if strcmp(me, 'wilsonj3')==1
+                tmp_id = str(isstrprop(str,'digit'));
+                id(sub) = str2double(tmp_id(2:end));
+            else
+                id(sub) = str2double(str(isstrprop(str,'digit')));
+            end
+
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
             [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults);
@@ -94,6 +107,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%s%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread',model,nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread',nbasis,n_steps, u_aversion);
     save(filename);
 end
