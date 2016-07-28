@@ -16,7 +16,7 @@ fullmodel = 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon';
 split = strsplit(fullmodel, '_');
 models = cell(1, length(split));
 for m = 1:length(split)
-   models{m} = strjoin(split(1:m), '_'); 
+    models{m} = strjoin(split(1:m), '_');
 end
 
 clear m
@@ -39,7 +39,7 @@ try
             [ipost{j}, iout{j}] = clock_tc_components_vba(allsubjs(i).name, 0, models{j}, basedir); %suppress figure (0)
         end
         posteriors(i,:) = ipost;
-        outputs(i,:) = iout;        
+        outputs(i,:) = iout;
     end
 catch err
     disp('error in optimization. killing parpool');
@@ -56,18 +56,22 @@ save('allfranktc.mat', 'posteriors', 'outputs', 'models', 'ids', '-v7.3');
 %new frank incremental variant BMC
 logEvidence = NaN(size(outputs));
 parameters = NaN([size(outputs), 7]);
+rawparameters = NaN([size(outputs), 7]);
 for i = 1:nsubjs
     for j = 1:length(models)
         logEvidence(i,j) = outputs{i,j}.F;
-        if ismember('transformed', fields(posteriors{i,j})), parameters(i,j,1:7) = struct2array(posteriors{i,j}.transformed); end;
+        rawpars = [posteriors{i,j}.muTheta, posteriors{i,j}.muPhi];
+        if ismember('transformed', fields(posteriors{i,j}))
+            parvec = struct2array(posteriors{i,j}.transformed);
+            parameters(i,j,1:length(parvec)) = parvec;
+        end
     end
 end
-% 
+
 % nanmean(parameters, 2)
-% 
-% 
-% %bmc expects it to be models x evidence -- transpose
+
+% %bmc expects it to be models x evidence/subjects -- transpose
 logEvidence = logEvidence';
-save('tc_logevidence.mat', 'logEvidence', 'ids', 'models', 'parameters');
-% 
-%[BMCposterior,BMCout] = VBA_groupBMC(logEvidence');
+save('tc_logevidence.mat', 'logEvidence', 'ids', 'models', 'parameters', 'rawparameters');
+%
+%[BMCposterior,BMCout] = VBA_groupBMC(logEvidence);
