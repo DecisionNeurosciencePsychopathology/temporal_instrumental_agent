@@ -33,6 +33,8 @@ end
 n_theta = 1;
 n_phi = 1;
 options.inG.autocorrelation = 'exponential'; %% no choice autocorrelation by default
+options.inG.autocorrelation = 'softmax_multitrial'; 
+
 %% fit as multiple runs
 % multisession = 1;
 % fix parameters across runs
@@ -310,10 +312,8 @@ switch model
 end
 
 %Add in the lambda parameter
-if strcmp(options.inG.autocorrelation,'exponential')
+if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autocorrelation,'softmax_multitrial')
     n_phi = n_phi + 2;
-elseif strcmp(options.inG.autocorrelation,'gaussian')
-    n_phi = n_phi + 1;
 end
 
 

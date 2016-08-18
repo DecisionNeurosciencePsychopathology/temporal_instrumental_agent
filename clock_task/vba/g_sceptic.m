@@ -41,9 +41,9 @@ if strcmp(inG.autocorrelation,'exponential')
 %     end
     
     p_choice = p_choice./(sum(p_choice));  %% re-normalize choice probability so that it adds up to 1
-elseif strcmp(inG.autocorrelation,'gaussian')
-        elig = gaussmf((1:ntimesteps), [inG.sig_spread, rt_prev]);
-        p_choice = p_choice./(sum(p_choice));  %% re-normalize choice probability so that it adds up to 1
+elseif strcmp(inG.autocorrelation,'softmax_multitrial')
+    
+    p_choice = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta))); %Divide by temperature
 end
     gx = p_choice';
 end
