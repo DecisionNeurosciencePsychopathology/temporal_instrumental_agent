@@ -4,15 +4,23 @@
 close all;
 
 %Set path to data storage on bek
+<<<<<<< Updated upstream
 % file_path = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc/high_res/final_results/';
 file_path = pwd;
 
+=======
+file_path = '/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/vba_results/group_bmc/final_results/';
+>>>>>>> Stashed changes
 %data_file = 'group_model_comparison_L';
 %data_file = 'grp_kalman_16_nbasis_40_nsteps_1_uasversion_with_q';
 %data_file = 'grp_L_kalman_logistic16_nbasis40_nsteps1_uaversion';
 % data_file = 'L9_fixed_ksoft_kprocnoise_kuvsum_ksigvol_kuvlog_fixeduv_q_fixeddecay.mat';
+<<<<<<< Updated upstream
 % data_file = 'L9_FINAL_USHIFTED_CORRECTLY_with_qstep_fixedDecay';
 data_file = '/SHIFTED_U_grp_L_16_nbasis40_nsteps1_uaversion_not_allModels_fixed_prop_spread.mat';
+=======
+data_file = 'SHIFTED_U_grp_L9_16_nbasis40_nsteps1_uaversion_multisession0_allModels_fixed_prop_spread';
+>>>>>>> Stashed changes
 
 %Load in proper data file
 group_data=load([file_path data_file]);

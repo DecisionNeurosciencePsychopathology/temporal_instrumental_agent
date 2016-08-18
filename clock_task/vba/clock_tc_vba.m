@@ -30,8 +30,8 @@ multisession = 1;
 fixed_params_across_runs = 1;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
-data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-%data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+% data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
 rts = data{trialsToFit, 'rt'};
 rewards = data{trialsToFit, 'score'};
 
@@ -55,8 +55,8 @@ dim = struct('n',n_states,'n_theta',2,'n_phi',5, 'n_t', n_t);
 y = data{trialsToFit,'rt'}';
 priors.a_alpha = Inf;   %infinite precision prior on state noise precision (deterministic system)
 priors.b_alpha = 0;
-priors.a_sigma = 1;     % Jeffrey's prior (on measurement noise precision)
-priors.b_sigma = 1;     % Jeffrey's prior
+priors.a_sigma = Inf;     % Jeffrey's prior (on measurement noise precision)
+priors.b_sigma = 0;     % Jeffrey's prior
 
 options.binomial = 0;
 options.sources(1) = struct('out',1,'type',0); %treat source/y as Gaussian
@@ -75,7 +75,7 @@ options.skipf(1) = 1;
 %for X0, use mean = 0 and sigma = 0 to avoid fitting initial values for hidden states (a_short, b_short, etc.)
 
 %% priors
-rtrescale = 1000; %put the RT-related hidden states on a similar scale as the others (i.e., divide by 1000)
+rtrescale = 3000; %put the RT-related hidden states on a similar scale as the others (i.e., divide by 1000)
 
 % 20Jan2016: After discussing the issue of priors with Alex, we agreed to try setting the prior Gaussian means closer to 0 to produce an 
 % uninformative prior. This leads to the priors being placed in the middle of the parameter space in each case, regardless of parameter

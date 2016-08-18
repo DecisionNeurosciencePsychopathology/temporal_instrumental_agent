@@ -4,9 +4,9 @@
 
 %% read in global max (6 consecutive trials) and dislodgement (6 consecutive off-max post global max) data
 try
-cd('/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/');
+cd('/Users/dombax/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting');
 catch err
-cd('/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/');
+cd('/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/');
 end
 load('subject_rt_distribution_output');
 subs = fields(subj_data);
@@ -31,9 +31,12 @@ hist(subj_data.dislodgement_binary,2)
 sum(subj_data.global_max_reached>3)
 
 %% load fit data
-load('models');
+load('models'); %% just L9 and model names
+
 figure(2); clf; 
 for ct=1:length(models.modelnames)
+    models.fixed_decay_adv_log_ratio(ct,:) = log(models.L(ct,:)./models.L(3,:));
+
     subplot(length(models.modelnames),1,ct)
 x = models.fixed_decay_adv_log_ratio(ct,:);
 y = subj_data.global_max_reached;
@@ -45,13 +48,13 @@ end
 names = {'globs' 'disl' 'fix' 'fixUV' 'kSoft' 'kProc' 'kUV' 'kSigV' 'kLog' 'Q'};
 % names(3:10) = models.modelnames([1:2 4:end]);
 
-corrplot([subj_data.global_max_reached' ...
+[decay_adv_R, decay_adv_Pval] = corrplot([subj_data.global_max_reached' ...
     models.fixed_decay_adv_log_ratio([1:2 4:end],:)'],'VarNames',names([1,3:end]), 'type','Kendall','testR','on')
 title('Global maxes reached vs. advantage of fixedDecay')
 
-corrplot([subj_data.dislodgement_binary(subj_data.global_max_reached>3)' ...
-    models.fixed_decay_adv_log_ratio([1:2 4:end],subj_data.global_max_reached>3)'],'VarNames',names(2:end), 'type','Kendall','testR','on')
-title('Dislodgement vs. advantage of fixedDecay')
+% corrplot([subj_data.dislodgement_binary(subj_data.global_max_reached>3)' ...
+%     models.fixed_decay_adv_log_ratio([1:2 4:end],subj_data.global_max_reached>3)'],'VarNames',names(2:end), 'type','Kendall','testR','on')
+% title('Dislodgement vs. advantage of fixedDecay')
 
 goodniks = subj_data.global_max_reached>3;
 dislodgers = subj_data.dislodgement_binary;
