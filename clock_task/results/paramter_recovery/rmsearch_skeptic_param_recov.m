@@ -10,6 +10,10 @@ options(3)=1e-3;     % Relative f-tolerance
 options(14)=100;    % Max. number of f-evaluations per internal
 fargs={};
 
+%Added in auto correlation option
+auto_corr_flag = 1;
+
+
 tic
 fitted_vars = struct;
 % [fittedparameters_1,options]=simps('clock_logistic_operator',[.05 .95 1],[1 2 3],[options],[0.001 0.9 0.01],[0.2 .99 10],fargs{:});
@@ -80,7 +84,7 @@ num_start_pts=25;
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [8];
+models = [20];
 
 % a(models(i)).name = {};
 % for i = 1:length(models)
@@ -126,6 +130,11 @@ for sub = 1:length(fieldnames(param_recovery_test_data.(a(models(i)).name).ret))
         
 %         j = models(i);
         
+        if auto_corr_flag
+            a(models(i)).name = [a(models(i)).name '_autocorrelation'];
+        end
+
+
         test_data_1=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
         test_data_2=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
         test_data = [test_data_1; test_data_2];
