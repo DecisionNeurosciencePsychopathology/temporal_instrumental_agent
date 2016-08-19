@@ -31,7 +31,7 @@ df$rownum <- 1:nrow(df)
 df$subject <- NULL
 
 #idlist
-idlist <- read.xls("/Users/michael/Google_Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx", header=FALSE, col.names="lunaid")
+idlist <- read.xls("/Users/michael/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx", header=FALSE, col.names="lunaid")
 idlist$rownum <- 1:nrow(idlist)
 
 #df <- merge(df, idlist, by="rownum")
@@ -52,7 +52,7 @@ selfreports <- read.csv("/Users/michael/Tresors/DEPENd/Projects/SPECC/SelfReport
 selfreports <- plyr::rename(selfreports, c(LUNA_ID="lunaid"))
 
 df <- merge(df, selfreports, by="lunaid", all=TRUE)
-df <- subset(df, !lunaid==11246) #huge head movement -- exclude?
+#df <- subset(df, !lunaid==11246) #huge head movement -- exclude?
 
 #learningvars <- c("tau_kalman_uv_sum", "beta_kalman_uv_sum", "alpha_fixed_decay", "beta_fixed_decay", "gamma_fixed_decay", 
 #    "prop_spread_fixed_decay", "alpha_fixed_uv", "beta_fixed_uv", "prop_spread_fixed_uv", "tau_fixed_uv")
@@ -154,6 +154,10 @@ ggplot(df, aes(x=performanceIQ, y=fixed_decay_gamma)) + geom_point() + stat_smoo
     theme(axis.title.y=element_text(margin=margin(0,10,0,0))) +
     theme(axis.title.x=element_text(margin=margin(10,0,0,0)))
 dev.off()
+
+cor.test(~performanceIQ + fixed_decay_gamma, df)
+cor.test(~performanceIQ + fixed_decay_gamma, subset(df, performanceIQ > 85)) #make sure the correlation is robust to outliers
+
 
 #pdf("IQ_Gamma_Corr.pdf", width=8, height=5)
 #ggplot(df, aes(x=RISTIndex, y=gamma_fixed_decay)) + geom_point() + stat_smooth(method="lm")

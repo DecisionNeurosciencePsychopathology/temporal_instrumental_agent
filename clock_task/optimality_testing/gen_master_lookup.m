@@ -73,11 +73,11 @@ for i = 1:ntimesteps
   
   allshift(i,:,1) = evi;
   allshift(i,:,2) = prbi;
-  allshift(i,:,3) = evi./prb;
+  allshift(i,:,3) = evi./prbi;
   
   %subplot(3,1,1); plot(1:ntimesteps, evi)
   %subplot(3,1,2); plot(1:ntimesteps, prbi);
-  %subplot(3,1,3); plot(1:ntimesteps, evi./prb);
+  %subplot(3,1,3); plot(1:ntimesteps, evi./prbi);
   %pause(0.02)
   
 end
