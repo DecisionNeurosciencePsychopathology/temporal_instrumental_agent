@@ -32,8 +32,8 @@ end
 %% set up dim defaults
 n_theta = 1;
 n_phi = 1;
-options.inG.autocorrelation = 'exponential'; %% no choice autocorrelation by default
-options.inG.autocorrelation = 'softmax_multitrial'; 
+% options.inG.autocorrelation = 'exponential'; %% no choice autocorrelation by default
+options.inG.autocorrelation = 'softmax_multitrial_smooth'; 
 
 %% fit as multiple runs
 % multisession = 1;
@@ -314,6 +314,8 @@ end
 %Add in the lambda parameter
 if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autocorrelation,'softmax_multitrial')
     n_phi = n_phi + 2;
+elseif strcmp(options.inG.autocorrelation,'softmax_multitrial_smooth')
+    n_phi = n_phi + 3;
 end
 
 
@@ -343,8 +345,9 @@ if multinomial
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform
     priors.SigmaPhi = 1e1*eye(dim.n_phi);
     % Inputs
-    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; trialsToFit];
     u = [zeros(size(u,1),1) u(:,1:end-1)];
+    options.inG.rts = round(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)';
     % Observation function
     switch model
         case 'kalman_logistic'
@@ -375,6 +378,7 @@ else
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; prev_rt];
     u = [zeros(size(u,1),1) u(:,1:end-1)];
+    
     % Observation function
     g_name = @g_sceptic_continuous;
     
