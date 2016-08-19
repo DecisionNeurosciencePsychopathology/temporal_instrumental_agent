@@ -1,4 +1,4 @@
-function gen_temperatureFixed_rts(agent,uniform_flag)
+function gen_temperatureFixed_rts(agent,uniform_flag,auto_corr_flag)
 %This script will generate a set of rts and rews to be used in future
 %parameter recovery simulations.
 % IN:
@@ -9,6 +9,8 @@ function gen_temperatureFixed_rts(agent,uniform_flag)
 
 if nargin <2
     uniform_flag=0;
+elseif nargin <3
+    auto_corr_flag=0;
 end
 
 %Create the defualt data hub if it doesn't exisit
@@ -29,13 +31,13 @@ end
 % end
 
 %Load in prev results so we don't overwrite
-load('temporal_instrumental_agent\clock_task\results\paramter_recovery\param_recovery_test_data');
+load('paramter_recovery\param_recovery_test_data');
 
 %You will need these for certain models
 %Load in master sample array
-load('temporal_instrumental_agent\clock_task\optimality_testing\mastersamp.mat')
+load('optimality_testing\mastersamp.mat')
 %Load in clock options
-load('temporal_instrumental_agent\clock_task\optimality_testing\clock_options.mat')
+load('optimality_testing\clock_options.mat')
 
 
 data_sets = 100; %Define number of data sets
@@ -54,7 +56,7 @@ reversal=0;
 a = initialize_stability_struct();
 try
     if uniform_flag
-        [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,data_sets,a);
+        [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,data_sets,a,auto_corr_flag);
     else
         [params,priors,rtbounds] = getAgentParams(agent);
     end
@@ -79,7 +81,7 @@ for i = 1:length(condnames)-1 %Quick dirty fix since DEVLINPROB qasn't correctly
     mastersamp.(condnames{i}).lookup = mastersamp.(condnames{i}).lookup(:,1:ntrials);
 end
 
-%Permuste the master lookup
+%Permute the master lookup
     clear row
     for j = 1:data_sets
         tmp = mastersamp.(condition);
@@ -117,7 +119,12 @@ end
         end
     end
 
-
+%If autocorrelating make sure to add _autocorr at end of model name
+if auto_corr_flag
+   agent = [agent '_autocorrelation']; 
+end
+    
+    
 %Let use a new data structure to save results
 param_recovery_test_data.(agent).ret = ret;
 param_recovery_test_data.(agent).cost = cost_og;
@@ -176,7 +183,7 @@ switch agent
 end
 
 
-function [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,n,a)
+function [params,priors,rtbounds] = getAgentParamsUniform(agent,beta,n,a,auto_corr_flag)
 %Produce params via a uniform distribution each agent will be drawn from a
 %specific seed
 
@@ -286,6 +293,13 @@ switch agent
         error('Not any agent I''ve heard of');
 
 end
+
+if auto_corr_flag
+   lambda = genParamInRange(0,1,n);
+   chi = genParamInRange(0,1,n);
+   params = [params lambda chi];
+end
+
 
 function param=genParamInRange(min,max,n)
 %Generate random numbers within a specific range

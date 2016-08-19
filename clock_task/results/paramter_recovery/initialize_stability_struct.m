@@ -274,6 +274,18 @@ fixed_decay.clock_options=struct();
 fixed_decay.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([params(1) beta_init params(2) params(3)],...
     num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,fixed_decay.name,sigma_noise_input);
 a(19) = fixed_decay;
+
+%fixed decay
+fixed_decay_autocorrelation.init_params =  [prop_spread_init, .1, .6, .5, .5 ]; %prop_spread, alpha, gamma
+fixed_decay_autocorrelation.lower_bounds = [prop_spread_bounds(1), lr_bounds(1), 0, 0, 0];
+fixed_decay_autocorrelation.upper_bounds = [prop_spread_bounds(2), lr_bounds(2), 1, 1, 1];
+fixed_decay_autocorrelation.k = length(fixed_decay_autocorrelation.init_params); %number of free parameters
+fixed_decay_autocorrelation.name = 'fixed_decay'; %add explicit name parameter since each field in struct gets pulled out separately
+fixed_decay_autocorrelation.parnames = {'prop_spread', 'beta', 'alpha', 'gamma', 'lambda', 'chi'};
+fixed_decay_autocorrelation.clock_options=struct();
+fixed_decay_autocorrelation.fun = @(params) skeptic_fitsubject_all_models_all_runs_model_test([params(1) beta_init params(2) params(3)],...
+    num2str(sub), test_data, rngseeds,ntrials, nbasis, ntimesteps,fixed_decay_autocorrelation.name,sigma_noise_input);
+a(20) = fixed_decay_autocorrelation;
 end
 
 

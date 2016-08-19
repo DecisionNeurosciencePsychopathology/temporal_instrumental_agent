@@ -27,8 +27,8 @@ else
     elseif strcmp(me, 'wilsonj3')==1
         addpath(genpath('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/'));
         behavfiles = glob('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/subjects/*.csv');
-        results_dir = '/Volumes/bek/vba_results/';
-        group_dir = '/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/vba_results/group_bmc';
+        results_dir = '/Volumes/bek/vba_results/autocorrelation/';
+        group_dir = '/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/vba_results/autocorrelation';
 
     else
         behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
@@ -38,11 +38,12 @@ else
 end
 
 %% chose models to fit
-%modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic' 'Qstep'};
+modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
-modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
+%modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
+% modelnames = {'kalman_logistic'};
 %% set parameters
-nbasis = 16;
+nbasis = 24;
 multinomial = 1;
 multisession = 0;
 fixed_params_across_runs = 1;
@@ -107,6 +108,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread',nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_autocorrelation',nbasis,n_steps, u_aversion);
     save(filename);
 end
