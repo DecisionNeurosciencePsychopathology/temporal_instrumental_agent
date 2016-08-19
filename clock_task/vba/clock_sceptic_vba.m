@@ -32,8 +32,13 @@ end
 %% set up dim defaults
 n_theta = 1;
 n_phi = 1;
-% options.inG.autocorrelation = 'exponential'; %% no choice autocorrelation by default
-options.inG.autocorrelation = 'softmax_multitrial_smooth'; 
+
+%% no choice autocorrelation by default
+% options.inG.autocorrelation = 'none';
+options.inG.autocorrelation = 'exponential'; %% implements AR(1) choice autocorrelation with exponential temporal
+% generalization
+% options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
+% options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
 
 %% fit as multiple runs
 % multisession = 1;

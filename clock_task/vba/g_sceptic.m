@@ -24,9 +24,11 @@ p_choice = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta
 
 rt_prev = u(1); %% retrieve previous RT
 
-if strcmp(inG.autocorrelation,'exponential') || strfind(inG.autocorrelation,'softmax_multitrial')
+if strcmp(inG.autocorrelation,'exponential') || strcmp(inG.autocorrelation,'softmax_multitrial')
     lambda =  1./(1+exp(-phi(2))); %% introduce a choice autocorrelation parameter lambda
-    chi =  1./(1+exp(-phi(3))); %% control the extent of choice autocorrelation
+%     chi =  1./(1+exp(-phi(3))); %% control the extent of choice autocorrelation
+%% try a Gaussian chi to enable it to go negative (choice anticorrelation as in Lau & Glimcher 2005 at t-1)
+chi =  phi(3)./100;
 end
 
 if strcmp(inG.autocorrelation,'exponential')
@@ -62,7 +64,7 @@ elseif strcmp(inG.autocorrelation,'softmax_multitrial') || strcmp(inG.autocorrel
     end
     if strcmp(inG.autocorrelation,'softmax_multitrial_smooth')
          iota =  1./(1+exp(-phi(4))); %% control the extent of choice autocorrelation
-        discounted_choice_history = smooth(discounted_choice_history,(ntimesteps*iota))';
+        discounted_choice_history = smooth(discounted_choice_history,(10*ntimesteps*iota))';
     end
     p_choice = (exp((v_func-max(v_func)+chi.*max(v_func).*discounted_choice_history)/beta)) / (sum(exp((v_func-max(v_func)+chi.*max(v_func).*discounted_choice_history)/beta))); %Divide by temperature
  end
