@@ -49,14 +49,14 @@ getClockGroupData <- function(path, pattern=".*tcExport.csv", idpattern="^.*/fMR
 }
 
 #function to extract id, run condition, and outcome statistics
-get_fit_array <- function(fitobjs) {
+get_fit_array <- function(fitobjs, objname="f_poseps") {
   allfits <- c()
   for (i in 1:length(fitobjs)) {
     cat("Loading object: ", fitobjs[i], "\n")
-    loc <- local({load(fitobjs[i]); environment()})$f_poseps #time-clock fit object
+    loc <- local({load(fitobjs[i]); environment()})[[objname]] #time-clock fit object
     emo <- loc$run_condition
     rew <- loc$rew_function
-    pars <- loc$theta[,"cur_value"]
+    pars <- tryCatch(loc$theta[,"cur_value"], error=function(e) { print(e); return(NA) }) #I think this still causes problems downstream because we don't know length of pars
     
     rw <- local({load(fitobjs[i]); environment()})$f_value #rescorla-wagner fit object
     rewhappy <- sum(rw$Reward[which(rw$run_condition == "happy"),])

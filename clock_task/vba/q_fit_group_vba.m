@@ -13,7 +13,7 @@ behavfiles = glob('../subjects/*.csv');
 % results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
 %group_dir = 'E:\data\clock_task\vba\qlearning_vba_results';
 %group_dir = 'E:\data\clock_task\vba\group_bmc';
- group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
+group_dir = '/Users/wilsonj3/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/vba_results/group_bmc';
 
 
 %% chose models to fit
@@ -54,7 +54,7 @@ if fit_single_model
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d \r',sub)
-        [posterior,out] = clock_q_vba(id(sub),showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,saveresults)
+        [posterior,out] = clock_q_vba(id(sub),showfig, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,saveresults);
         L(sub) = out.F;
         %tau(sub) = posterior.muTheta(1);
 %         value(:,:,sub) = out.suffStat.muX;

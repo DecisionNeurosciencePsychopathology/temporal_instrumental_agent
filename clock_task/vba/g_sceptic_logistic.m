@@ -27,6 +27,21 @@ p_rt_exploit = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/
 p_rt_explore = (exp((u_func-max(u_func))/beta)) / (sum(exp((u_func-max(u_func))/beta))); %Divide by temperature
 
 
+%Perform a choice autocorrelation 
+if strcmp(inG.autocorrelation,'exponential')
+    lambda =  1./(1+exp(-P(3))); %% introduce a choice autocorrelation parameter lambda
+    chi =  1./(1+exp(-P(4))); %% control the extent of choice autocorrelation
+    rt_prev = u(1); %% retrieve previous RT
+    
+    %%incorporate an exponential choice autocorrelation function for exploit and explore
+    p_rt_exploit = p_rt_exploit + chi.*(lambda.^(abs((1:ntimesteps) - rt_prev)));  %% incorporate an exponential choice autocorrelation function
+    p_rt_exploit = p_rt_exploit./(sum(p_rt_exploit));  %% re-normalize choice probability so that it adds up to 1
+    
+    p_rt_explore = p_rt_explore + chi.*(lambda.^(abs((1:ntimesteps) - rt_prev)));  %% incorporate an exponential choice autocorrelation function
+    p_rt_explore = p_rt_explore./(sum(p_rt_explore));  %% re-normalize choice probability so that it adds up to 1
+end
+
+
 %compared to other models that use a curve over which to choose,
 %kalman_uv_logistic computes explore and exploit choices and chooses according to a logistic.
 u_final = sum(u_func)/length(u_func);

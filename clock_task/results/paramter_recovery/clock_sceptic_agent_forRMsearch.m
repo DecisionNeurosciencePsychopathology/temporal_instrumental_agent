@@ -71,6 +71,9 @@ if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); e
 %define radial basis
 [c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
+%define autocorrelation
+autocorrelation = 'exponential';
+
 
 %populate free parameters for the requested agent/model
 %note: Kalman filter does not have a free learning rate parameter.
@@ -163,6 +166,13 @@ elseif strcmpi(agent, 'fixed_decay')
     beta = params(2); %Should be fixed
     alpha = params(3);
     gamma = params(4);
+end
+
+
+%Add in new parameters
+if strcmp(autocorrelation,'exponential')
+    lambda = params(length(params)-2);
+    chi = params(length(params)-1); 
 end
 
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
@@ -460,6 +470,12 @@ for i = 1:ntrials
             %ismember(agent, {'fixedLR_softmax', 'asymfixedLR_softmax', 'kalman_softmax'})
             %NB: all other models use a softmax choice rule over the v_final curve.
             p_choice(i,:) = (exp((v_final-max(v_final))/beta))/(sum(exp((v_final-max(v_final))/beta))); %Divide by temperature
+            
+            
+            if strcmp(autocorrelation,'exponential') && i>=2
+                p_choice(i,:) = p_choice(i,:) + chi.*(lambda.^(abs((1:ntimesteps) - rt_obs(i-1)))); %Use prev RT
+                p_choice(i,:) = p_choice(i,:)./(sum(p_choice(i,:)));  %% re-normalize choice probability so that it adds up to 1
+            end
             
             %JW
             %I was getting an error that v_final was nothing but zeros, so

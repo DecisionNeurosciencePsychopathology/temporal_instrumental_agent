@@ -18,7 +18,7 @@ fullmodel = 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon';
 split = strsplit(fullmodel, '_');
 models = cell(1, length(split));
 for m = 1:length(split)
-   models{m} = strjoin(split(1:m), '_'); 
+    models{m} = strjoin(split(1:m), '_');
 end
 
 clear m
@@ -43,7 +43,7 @@ try
             [ipost{j}, iout{j}] = clock_tc_components_vba(allsubjs(i).name, 0, models{j}, basedir); %suppress figure (0)
         end
         posteriors(i,:) = ipost;
-        outputs(i,:) = iout;        
+        outputs(i,:) = iout;
     end
 catch err
     disp('error in optimization. killing parpool');

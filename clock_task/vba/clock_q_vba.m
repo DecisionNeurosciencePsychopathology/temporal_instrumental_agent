@@ -37,8 +37,8 @@ end
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % os = computer;
-data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-%data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv',
+%data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('../subjects/fMRIEmoClock_%d_tc_tcExport.csv',id));
 %id),'Delimiter',',','ReadVariableNames',true); %This broke for some reason...
 % rts = data{trialsToFit, 'rt'};
 % rewards = data{trialsToFit, 'score'};
@@ -171,11 +171,20 @@ options.inG.priors = priors; %copy priors into inG for parameter transformation 
 % h = figure(1);
 % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
 if saveresults
-    cd(results_dir);
     %% save output figure
     % h = figure(1);
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save(sprintf('SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d', id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+    %I believe the issue with not saving the entire out and posterior, were
+    %that they were exceptionally large. 'out' was over 5 GB alone! So I
+    %only grabbed the most important ones I hope...
+    important_vars.out.F = out.F;
+    important_vars.posterior.muPhi = posterior.muPhi;
+    important_vars.posterior.SigmaPhi = posterior.SigmaPhi;
+    important_vars.posterior.muTheta = posterior.muTheta;
+    important_vars.posterior.SigmaTheta = posterior.SigmaTheta;
+    %save(sprintf([results_dir 'q_test/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_fixed_prop_spread'], id, model, multinomial,multisession,fixed_params_across_runs), 'posterior', 'out');
+    save(sprintf([results_dir 'q_test/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_fixed_prop_spread'], id, model, multinomial,multisession,fixed_params_across_runs), 'important_vars');
+    
 end
 
 

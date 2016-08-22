@@ -33,6 +33,13 @@ end
 n_theta = 1;
 n_phi = 1;
 
+%% no choice autocorrelation by default
+% options.inG.autocorrelation = 'none';
+options.inG.autocorrelation = 'exponential'; %% implements AR(1) choice autocorrelation with exponential temporal
+% generalization
+% options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
+% options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
+
 %% fit as multiple runs
 % multisession = 1;
 % fix parameters across runs
@@ -44,7 +51,7 @@ os = computer;
 if strcmp(os(1:end-2),'PCWIN')
     data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
     vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-    results_dir = 'E:/data/sceptic/vba_out/';
+    results_dir = 'E:/data/sceptic/vba_out/new_lambda_results/';
 else
     [~, me] = system('whoami');
     me = strtrim(me);
@@ -64,8 +71,8 @@ else
         results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
         
     else
-        data = readtable(sprintf('/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        results_dir = '/Users/michael/vba_out';
+        data = readtable(sprintf('subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+        results_dir = '/Volumes/bek/vba_results/';
     end
 end
 
@@ -112,6 +119,7 @@ fixed_prop_spread = .0125;
 
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, fixed_prop_spread);
 
+options.inG.sig_spread = options.inF.sig_spread;
 
 %Set up sigma noise for every point in u or hidden state?
 rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
@@ -154,6 +162,13 @@ switch model
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         %         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
+
+    case 'fixed_lambda'
+        h_name = @h_sceptic_fixed;
+        hidden_variables = 1; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        %n_phi = 2;  %% add an observation parameter for choice autocorrelation lambda
         
     case 'fixed_decay'
         h_name = @h_sceptic_fixed_decay;
@@ -162,6 +177,14 @@ switch model
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         n_theta = 2; %learning rate and decay outside of the eligibility trace
         
+    case 'fixed_decay_lambda'
+        h_name = @h_sceptic_fixed_decay;
+        hidden_variables = 1; %tracks only value
+        priors.muX0 = zeros(hidden_variables*n_basis,1);
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
+        n_theta = 2; %learning rate and decay outside of the eligibility trace
+        %n_phi = 2;  %% add an observation parameter for choice autocorrelation lambda
+        options.inG.lambda = 1;
         
         %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
@@ -293,6 +316,14 @@ switch model
         
 end
 
+%Add in the lambda parameter
+if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autocorrelation,'softmax_multitrial')
+    n_phi = n_phi + 2;
+elseif strcmp(options.inG.autocorrelation,'softmax_multitrial_smooth')
+    n_phi = n_phi + 3;
+end
+
+
 options.inF.hidden_state = hidden_variables;
 
 %Map the necessary options from F to G
@@ -319,8 +350,9 @@ if multinomial
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform
     priors.SigmaPhi = 1e1*eye(dim.n_phi);
     % Inputs
-    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+    u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; trialsToFit];
     u = [zeros(size(u,1),1) u(:,1:end-1)];
+    options.inG.rts = round(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)';
     % Observation function
     switch model
         case 'kalman_logistic'
@@ -351,6 +383,7 @@ else
     % Inputs
     u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'; prev_rt];
     u = [zeros(size(u,1),1) u(:,1:end-1)];
+    
     % Observation function
     g_name = @g_sceptic_continuous;
     
@@ -399,5 +432,5 @@ if saveresults
     %% save output figure
     % h = figure(1);
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation), 'posterior', 'out');
 end
