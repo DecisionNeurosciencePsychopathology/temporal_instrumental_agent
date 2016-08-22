@@ -19,6 +19,14 @@ end
 %breaknew uses the h_sceptic code, but tweaks the top piece to match 
 
 addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
+
+%multisession constrain 0125 is now in the second position
+%try it compared to other good contstrained models
+%VBA_groupBMC(energy(:,[1:5])') %.0125, .0125 multisession, .025
+VBA_groupBMC(energy(:,[1 2 10 11 12])') %.0125, .0125 multisession, .025
+VBA_groupBMC(energy(:,[2 10])') %.0125, .0125 multisession
+
+
 VBA_groupBMC(energy')
 VBA_groupBMC(energy(:,[1 2])') %.0125 versus .025
 VBA_groupBMC(energy(:,[2 3])') %.025 versus .03

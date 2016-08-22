@@ -43,7 +43,7 @@ if multisession %improves fits moderately
         options.multisession.fixed.theta = 'all';
         options.multisession.fixed.phi = 'all';
         % allow unique initial values for each run?
-        % options.multisession.fixed.X0 = 'all';
+        options.multisession.fixed.X0 = [1 3 4 5 7 8 9 10]; %don't fix V (element 2) across runs (only for full model at the moment)
     end
 end
 
@@ -176,6 +176,28 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon')
         1.01, ... %b_slow
         mean(rts)/rtrescale, ... %initial RTlocavg
         0]; %sign of exploration influence
+elseif strcmpi(model, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
+    n_states = 11;
+    n_theta = 3; %alphaG, alphaN, and decay
+    n_phi = 4; %K, Lambda, Rho, Epsilon
+    
+    priors.muTheta = [0, 0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
+    priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero. all three pars are 0..1 inverse logit
+
+    priors.muPhi = [0, 0, 0, 0]; %K, Lambda, Rho, Epsilon
+    priors.SigmaPhi = diag([1, 15, 1, 1]); %1 is for fastnormcdf pars; 15 is for 0..1 inverse logit
+    
+    priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
+        0, ... %V (value)
+        0, ... %Go
+        0, ... %NoGo
+        1.01, ... %a_fast (initial beta distribution hyperparameters)
+        1.01, ... %b_fast
+        1.01, ... %a_slow
+        1.01, ... %b_slow
+        mean(rts)/rtrescale, ... %initial RTlocavg
+        0, ... %sign of exploration influence
+	0 ]; %sticky scalar
 end
 
 dim = struct('n',n_states,'n_theta',n_theta,'n_phi',n_phi, 'n_t', n_t);
@@ -198,9 +220,10 @@ options.inF.priors = priors; %copy priors into inF for parameter transformation
 options.inF.RTrescale = rtrescale; %scale bestRT hidden state into seconds (for similarity across hidden states)
 options.inG.maxNu = 10; %maximum nu for go for gold (tends to be between 0 and 1, though)
 options.inG.rhoMultiply = 400; %leads to a max rho around 10000
-options.inG.epsilonMultiply = 1600; %for gamma-based epsilons: leads to a max epsilon around 58000
+%options.inG.epsilonMultiply = 1600; %for gamma-based epsilons: leads to a max epsilon around 58000
 options.inG.maxEpsilon = 10000; %for uniform epsilon: the max of the inverse Gaussian -> Uniform transformation
 options.inG.expEpsilonMean = 1000; %for Gaussian -> exponential transformed version of Epsilon. Exponential mean of 1000 yields range 0..~10000
+options.inG.epsilonMultiply = 1200; %for Gaussian epsilon allowing for negative epsilons
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 options.inG.maxRT = 4000; %maximum possible RT (used for uniform distribution)
 options.inG.meanRT = mean(rts);
@@ -250,13 +273,25 @@ tic;
 elapsed=toc;
 fprintf('Model converged in %.2f seconds\n', elapsed);
 
-if ~isempty(regexp(model, 'K_', 'once')), posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT); end
-if ~isempty(regexp(model, '_Lambda', 'once')), posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); end
-if ~isempty(regexp(model, '_Nu', 'once')), posterior.transformed.nu = options.inG.maxNu / (1+exp(-posterior.muPhi(3))); end
-if ~isempty(regexp(model, '_AlphaG', 'once')), posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1))); end
-if ~isempty(regexp(model, '_AlphaN', 'once')), posterior.transformed.alphaN = options.inF.maxAlpha / (1+exp(-posterior.muTheta(2))); end
-if ~isempty(regexp(model, '_Rho', 'once')), posterior.transformed.rho = options.inG.rhoMultiply * gaminv(fastnormcdf(posterior.muPhi(4)), 2, 2); end
-if ~isempty(regexp(model, '_Epsilon', 'once')),posterior.transformed.epsilon = unifinv(fastnormcdf(posterior.muPhi(5)), 0, options.inG.maxEpsilon); end
+if strcmpi(model, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
+    posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT);
+    posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); %in the sticky model, this scales lambda*sticky(t)
+    posterior.transformed.rho = options.inG.rhoMultiply * gaminv(fastnormcdf(posterior.muPhi(3)), 2, 2);
+    posterior.transformed.epsilon = options.inG.epsilonMultiply * posterior.muPhi(4);
+    posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1)));
+    posterior.transformed.alphaN = options.inF.maxAlpha / (1+exp(-posterior.muTheta(2)));
+    posterior.transformed.decay = 1 / (1+exp(-posterior.muTheta(3)));
+else
+    if ~isempty(regexp(model, 'K_', 'once')), posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT); end
+    if ~isempty(regexp(model, '_Lambda', 'once')), posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); end
+    if ~isempty(regexp(model, '_Nu', 'once')), posterior.transformed.nu = options.inG.maxNu / (1+exp(-posterior.muPhi(3))); end
+    if ~isempty(regexp(model, '_AlphaG', 'once')), posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1))); end
+    if ~isempty(regexp(model, '_AlphaN', 'once')), posterior.transformed.alphaN = options.inF.maxAlpha / (1+exp(-posterior.muTheta(2))); end
+    if ~isempty(regexp(model, '_Rho', 'once')), posterior.transformed.rho = options.inG.rhoMultiply * gaminv(fastnormcdf(posterior.muPhi(4)), 2, 2); end
+    %if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = unifinv(fastnormcdf(posterior.muPhi(5)), 0, options.inG.maxEpsilon); end %uniform variant
+    if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = expinv(fastnormcdf(posterior.muPhi(5)), options.inG.expEpsilonMean); end %exponential variant
+    %if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = options.inG.epsilonMultiply * posterior.muPhi(5); end %+/- Gaussian variant
+end
 
 %% save output figure
 %if (showfig==1)

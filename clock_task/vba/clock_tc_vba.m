@@ -127,7 +127,9 @@ options.inF.priors = priors; %copy priors into inF for parameter transformation
 options.inF.RTrescale = rtrescale; %scale bestRT hidden state into seconds (for similarity across hidden states)
 options.inG.maxNu = 10; %maximum nu for go for gold (tends to be between 0 and 1, though)
 options.inG.rhoMultiply = 400; %leads to a max rho around 10000
-options.inG.epsilonMultiply = 1600; %leads to a max epsilon around 58000
+%options.inG.epsilonMultiply = 1600; %For gamma distribution: leads to a max epsilon around 58000
+options.inG.epsilonMultiply = 1200; %For Gaussian distribution. Using this to keep the priors standard normal (rather than having big variance differences)
+
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 options.inG.maxRT = 4000; %maximum possible RT (used for uniform distribution)
 options.inG.meanRT = mean(rts);

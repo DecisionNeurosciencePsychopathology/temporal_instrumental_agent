@@ -90,10 +90,9 @@ if multisession %improves fits moderately
     if fixed_params_across_runs
         options.multisession.fixed.theta = 'all';
         options.multisession.fixed.phi = 'all';
-        % allow unique initial values for each run?x
+        % allow unique initial values for each run?
         options.multisession.fixed.X0 = 'all';
     end
-    
 end
 
 h_name = @h_sceptic_fixed_decay_fmri;

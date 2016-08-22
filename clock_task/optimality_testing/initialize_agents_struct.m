@@ -8,10 +8,10 @@ clear a;
 % revert to single struct and use fieldnames.
 
 prop_spread_init=.10;           %tends to be pretty reasonable default for temporal generalization
-beta_init=.1;                   %default for temperature parameter.
-lr_bounds=[.001 1];             %min/max values for all fixed learning rate parameters
-prop_spread_bounds=[.01, .5];  %min/max values for prop_spread (gaussian temporal generalization)
-beta_bounds=[.001, 2];
+beta_init=1;                    %default for temperature parameter.
+lr_bounds=[.001 .99];           %min/max values for all fixed learning rate parameters
+prop_spread_bounds=[.005, .2];  %min/max values for prop_spread (gaussian temporal generalization)
+beta_bounds=[.001, 20];
 omega_bounds=[0 100];
 kl_bounds=[0 5];
 

@@ -13,6 +13,7 @@ function  [fx] = clock_tc_components_evolution(hidden, theta, u, inF)
 %       (8)  b_slow (beta parameter governing beta distribution for slow RTs)
 %       (9)  RTlocavg (local average/"learned" RT)
 %       (10) expsign (+1/-1 scalar indicating whether uncertainty-driven exploration speeds or slows RT
+%       (last) sticky (sticky choice influence that evolves as a function of weighted RT history) [optional]
 %
 %   - theta (evolution parameters) : 
 %       (1) alphaG (lr for positive PEs)
@@ -33,7 +34,8 @@ function  [fx] = clock_tc_components_evolution(hidden, theta, u, inF)
 %initialize dummy variables (overridden if model uses them)
 V = 0; reward = 0; rew_max = 0; rew_std = 0; bestRT = 0; Go = 0; NoGo = 0; alphaG = 0; alphaN = 0;
 
-if ~isempty(regexp(inF.tcvariant, '_Nu', 'once'))
+%bit of a hack for sticky model (doesn't actually track bestRT, but don't want to rework the whole hidden vector)
+if ~isempty(regexp(inF.tcvariant, '_Nu', 'once')) || strcmpi(inF.tcvariant, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
     bestRT = hidden(1)*inF.RTrescale;
     V = hidden(2);
 end
@@ -58,7 +60,7 @@ if ~isempty(regexp(inF.tcvariant, '_Rho|_Epsilon', 'once'))
 end
 
 if ~isempty(u), RT = u(1); end 
-%RT_prev is u(2); used in observation function
+if length(u) > 1, RT_prev = u(2); end
 if length(u) > 2, reward = u(3); end
 if length(u) > 3, rew_max = u(4); end
 if length(u) > 4, rew_std = u(5); end
@@ -105,7 +107,7 @@ if ~isempty(regexp(inF.tcvariant, '_Epsilon|_Rho', 'once'))
 end
 
 fx = []; 
-if ~isempty(regexp(inF.tcvariant, '_Nu', 'once'))
+if ~isempty(regexp(inF.tcvariant, '_Nu', 'once')) || strcmpi(inF.tcvariant, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
     fx = [fx; bestRT_new/inF.RTrescale; V_new];
 end
 
@@ -119,4 +121,13 @@ end
 
 if ~isempty(regexp(inF.tcvariant, '_Rho|_Epsilon', 'once'))
     fx = [fx; a_fast_new; b_fast_new; a_slow_new; b_slow_new; RTlocavg_new/inF.RTrescale; expsign_new];
+end
+
+%sticky is always glued on the end for now
+if ~isempty(regexp(inF.tcvariant, '_Sticky', 'once'))
+  sticky = hidden(length(hidden));
+  decay = 1 ./ (1+exp(-theta(3))); %exponential transform to 0..1
+  sticky_new = RT_prev + decay * sticky;
+
+  fx = [fx; sticky_new]; %always tacked on end
 end

@@ -13,6 +13,7 @@ function  [ gx ] = clock_tc_components_observation(hidden,phi,u,inG)
 %       (8)  b_slow (beta parameter governing beta distribution for slow RTs)
 %       (9)  RTlocavg (local average/"learned" RT)
 %       (10) expsign (+1/-1 scalar indicating whether uncertainty-driven exploration speeds or slows RT
+%       (last) sticky (sticky choice influence that evolves as a function of weighted RT history) [optional]
 %
 %   - phi : observation parameters
 %       (1) K (intercept)
@@ -43,7 +44,6 @@ if length(u) > 1, RT_prev = u(2); end
 %if length(u) > 3, rew_max = u(4); end
 %if length(u) > 4, rew_std = u(5); end
 
-
 %pull out hidden states
 if ~isempty(regexp(inG.tcvariant, '_Nu', 'once'))
     bestRT = hidden(1)*inG.RTrescale;
@@ -68,17 +68,30 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
 end
 
 gx = 0; %empty predicted RT
+phipos = 1; %current position within phi vector
 
 %handle K + lambda
 if ~isempty(regexp(inG.tcvariant, 'K_', 'once'))
-    K = unifinv(fastnormcdf(phi(1)), 0, inG.maxRT);
-    %K = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(1), 'linear'), 0, inG.maxRT);
+    K = unifinv(fastnormcdf(phi(phipos)), 0, inG.maxRT);
     gx = gx + K;
+    phipos = phipos + 1;
+end
+
+if ~isempty(regexp(inG.tcvariant, '_Sticky', 'once'))
+  %sticky choice is a function of two 0..1 distributed parameters
+  %lambda and decay: lambda * sticky(t). sticky(t) = RT(t-1) + d*sticky(t-1)
+  lambda = 1 ./ (1+exp(-phi(phipos))); %exponential transform to 0..1
+
+  %sticky should be the last hidden state
+  sticky = hidden(length(hidden));
+  gx = gx + lambda * sticky;
+  phipos = phipos + 1;
 end
 
 if ~isempty(regexp(inG.tcvariant, '_Lambda', 'once'))
-    lambda = 1 ./ (1+exp(-phi(2))); %exponential transform to 0..1
+    lambda = 1 ./ (1+exp(-phi(phipos))); %exponential transform to 0..1
     gx = gx + lambda*RT_prev;
+    phipos = phipos + 1;
 end
 
 if ~isempty(regexp(inG.tcvariant, '_AlphaG', 'once'))
@@ -92,8 +105,9 @@ end
 if ~isempty(regexp(inG.tcvariant, '_Nu', 'once'))
     %need overall average RT for the block for "Go for the gold"
     meanRT = inG.meanRT;
-    nu = inG.maxNu ./ (1+exp(-phi(3))); %exponential transform to 0..100
+    nu = inG.maxNu ./ (1+exp(-phi(phipos))); %exponential transform to 0..100
     gx = gx + nu*(bestRT - meanRT);
+    phipos = phipos + 1;
 end
 
 if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
@@ -124,7 +138,6 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
         %at probability .999, gamma is ~18, so need to multiply by about 400 to achieve 0..10000 scaling
         %rho = inG.rhoMultiply * gaminv(normcdf(phi(4), inG.priors.muPhi(4), inG.priors.SigmaPhi(4,4)), 2, 2);
         rho = inG.rhoMultiply * gaminv(fastnormcdf(phi(4)), 2, 2); %use precompiled std norm cdf code for speed
-        %rho = inG.rhoMultiply * gaminv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(4), 'linear'), 2, 2);
 
         gx = gx + rho*(mean_slow - mean_fast);
     end
@@ -133,21 +146,22 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
         %need a long-tailed gamma approximation? or just allow it to be negative and estimate accordingly?
         %for now, keep a non-negative number (otherwise need to implement sticky choice)
         
-        %epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 2, 2);
+        %epsilon = inG.epsilonMultiply * gaminv(cdf('Normal', phi(phipos), inG.priors.muPhi(phipos), inG.priors.SigmaPhi(phipos,phipos)), 2, 2);
         
         %uniform 0..X variant
         %version allowing for mean and variance
-        %epsilon = unifinv(normcdf(phi(5), inG.priors.muPhi(5), inG.priors.SigmaPhi(5,5)), 0, inG.maxEpsilon);
+        %epsilon = unifinv(normcdf(phi(phipos), inG.priors.muPhi(phipos), inG.priors.SigmaPhi(phipos,phipos)), 0, inG.maxEpsilon);
         
         %standard normal -> uniform variant (faster since it uses compiled code)
-        epsilon = unifinv(fastnormcdf(phi(5)), 0, inG.maxEpsilon);
+        %epsilon = unifinv(fastnormcdf(phi(phipos)), 0, inG.maxEpsilon);
         
-        %for failed interpolation version (slower)
-        %epsilon = unifinv(interpn(inG.stdnormgrid, inG.stdnormcdf, phi(5), 'linear'), 0, inG.maxEpsilon);
-
         %try exponential distribution approach with mean of 1000 to yield a 0..~10000 distribution
-        %epsilon = expinv(fastnormcdf(phi(5)), inG.expEpsilonMean)
-        
+        epsilon = expinv(fastnormcdf(phi(phipos)), inG.expEpsilonMean);
+
+        %gaussian epsilon, allowing for negative (uncertainty averse)
+        %epsilon = phi(phipos)*inG.epsilonMultiply;
+        phipos = phipos + 1;
+
         gx = gx + epsilon*explore;
     end
 end

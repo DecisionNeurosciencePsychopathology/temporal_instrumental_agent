@@ -14,7 +14,7 @@ group_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_tas
 %% set parameters
 nbasis = 16; %16 basis functions total
 multinomial = 1;
-multisession = 0; %tend to get better fits for non-multisession
+multisession = 1; %tend to get better fits for non-multisession
 fixed_params_across_runs = 1;
 fit_propspread = 0;
 n_steps = 40;
