@@ -11,7 +11,6 @@ function [cost, RTpred, ret]=TC_Alg_forward(params, priors, cond, rngseeds, ntri
 %
 %
 % params is an 7 x 1 column vector of model parameters to be used to fit behavior.
-%
 
 if nargin < 4, rngseeds=31; end
 if nargin < 5, ntrials=50; end
@@ -21,11 +20,20 @@ if nargin < 6, rtbounds=[0 5000]; end
 
 global rew_rng_state;
 
-%initialize states for two repeatable random number generators using different seeds
-rew_rng_seed=rngseeds(1);
+if rngseeds == -1
+    userngseed = 0; %truly random draws
+else
+    %initialize state for a repeatable random number generators using different seeds (used by RewFunction)
+    rew_rng_seed=rngseeds(1);
+    
+    rng(rew_rng_seed);
+    rew_rng_state=rng;
+    userngseed = 1;
+end
 
-rng(rew_rng_seed);
-rew_rng_state=rng;
+%defaults for FirstRT and AvgRT if not set in priors
+if ~isfield(priors, 'FirstRT'), priors.FirstRT = sum(rtbounds)/2; end %midpoint
+if ~isfield(priors, 'AvgRT'), priors.AvgRT = sum(rtbounds)/2; end %midpoint
 
 RTpred = NaN(ntrials, 1); %vector of predicted RTs
 Reward = NaN(ntrials, 1); %vector of obtained rewards
@@ -41,12 +49,13 @@ if isstruct(cond)
     usestruct=1;
 end
 
-RTpred(1) = 2500; %start in middle
+RTpred(1) = priors.FirstRT; %typically start in middle
 
+%obtain first outcome
 if usestruct
     [Reward(1), ev(1), cstruct] = getNextRew(round(RTpred(1)/10)+1, cstruct);
 else
-    [Reward(1), ev(1)] = RewFunction(RTpred(1), cond);
+    [Reward(1), ev(1)] = RewFunction(RTpred(1), cond, userngseed);
 end
 
 V(1) = priors.V; %initialize expected value for first trial to prior (possibly from previous run)
@@ -58,16 +67,16 @@ NoGo(1) = priors.NoGo; %initialize NoGo for first trial
 
     %NOEMO params 8 x 1 <numeric>
     %    ,1:  lambda           #weight for previous trial RT (autocorrelation of RT_t with RT_t-1)
-    %    ,2:  explore          #epsilon parameter: how much should RT be modulated by greater relative uncertainty
+    %    ,2:  epsilon          #epsilon parameter: how much should RT be modulated by greater relative uncertainty
     %                              about fast vs. slow responses
     %    ,3:  alphaG           #learning rate for positive prediction errors (approach)
     %    ,4:  alphaN           #learning rate for negative prediction errors (avoid)
     %    ,5:  K                #baseline response speed (person mean RT?)
     %    ,6:  scale            #nu: going for the gold (modulating RT toward highest payoff)
-    %    ,7:  meandiff         #rho parameter: weight for expected reward of fast versus slow
+    %    ,7:  rho         #rho parameter: weight for expected reward of fast versus slow
 
     lambda = params(1);
-    explore = params(2);
+    epsilon = params(2);
     alphaG =  params(3);
     alphaN = params(4);
     alphaV =  0.1; % just set this to avoid degeneracy
@@ -75,23 +84,23 @@ NoGo(1) = priors.NoGo; %initialize NoGo for first trial
     scale = params(6);
     sticky_decay = -1; %not relevant
     decay = 1;  % decay counts for beta distribution 1= nodecay
-    meandiff = params(7);
+    rho = params(7);
     
 
     %STICKY MODEL -- OMITTING FOR NOW
     %NOEMOSTICKY params 8 x 1 <numeric>
     %    ,1:  lambda           #weight for sticky choice (weight influencing prior RTs' effect on
     %                              current RT. This is a decaying function of RT history; see sticky_decay)
-    %    ,2:  explore          #epsilon parameter: how much should RT be modulated by greater relative uncertainty
+    %    ,2:  epsilon          #epsilon parameter: how much should RT be modulated by greater relative uncertainty
     %                              about fast vs. slow responses
     %    ,3:  alphaG           #learning rate for positive prediction errors (approach)
     %    ,4:  alphaN           #learning rate for negative prediction errors (avoid)
     %    ,5:  K                #baseline response speed (person mean RT?)
     %    ,6:  sticky_decay          #d: decay parameter influencing the degree to which prior RTs continue to affect current RTs
-    %    ,7:  meandiff         #rho parameter: weight for expected reward of fast versus slow
+    %    ,7:  rho         #rho parameter: weight for expected reward of fast versus slow
 
 %     lambda = params(1);
-%     explore = params(2);
+%     epsilon = params(2);
 %     alphaG =  params(3);
 %     alphaN = params(4);
 %     alphaV =  0.1; % just set this to avoid degeneracy
@@ -99,23 +108,21 @@ NoGo(1) = priors.NoGo; %initialize NoGo for first trial
 %     scale = -1; %going for the gold not relevant for sticky choice
 %     sticky_decay = params(6);
 %     decay = 1;  % decay counts for beta distribution 1= nodecay
-%     meandiff = params(7);
+%     rho = params(7);
 
 %vary params 
 
 Noise=0;
 
-dist_type = 'beta';
-
 %initialize algorithm parameters
 exp=0;
-exp1=0;
+explore=0;
 mean_short = 0.5;
 mean_long = 0.5;
 RT_locavg = RTpred(1); % set local/learned avg on first trial..
 
-alph_long=1.01; b_long=1.01; % init counters and beta distribution hyperparams..
-alph_short=1.01; b_short=1.01;
+alph_long=1.01; beta_long=1.01; % init counters and beta distribution hyperparams..
+alpha_short=1.01; beta_short=1.01;
 
 sticky      = 0;        % initialize sticky choice
 
@@ -131,8 +138,8 @@ else
 end
 bestRT      = RTpred(1);   % just for init
 
-var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
-var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
+var_short = alpha_short*beta_short/(((alpha_short+beta_short)^2)*(alpha_short+beta_short+1));
+var_long = alph_long*beta_long/(((alph_long+beta_long)^2)*(alph_long+beta_long+1));
 
 %initialize return values for PEs, mean for short and long, etc.
 ret.rtpred = NaN(ntrials, 1);
@@ -149,12 +156,12 @@ ret.cond = cond; %add contingency to return values
 
 %iterate over trial 2..n
 for i = 2:ntrials
-    exp1_last = exp1;
+    explore_last = explore;
     means_last = mean_short;
     meanl_last = mean_long;
     vars_last = var_short;
     varl_last = var_long;
-    goldlast = scale*(bestRT-2500); %just use midpoint %scale*(bestRT-RT_locavg);
+    goldlast = scale*(bestRT - priors.AvgRT); %just use midpoint %scale*(bestRT-RT_avg);
     bestRT_last=bestRT;
     %avg_RT_last = avg_RT;
     
@@ -187,23 +194,23 @@ for i = 2:ntrials
         if(Reward(i-1)> V(i-1))
             alph_long = alph_long +1; % increment count for beta distribution
         else
-            b_long = b_long+1;
+            beta_long = beta_long+1;
         end
         
         alph_long=decay*alph_long; % if decay <1 then this decays counts, making beta dists less confident
-        b_long=decay*b_long;
-        alph_short=decay*alph_short;
-        b_short=decay*b_short;
+        beta_long=decay*beta_long;
+        alpha_short=decay*alpha_short;
+        beta_short=decay*beta_short;
         
         % these are mode and variances of beta dists
-        var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
-        var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
-        mode_long = (alph_long -1) / (alph_long + b_long -2);
-        mode_short = (alph_short -1) / (alph_short + b_short -2);
-        mean_long = (alph_long) / (alph_long + b_long);
-        mean_short = (alph_short) / (alph_short + b_short);
+        var_short = alpha_short*beta_short/(((alpha_short+beta_short)^2)*(alpha_short+beta_short+1));
+        var_long = alph_long*beta_long/(((alph_long+beta_long)^2)*(alph_long+beta_long+1));
+        mode_long = (alph_long -1) / (alph_long + beta_long -2);
+        mode_short = (alpha_short -1) / (alpha_short + beta_short -2);
+        mean_long = (alph_long) / (alph_long + beta_long);
+        mean_short = (alpha_short) / (alpha_short + beta_short);
         
-        exp1 = - explore*(sqrt(var_short) - sqrt(var_long));  % speed up if more uncertain about fast responses
+        explore = - epsilon*(sqrt(var_short) - sqrt(var_long));  % speed up if more uncertain about fast responses
         
     elseif (RTpred(i-1)<= RT_locavg)  % last resp was fast/short
         
@@ -212,24 +219,24 @@ for i = 2:ntrials
         if(RTpred(i-1) > 0)
             
             if(Reward(i-1)> V(i-1))
-                alph_short = alph_short +1;
+                alpha_short = alpha_short +1;
             else
-                b_short = b_short +1;
+                beta_short = beta_short +1;
             end
             alph_long=decay*alph_long;
-            b_long=decay*b_long;
-            alph_short=decay*alph_short;
-            b_short=decay*b_short;
+            beta_long=decay*beta_long;
+            alpha_short=decay*alpha_short;
+            beta_short=decay*beta_short;
             
             % mode and variances of beta distribution
-            var_short = alph_short*b_short/(((alph_short+b_short)^2)*(alph_short+b_short+1));
-            var_long = alph_long*b_long/(((alph_long+b_long)^2)*(alph_long+b_long+1));
-            mode_long = (alph_long -1) / (alph_long + b_long -2);
-            mode_short = (alph_short -1) / (alph_short + b_short -2);
-            mean_long = (alph_long) / (alph_long + b_long);
-            mean_short = (alph_short) / (alph_short + b_short);
+            var_short = alpha_short*beta_short/(((alpha_short+beta_short)^2)*(alpha_short+beta_short+1));
+            var_long = alph_long*beta_long/(((alph_long+beta_long)^2)*(alph_long+beta_long+1));
+            mode_long = (alph_long -1) / (alph_long + beta_long -2);
+            mode_short = (alpha_short -1) / (alpha_short + beta_short -2);
+            mean_long = (alph_long) / (alph_long + beta_long);
+            mean_short = (alpha_short) / (alpha_short + beta_short);
             
-            exp1 = + explore*(sqrt(var_long) - sqrt(var_short));
+            explore = + epsilon*(sqrt(var_long) - sqrt(var_short));
             
         end;
     end;
@@ -237,10 +244,10 @@ for i = 2:ntrials
     % reset if already explored in this direction last trial
     % (see supplement of Frank et al 09)
     if i > 2
-        if RTpred(i-1) < RTpred(i-2) && exp1 < 0
-            exp1 = 0;
-        elseif RTpred(i-1) > RTpred(i-2) && exp1 > 0
-            exp1=0;
+        if RTpred(i-1) < RTpred(i-2) && explore < 0
+            explore = 0;
+        elseif RTpred(i-1) > RTpred(i-2) && explore > 0
+            explore=0;
         end
     end
     
@@ -252,11 +259,11 @@ for i = 2:ntrials
     if scale == -1
         %sticky model: scale effect of prior RTs (decayed) on current RT by lambda
         %model does not include going for the gold (scale) update.
-        RTpred(i) = K + lambda*sticky - Go(i) + NoGo(i)  +exp1 ...
-            + meandiff*(mean_long-mean_short) + Noise*(rand-0.5);
+        RTpred(i) = K + lambda*sticky - Go(i) + NoGo(i) + explore ...
+            + rho*(mean_long-mean_short) + Noise*(rand-0.5);
     else
-        RTpred(i) = K + lambda*RTpred(i-1) - Go(i) + NoGo(i)  +exp1 ...
-            + meandiff*(mean_long-mean_short) + scale*(bestRT-2500) + Noise*(rand-0.5); %scale*(bestRT-RT_locavg)
+        RTpred(i) = K + lambda*RTpred(i-1) - Go(i) + NoGo(i) + explore ...
+            + rho*(mean_long-mean_short) + scale*(bestRT - priors.AvgRT) + Noise*(rand-0.5);
     end
        
     %make sure agent doesn't sample outside of valid interval
@@ -277,12 +284,12 @@ for i = 2:ntrials
     if usestruct
         [Reward(i), ev(i), cstruct] = getNextRew(rtdiv, cstruct);
     else
-        [Reward(i), ev(i)] = RewFunction(RTpred(i), cond);
+        [Reward(i), ev(i)] = RewFunction(RTpred(i), cond, userngseed);
     end
     
     ret.rew(i-1) = Reward(i-1);             %rewards
     ret.rpe(i-1) = Reward(i-1) - V(i-1);    %prediction error
-    ret.explore(i-1) = exp1_last;           %explore product: epsilon * (sd diff [slow - fast])
+    ret.explore(i-1) = explore_last;           %explore product: epsilon * (sd diff [slow - fast])
     ret.sdShort(i-1) = sqrt(vars_last);     %sd of short RT
     ret.sdLong(i-1) = sqrt(varl_last);      %sd of long RT
     ret.meanShort(i-1) = means_last;        %mean of short RT
@@ -290,7 +297,7 @@ for i = 2:ntrials
     ret.go(i-1) = Go(i-1);                  %mean of Gos
     ret.noGo(i-1) = NoGo(i-1);              %mean of NoGos
     ret.V(i-1) = V(i-1);                    %expected value
-    ret.rho(i-1) = meandiff*(meanl_last - means_last);           %shift based on mean difference between fast and slow
+    ret.rho(i-1) = rho*(meanl_last - means_last);           %shift based on mean difference between fast and slow
     ret.gold(i-1) = goldlast;
     ret.bestRT(i-1) = bestRT_last;
     %ret.avg_RT(i-1) = avg_RT_last;
@@ -299,7 +306,7 @@ for i = 2:ntrials
         %If this is the last trial, add return values for last trial
         ret.rew(i) = Reward(i);             %rewards
         ret.rpe(i) = Reward(i) - V(i);     %prediction error
-        ret.explore(i) = exp1;                  %explore product: epsilon * (sd diff [slow - fast])
+        ret.explore(i) = explore;                  %explore product: epsilon * (sd diff [slow - fast])
         ret.sdShort(i) = sqrt(var_short);       %sd of short RT
         ret.sdLong(i) = sqrt(var_long);         %sd of long RT
         ret.meanShort(i) = mean_short;          %mean of short RT
@@ -307,7 +314,7 @@ for i = 2:ntrials
         ret.go(i) = Go(i);                     %mean of Gos
         ret.noGo(i) = NoGo(i);                 %mean of NoGos
         ret.V(i) = V(i);                       %expected value
-        ret.rho(i) = meandiff*(mean_long - mean_short);
+        ret.rho(i) = rho*(mean_long - mean_short);
         ret.gold(i) = scale*(bestRT-RT_locavg);
         ret.bestRT(i) = bestRT;
         %ret.avg_RT(i) = avg_RT;

@@ -89,14 +89,54 @@ if strcmpi(whichopt, 'typical')
     end
 
     %concatenate optmat to obtain an ALL condition
-    %allcond = horzcat(optmat{:});
-    %optmat{length(optmat) + 1} = allcond;
-    %condnames{length(condnames) + 1} = 'ALL';
-    %ncond = ncond + 1; %add all condition
+    allcond = horzcat(optmat{:});
+    optmat{length(optmat) + 1} = allcond;
+    condnames{length(condnames) + 1} = 'ALL';
+    ncond = ncond + 1; %add all condition
 
     %optmat is now a cell vector where each element is an vector of structs for the lookups to be used for each run.
     %the final element contains all of the preceding conditions. For the five contingencies and 10 runs, this amounts
     %to a 58MB object that would need to be passed along to parpool workers.
+elseif strcmpi(whichopt, 'allequate')
+    %Aug2016: four core contingencies (IEV, DEV, CEV, CEVR) with equal EV AUCs (to weigh equally in optimization)
+    fprintf('Optimizing parameters for all four Frank contingencies with equal EV AUC\n');
+    load('mastersamp_equateauc.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
+    condnames={'IEV', 'DEV', 'CEV', 'CEVR'}; %by default, optimize over all contingencies in lookup
+    ncond=length(condnames); %how many conditions/contingencies
+
+    %truncate mastersamp_equateauc to the number of trials used here to save RAM
+    for i = 1:length(condnames)
+        mastersamp_equateauc.(condnames{i}).lookup = mastersamp_equateauc.(condnames{i}).lookup(:,1:ntrials);
+    end
+
+    %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
+    %handle permutation outside of optimization for speed
+    optmat = cell(length(condnames),1);
+    for i = 1:ncond
+        clear row; %need variable to be deleted for array of structs below to work
+        for j = 1:runspercond
+            tmp = mastersamp_equateauc.(condnames{i});
+            tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
+            tmp.lookup = tmp.lookup(1:ntimesteps, randperm(size(tmp.lookup,2))); %randomly permute columns
+            tmp.ev = tmp.ev(1:ntimesteps);
+            tmp.sample = tmp.sample(1:ntimesteps);
+            %tmp.perm = randperm(size(tmp.lookup,2)); %just for checking that this works
+            %tmp.lookup = tmp.lookup(:, tmp.perm); %randomly permute columns
+            row(j) = tmp; %add to a vector of structs
+        end
+        optmat{i} = row;
+    end 
+    
+    %concatenate optmat to obtain an ALL condition
+    allcond = horzcat(optmat{:});
+    %optmat{length(optmat) + 1} = allcond;
+    %condnames{length(condnames) + 1} = 'ALL';
+    %ncond = ncond + 1; %add all condition
+
+    optmat = {allcond};
+    condnames = {'ALL'};
+    ncond = 1;
+    
 elseif ismember(whichopt, {'IEV', 'DEV', 'IEVLINPROB', 'DEVLINPROB', 'QUADUP', 'QUADUPOLD', 'QUADDOWN'})
     fprintf('Optimizing parameters using a single contingency %s with %d runs\n', whichopt, runspercond);
     load('mastersamp.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
@@ -211,7 +251,7 @@ for i = 1:nagents
     end
 end
 
-clear mastersamp sinmaster tmp row allcond i j;
+clear mastersamp mastersamp_equateauc sinmaster tmp row allcond i j;
 
 %so, MATLAB requires that for arrays defined outside of loop, but operated on within the parfor,
 %the first-level index must be a variant of the parfor counter (i).

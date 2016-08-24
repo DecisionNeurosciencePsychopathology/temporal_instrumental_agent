@@ -11,7 +11,7 @@
 addpath('../');
 
 ntimesteps = 500; %in 10ms bins (1-5s)
-conds = {'IEV' 'DEV' 'QUADUP' 'QUADUPOLD' 'QUADDOWN', 'IEVLINPROB' 'DEVLINPROB'};
+conds = {'IEV' 'DEV' 'CEV' 'CEVR' 'QUADUP' 'QUADUPOLD' 'QUADDOWN', 'IEVLINPROB' 'DEVLINPROB'};
 ntrials = 500; %number of draws for each RT where each draw becomes a column in the lookup matrix
 
 %set up seeds
@@ -29,7 +29,7 @@ for i = 1:length(conds)
     
     for j = 1:ntimesteps
         [~, mastersamp.(conds{i}).ev(j), mastersamp.(conds{i}).prb(j), mastersamp.(conds{i}).mag(j)] = RewFunction(j*10, conds{i}, 0, 5000);
-        for k = 1:ntrials
+        for k = 1:ntrials %draw random samples
             [mastersamp.(conds{i}).lookup(j,k)] = RewFunction(j*10, conds{i}, 0, 5000);
         end
     end
@@ -37,6 +37,28 @@ for i = 1:length(conds)
     %parsave(['mastersamp_' conds{i} '.mat'], mastersamp);
 end
 save('mastersamp.mat', 'mastersamp');
+
+%renormalize Frank contingencies to have identical EV to weight equally in optimization
+%just use the 4 core IEV, DEV, CEV, CEVR for now
+%use IEV as the reference and rescale magnitudes
+
+mastersamp_equateauc = mastersamp;
+conds_to_normalize = fieldnames(mastersamp_equateauc);
+iev_ev_auc = sum(mastersamp_equateauc.IEV.ev);
+for i = 1:length(conds_to_normalize)
+   cond_ev_auc = sum(mastersamp_equateauc.(conds_to_normalize{i}).ev);
+   renorm = iev_ev_auc/cond_ev_auc;
+   %multiply draws by renormalization constant
+   mastersamp_equateauc.(conds_to_normalize{i}).ev = mastersamp_equateauc.(conds_to_normalize{i}).ev * renorm;
+   mastersamp_equateauc.(conds_to_normalize{i}).mag = mastersamp_equateauc.(conds_to_normalize{i}).mag * renorm;
+   mastersamp_equateauc.(conds_to_normalize{i}).lookup = mastersamp_equateauc.(conds_to_normalize{i}).lookup * renorm;
+end
+
+%plot(mastersamp.DEV.mag.*mastersamp_equateauc.DEV.prb)
+%xx1 = mastersamp.DEV.mag.*mastersamp_equateauc.DEV.prb;
+%xx2 = mastersamp_equateauc.DEV.mag.*mastersamp_equateauc.DEV.prb;
+
+save('mastersamp_equateauc.mat', 'mastersamp_equateauc');
 
 %New approach: generate variants of time-varying contingencies that do not prefer sampling at the edge.
 %Use sinusoidal functions to generate a continuous contingency that can be shifted in time to maintain a constant EV AUC (identical costs)

@@ -4,9 +4,12 @@ function [totcost, costs, seeds] = multirun_TC_alg_forward(params, agent, runarr
     
     rtbounds=[0 5000]; %RT space for testing
     costs=NaN(nruns, 1);
-    priors.V = 0; %don't give agent any insight into previous values (no SCEPTIC receives this boost)
+    priors.V = 0; %don't give agent any insight into previous values (no SCEPTIC receives this boost) -- Note this is a departure from Frank
     priors.Go = 0;
     priors.NoGo = 0;
+    %priors.AvgRT = 2500; %defaults set downstream in TC_Alg_forward
+    %priors.FirstRT = 2000;
+    
     %execute runs in parallel
     for i = 1:nruns
         thiscall = {params, priors, runarray(i), runarray(i).seeds, agent.ntrials, rtbounds};
