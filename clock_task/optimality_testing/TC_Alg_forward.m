@@ -110,7 +110,8 @@ NoGo(1) = priors.NoGo; %initialize NoGo for first trial
 %     decay = 1;  % decay counts for beta distribution 1= nodecay
 %     rho = params(7);
 
-%vary params 
+% fprintf('params: k=%.2f; lambda=%.2f; nu=%.2f; alphaG=%.2f; alphaN=%.2f; rho=%.2f; epsilon=%.2f\n', ...
+%     K, lambda, scale, alphaG, alphaN, rho, epsilon);
 
 Noise=0;
 
