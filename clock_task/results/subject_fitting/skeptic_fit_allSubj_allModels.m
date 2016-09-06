@@ -111,9 +111,6 @@ condition = 'IEV';
 rngseeds=[98 83 66 10];
 
 
-
-
-
 %Start loop
 ct=ct+1;
 
@@ -168,10 +165,6 @@ for sub = 1:length(data) %Start with 8 since it died
         %         j = models(i);
         
         
-        if auto_corr_flag
-            a(models(i)).name = [a(models(i)).name '_autocorrelation'];
-        end
-        
         %If subject fitting set data as behav struct
         if strcmpi(test_case,'subj_fitting')
             test_data = behav{sub};
@@ -191,7 +184,6 @@ for sub = 1:length(data) %Start with 8 since it died
             a = initialize_stability_struct(id,test_data,rngseeds,sigma_noise_input);
         end
         
-        
         try
             [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch,...
                 fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).xstart_rmsearch]=...
@@ -199,6 +191,7 @@ for sub = 1:length(data) %Start with 8 since it died
         catch
             fprintf('Subject %d on agent %s broke rmsearch, logging...\n',sub,a(models(i)).name)
             bad_apples{sub,1} = {sub,a(models(i)).name};
+            fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch = [];
             save bad_apples bad_apples
         end
         
