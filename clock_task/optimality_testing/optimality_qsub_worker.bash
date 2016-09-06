@@ -10,7 +10,7 @@
 env
 cd $PBS_O_WORKDIR
 
-module load matlab
+module load matlab/R2014b
 export matlab_cpus which_agent
 
 matlab -nodisplay -r optimize_and_calculate_model_costs
