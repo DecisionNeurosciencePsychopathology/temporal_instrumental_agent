@@ -10,6 +10,10 @@ options(3)=1e-3;     % Relative f-tolerance
 options(14)=100;    % Max. number of f-evaluations per internal
 fargs={};
 
+%Added in auto correlation option
+auto_corr_flag = 1;
+
+
 tic
 fitted_vars = struct;
 % [fittedparameters_1,options]=simps('clock_logistic_operator',[.05 .95 1],[1 2 3],[options],[0.001 0.9 0.01],[0.2 .99 10],fargs{:});
@@ -80,10 +84,11 @@ num_start_pts=25;
 % 17 'fixed_uv'
 % 18 'frank_fixed'
 % 19 'fixed_decay'
+% 20 'fixed_decay_sutocorrelation'
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [19];
+models = [20];
 
 
 % a(models(i)).name = {};
@@ -148,7 +153,7 @@ for sub = 1:length(data) %Start with 8 since it died
         idchars = regexp(fname,'\d');
         behav{sub}.id = fname(idchars);
         id = behav{sub}.id;
-    else 
+    else
         id=sub; %Set id to sub by default
     end
     
@@ -160,16 +165,21 @@ for sub = 1:length(data) %Start with 8 since it died
         %         runs=unique(behav{sub}.data.run);
         %         for run=1:length(runs);
         
-%         j = models(i);
+        %         j = models(i);
         
-    %If subject fitting set data as behav struct
-    if strcmpi(test_case,'subj_fitting')
-        test_data = behav{sub};
-    else
-        test_data_1=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
-        test_data_2=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
-        test_data = [test_data_1; test_data_2];
-    end
+        
+        if auto_corr_flag
+            a(models(i)).name = [a(models(i)).name '_autocorrelation'];
+        end
+        
+        %If subject fitting set data as behav struct
+        if strcmpi(test_case,'subj_fitting')
+            test_data = behav{sub};
+        else
+            test_data_1=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
+            test_data_2=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
+            test_data = [test_data_1; test_data_2];
+        end
         
         
         %% fit the model with a full range of RTs
@@ -183,9 +193,9 @@ for sub = 1:length(data) %Start with 8 since it died
         
         
         try
-        [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch,...
-            fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).xstart_rmsearch]=...
-            rmsearch(a(models(i)).fun, 'fmincon', a(models(i)).init_params, a(models(i)).lower_bounds, a(models(i)).upper_bounds, 'initialsample', num_start_pts, 'options', opts,'plot','off');
+            [fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).fittedparameters_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch,...
+                fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).exitflag_rmsearch, fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).xstart_rmsearch]=...
+                rmsearch(a(models(i)).fun, 'fmincon', a(models(i)).init_params, a(models(i)).lower_bounds, a(models(i)).upper_bounds, 'initialsample', num_start_pts, 'options', opts,'plot','off');
         catch
             fprintf('Subject %d on agent %s broke rmsearch, logging...\n',sub,a(models(i)).name)
             bad_apples{sub,1} = {sub,a(models(i)).name};
