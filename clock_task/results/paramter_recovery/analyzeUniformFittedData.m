@@ -73,6 +73,10 @@ for i = 1:length(model_names)
             %title(p_names{j});
             title({p_names{j}, ['R^2 = ' num2str(R_squared)]});
         end
+        
+        h_1 = lsline;
+        set(h_1(1), 'color',[.75 .75 .75 0.8],'LineWidth',3.5)
+        
         ax2 = subplot(n_params,2,j*2);
         %plot(1:n_subjs,(org_params(:,j)-fitted_params(:,j)),'-o','MarkerSize',3.5,'MarkerFaceColor','b')
         residual=x-y;
