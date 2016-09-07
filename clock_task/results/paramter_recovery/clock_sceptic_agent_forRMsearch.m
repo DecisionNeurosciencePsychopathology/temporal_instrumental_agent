@@ -157,7 +157,7 @@ elseif strcmpi(agent, 'fixed_uv')
     beta = params(2);
     tau = params(3);
     alpha = params(4);          %learning rate for PE+ (0..1)
-elseif strcmpi(agent, 'fixed_decay')
+elseif strcmpi(agent, 'fixed_decay') || strcmpi(agent, 'fixed_decay_autocorrelation')
 %I was taking the values directly from the posterior at this point for
 %plotting
 %     beta = exp(params(2)); %Should be fixed
@@ -318,7 +318,7 @@ for i = 1:ntrials
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
         mu_ij(i+1,:) = mu_ij(i,:) + alpha.*delta_ij(i,:);
-    elseif strcmpi(agent, 'fixed_decay')        
+    elseif strcmpi(agent, 'fixed_decay') || strcmpi(agent, 'fixed_decay_autocorrelation')      
         %% introduce decay
         decay_ij(i,:) = -gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
         
@@ -431,7 +431,7 @@ for i = 1:ntrials
         
         %compute final value function to use for choice
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
-                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', 'fixed_decay'})
+                'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', 'fixed_decay', 'fixed_decay_autocorrelation'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum') || strcmpi(agent, 'fixed_uv')
             uv_func=tau*v_func + (1-tau)*u_func; %mix together value and uncertainty according to tau
