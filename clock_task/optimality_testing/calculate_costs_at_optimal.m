@@ -1,7 +1,8 @@
 %cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output';
 cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
-
-optfiles = glob('output/optimize_output*.mat');
+addpath('../');
+%optfiles = glob('output/optimize_output*.mat');
+optfiles = glob('output/optimize_output_allequate*.mat');
 
 nreps = 100;
 nbest = 5; %number of parameter sets to test
@@ -9,47 +10,83 @@ ntimesteps=500;
 ntrials = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
 cliffpullback=20;
 plots=false;
+target='allequate';
 
-%draw a random sample from the phase-shifted sinusoids for each replication
-ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
-ev = ev + abs(min(ev)) + 10;
-prb = 25*cos(2*pi*(1:ntimesteps).*1/ntimesteps) + 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps) + 6*sin(2*pi*(1:ntimesteps)*5/ntimesteps);
-prb_max=0.7;
-prb_min=0.3;
-prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
-
-allshift = NaN(ntimesteps, ntimesteps, 3);
-conds = 1:ntimesteps;
-for i = 1:ntimesteps
-  shift=[i:ntimesteps 1:(i-1)];
-  evi = ev(shift);
-  prbi = prb(shift);
-  
-  allshift(i,:,1) = evi;
-  allshift(i,:,2) = prbi;
-  allshift(i,:,3) = evi./prb;
-end
-
-rng(625); %fix seed for pulling reward probabilities
-%randomly sample with replacement the desired number of contingencies
-keep = randsample(1:ntimesteps, nreps, true);
-
-clear optmat;
-for k = 1:length(keep)
-    thisCont=[];
-    thisCont.name = ['sinusoid' num2str(keep(k))];
-    thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
-    thisCont.lookup = zeros(ntimesteps, max(ntrials)); %lookup table of timesteps and outcomes
-    thisCont.ev = allshift(keep(k),:,1);
-    thisCont.prb = allshift(keep(k),:,2);
-    thisCont.mag = allshift(keep(k),:,3);
+if strcmpi(target, 'sinusoid')
+    %draw a random sample from the phase-shifted sinusoids for each replication
+    ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
+    ev = ev + abs(min(ev)) + 10;
+    prb = 25*cos(2*pi*(1:ntimesteps).*1/ntimesteps) + 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps) + 6*sin(2*pi*(1:ntimesteps)*5/ntimesteps);
+    prb_max=0.7;
+    prb_min=0.3;
+    prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
     
-    rvec = rand(ntimesteps, max(ntrials));
-    for t = 1:max(ntrials)
-        thisCont.lookup(:,t) = (allshift(keep(k),:,2) > rvec(:,t)') .* allshift(keep(k),:,3);
+    allshift = NaN(ntimesteps, ntimesteps, 3);
+    conds = 1:ntimesteps;
+    for i = 1:ntimesteps
+        shift=[i:ntimesteps 1:(i-1)];
+        evi = ev(shift);
+        prbi = prb(shift);
+        
+        allshift(i,:,1) = evi;
+        allshift(i,:,2) = prbi;
+        allshift(i,:,3) = evi./prb;
     end
     
-    optmat(k) = thisCont;
+    %randomly sample with replacement the desired number of contingencies
+    keep = randsample(1:ntimesteps, nreps, true);
+
+    rng(625); %fix seed for pulling reward probabilities
+    
+    clear optmat;
+    for k = 1:length(keep)
+        thisCont=[];
+        thisCont.name = ['sinusoid' num2str(keep(k))];
+        thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
+        thisCont.lookup = zeros(ntimesteps, max(ntrials)); %lookup table of timesteps and outcomes
+        thisCont.ev = allshift(keep(k),:,1);
+        thisCont.prb = allshift(keep(k),:,2);
+        thisCont.mag = allshift(keep(k),:,3);
+        
+        rvec = rand(ntimesteps, max(ntrials));
+        for t = 1:max(ntrials)
+            thisCont.lookup(:,t) = (allshift(keep(k),:,2) > rvec(:,t)') .* allshift(keep(k),:,3);
+        end
+        
+        optmat(k) = thisCont;
+    end
+
+elseif strcmpi(target, 'allequate')
+    %Aug2016: four core contingencies (IEV, DEV, CEV, CEVR) with equal EV AUCs (to weigh equally in optimization)
+    load('mastersamp_equateauc.mat'); %sampling lookup for all contingencies (maintain identical rewards for identical choices)
+    condnames={'IEV', 'DEV', 'CEV', 'CEVR'}; %by default, optimize over all contingencies in lookup
+    ncond=length(condnames); %how many conditions/contingencies
+    ntimesteps = 500;
+    
+    repspercond = floor(nreps/length(condnames));
+    condmat = repmat(condnames, repspercond, 1);
+    nrep = cell(1, nreps);
+    for i = 1:ncond
+        for j = 1:repspercond
+            nrep{(i-1)*repspercond + j} = num2str(j);
+        end
+    end
+    %condnames = strcat(condmat(:)', nrep);
+    condrep = condmat(:)';
+    
+    %generate master lookup, permuting the lookup columns for each run to represent different draws from the contingency
+    %handle permutation outside of optimization for speed
+    clear optmat;
+    for i = 1:ncond
+        for j = 1:repspercond
+            tmp = mastersamp_equateauc.(condnames{i});
+            tmp.name = condnames{i}; %for keeping track of what contingency this is (esp. when they mix in ALL)
+            tmp.lookup = tmp.lookup(1:ntimesteps, randperm(size(tmp.lookup,2))); %randomly permute columns
+            tmp.ev = tmp.ev(1:ntimesteps);
+            tmp.sample = tmp.sample(1:ntimesteps);
+            optmat((i-1)*repspercond + j) = tmp; %add to a vector of structs
+        end
+    end
 end
 
 nagents=length(optfiles);
