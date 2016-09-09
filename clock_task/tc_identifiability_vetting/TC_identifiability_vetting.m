@@ -55,10 +55,30 @@ npars = size(parbounds, 1);
 rng(101); %fixed parsets
 parsets = NaN(nreps, npars);
 
-for i = 1:nreps
-    for j = 1:npars
-        parsets(i,j) = parbounds(j, 1) + (parbounds(j,2) - parbounds(j, 1)).*rand(1,1);
+model = 'focal';
+
+if strcmpi(model, 'rand')
+    %random uniform sampling
+    for i = 1:nreps
+        for j = 1:npars
+            parsets(i,j) = parbounds(j, 1) + (parbounds(j,2) - parbounds(j, 1)).*rand(1,1);
+        end
     end
+elseif strcmpi(model, 'focal')
+    %fixed parameters in simulation
+    K = 1500;
+    lambda = 0.2;
+    nu = 0.2;
+    alphaG = [2, 0.5];
+    alphaN = [0.5, 2];
+    epsilon = [0, 1000, 2000, 5000, 7000, 10000];
+    rho = [2000 5000];
+    
+    %use random sample from accepted pars for each replication
+    for i = 1:nreps
+        parsets(i,:) = [lambda, randsample(epsilon, 1), randsample(alphaG, 1), ... 
+            randsample(alphaN, 1), K, nu, randsample(rho, 1)];
+    end    
 end
 
 %relax bounds on RT here to rule out possibility that nonidentiability is due to truncated RT range
@@ -186,4 +206,4 @@ end
 
 delete(poolobj);
 
-save('tc_identifiability.mat', 'parsets', 'fittedpars', 'parbounds', 'rtbounds', 'lower_limits', 'upper_limits', 'init_params', 'simstruct');
+save(sprintf('tc_identifiability_%s_%dreps.mat', model, nreps), 'parsets', 'fittedpars', 'parbounds', 'rtbounds', 'lower_limits', 'upper_limits', 'init_params', 'simstruct');
