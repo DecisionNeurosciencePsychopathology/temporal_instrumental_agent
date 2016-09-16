@@ -9,11 +9,11 @@ clear;
 %Quick username check, and path setting, this may have to change depending
 %on the machine you are currently working on!
 os = computer;
+[~, me] = system('whoami');
+me = strtrim(me);
 if strcmp(os(1:end-2),'PCWIN')
     behavfiles = glob('C:\kod\temporal_instrumental_agent\clock_task\subjects\*.csv');
 else
-    [~, me] = system('whoami');
-    me = strtrim(me);
     if strcmp(me,'Alex')==1
         behavfiles = glob('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/*.csv');
         results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
@@ -38,7 +38,8 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility'};
+%modelnames = {'kalman_softmax'};
+modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
 % modelnames = {'kalman_logistic'};
@@ -99,7 +100,7 @@ else
 
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults);
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults,1);
 %             cd(results_dir);
 %             parsave(sprintf('output_%d',id(sub)),posterior,out);
             L(m,sub) = out.F;

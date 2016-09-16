@@ -52,11 +52,17 @@ elig=elig/auc*refspread;
 e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 %1) compute prediction error, scaled by eligibility trace
-delta = e.*(reward - x_t);
+delta = e.*(reward - x_t(1:nbasis));
 
 %% introduce decay
-decay = -gamma.*(1-e).*x_t;
+decay = -gamma.*(1-e).*x_t(1:nbasis);
 
-fx = x_t + alpha.*delta + decay;
+fx = x_t(1:nbasis) + alpha.*delta + decay;
 
+
+if strcmp(inF.autocorrelation,'choice_tbf')
+    choice_decay = 1./(1+exp(-theta(end)));
+    fx = x_t(1:nbasis) + alpha.*delta + decay;
+    fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
+end
 

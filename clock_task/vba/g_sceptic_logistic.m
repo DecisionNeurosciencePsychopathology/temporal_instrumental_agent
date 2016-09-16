@@ -23,11 +23,18 @@ u_func = sum(u); %vecotr of uncertainty by timestep
 %In order to run the multinomial version we still need to compute the
 %softmax for both the rt_explore and rt_exploit, then let the sigmoid chose
 %an action by giving more weight to a specific softmax.
-p_rt_exploit = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta))); %Divide by temperature
+if strcmp(inG.autocorrelation,'choice_tbf') %This is only when incorporating choice basis functions
+    choice = x_t(length(x_t)-nbasis+1:end)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+    choice_func = sum(choice); %subjective value of choice by timestep as a sum of all basis functions
+    chi =  P(length(P))./100;
+    p_rt_exploit = (exp((v_func-max(v_func)+chi.*max(v_func).*choice_func)/beta)) / (sum(exp((v_func-max(v_func)+chi.*max(v_func).*choice_func)/beta))); %Divide by temperature
+else
+    p_rt_exploit = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta))); %Divide by temperature
+end
+
 p_rt_explore = (exp((u_func-max(u_func))/beta)) / (sum(exp((u_func-max(u_func))/beta))); %Divide by temperature
 
-
-%Perform a choice autocorrelation 
+%Perform a choice autocorrelation
 if strcmp(inG.autocorrelation,'exponential')
     lambda =  1./(1+exp(-P(3))); %% introduce a choice autocorrelation parameter lambda
     chi =  1./(1+exp(-P(4))); %% control the extent of choice autocorrelation
