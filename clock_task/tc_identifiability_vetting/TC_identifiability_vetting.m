@@ -2,6 +2,20 @@
 addpath('../'); %for the RewFunction code
 addpath('../optimality_testing'); %for the TC forward code
 
+%quick test of iev and dev unbounded
+% rt = -100000:1000:100000;
+% frq=NaN(1, length(rt));
+% mag=NaN(1, length(rt));
+% ev=NaN(1, length(rt));
+% 
+% for r = 1:length(rt)
+%     [~, ev(r), frq(r), mag(r)] = RewFunction(rt(r), 'IEVUNBOUNDED', 0);
+% end
+% 
+% figure(1); plot(rt, frq);
+% figure(2); plot(rt, mag);
+% figure(3); plot(rt, ev);
+
 %Simulation parameters from Michael Frank email 19Aug2016
 % K = 1500;
 % lambda = 0.2;
@@ -35,20 +49,40 @@ parbounds = [ ...
 %     0, 10000; ... %rho
 %     ];
 
-nreps = 1000;
+nreps = 4000;
 npars = size(parbounds, 1);
 
 rng(101); %fixed parsets
 parsets = NaN(nreps, npars);
 
-for i = 1:nreps
-    for j = 1:npars
-        parsets(i,j) = parbounds(j, 1) + (parbounds(j,2) - parbounds(j, 1)).*rand(1,1);
+simsetting = 'focal';
+
+if strcmpi(simsetting, 'rand')
+    %random uniform sampling
+    for i = 1:nreps
+        for j = 1:npars
+            parsets(i,j) = parbounds(j, 1) + (parbounds(j,2) - parbounds(j, 1)).*rand(1,1);
+        end
     end
+elseif strcmpi(simsetting, 'focal')
+    %fixed parameters in simulation
+    K = 1500;
+    lambda = 0.2;
+    nu = 0.2;
+    alphaG = [2, 0.5];
+    alphaN = [0.5, 2];
+    epsilon = [0, 1000, 2000, 5000, 7000, 10000];
+    rho = [2000 5000];
+    
+    %use random sample from accepted pars for each replication
+    for i = 1:nreps
+        parsets(i,:) = [lambda, randsample(epsilon, 1), randsample(alphaG, 1), ... 
+            randsample(alphaN, 1), K, nu, randsample(rho, 1)];
+    end    
 end
 
 %relax bounds on RT here to rule out possibility that nonidentiability is due to truncated RT range
-rtbounds = [-30000 30000]; %define valid choice RTs (since agent is choosing freely)
+rtbounds = [-Inf Inf]; %define valid choice RTs (since agent is choosing freely)
 
 %Per discussion with MJF, allow truly random draws from distribution over simulations.
 %This eliminates perfect repeatability across simulations, but since we are averaging and smoothing
@@ -58,7 +92,8 @@ ntrials = 50;
 
 %% Simulate data (forward model)
 %complete one run of each contingency (order permuted within replications loop)
-conds = {'DEV', 'IEV', 'CEV', 'CEVR'};
+%conds = {'DEV', 'IEV', 'CEV', 'CEVR'};
+conds = {'DEVUNBOUNDED', 'IEVUNBOUNDED'};
 
 %allRTpred = NaN(nreps, length(conds), ntrials);
 %allRewpred = NaN(nreps, length(conds), ntrials);
@@ -117,6 +152,8 @@ opts = optimset('fmincon');
 opts.LargeScale = 'off';
 opts.Algorithm = 'active-set';
 opts.Display = 'none';
+%opts.Display = 'iter';
+opts.TolFun = 1e-6; %default convergence criterion
 
 model = 'noemo'; %vanilla model under old vetted fitting code
 
@@ -144,6 +181,7 @@ try
 
 %loop over replications, fitting parameters using fmincon with multiple starting points
 parfor i = 1:nreps
+%for i = 1:nreps
     %pass in a struct array to TC_minSE containing one element for each block
         
     %core fitting function -- returns results of length num_start_pts (8) above.
@@ -168,4 +206,4 @@ end
 
 delete(poolobj);
 
-save('tc_identifiability.mat', 'parsets', 'fittedpars', 'parbounds', 'rtbounds', 'lower_limits', 'upper_limits', 'init_params', 'simstruct');
+save(sprintf('tc_identifiability_%s_%dreps.mat', model, nreps), 'parsets', 'fittedpars', 'parbounds', 'rtbounds', 'lower_limits', 'upper_limits', 'init_params', 'simstruct');

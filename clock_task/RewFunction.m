@@ -69,6 +69,16 @@ elseif strcmpi(cond, 'DEVLINPROB')
     
     frq = (maxrt - rtuppershelf - rt)/((maxrt - rtuppershelf - minrt)/0.6) + 0.2;
     mag = 1; %1 or 0 outcome
+elseif strcmpi(cond, 'IEVUNBOUNDED')
+    mag = 150 * 1/(1+exp(-rt/10000)); %use logistic so that agent doesn't perceive an infinite horizon on positive RTs
+    %mag = rt/100;
+    %frq = 1/(1+exp(rt/100000));    
+    frq=0.5;
+elseif strcmpi(cond, 'DEVUNBOUNDED')
+    mag = 150 * 1/(1+exp(rt/10000)); %use logistic so that agent doesn't perceive an infinite horizon on negative RTs
+    %mag = 150 - rt/100;
+    %frq = 1/(1+exp(-rt/100000));
+    frq=0.5;
 else
     error(['Unknown function: ' cond]);
 end
