@@ -49,11 +49,16 @@ while(any(abs(tolvec - mag) > tolerance))
             %PE version 2: based on (our unnderstanding of) discussion with Yael Niv: rew - e*Vfunc
             
             %estimated value with respect to time
-            sumv_ij = sum(mu_ij*ones(1,ntimesteps) .* gaussmat, 2);
+            %sumv_ij = sum(mu_ij*ones(1,ntimesteps) .* gaussmat, 2);
+            
+            v_i=sum(mu_ij*ones(1,ntimesteps) .* gaussmat); %use vector outer product to replicate weight vector
+            v_it = v_i(pvec(t)); %scalar value estimate at chosen response
             
             %now we want the prediction error for each basis (WRONG)
             %delta_ij = mag(pvec(t)) - ones(nbasis,1)*elig .* v_ij;
-            delta_ij = e_ij.*(mag(pvec(t)) - sumv_ij);
+            
+            %distribute estimated value at RT according to eligibility (works correctly)
+            delta_ij = e_ij.*(mag(pvec(t)) - v_it);
         end
         
         
