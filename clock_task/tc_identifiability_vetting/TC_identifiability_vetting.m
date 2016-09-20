@@ -55,16 +55,16 @@ npars = size(parbounds, 1);
 rng(101); %fixed parsets
 parsets = NaN(nreps, npars);
 
-model = 'focal';
+simsetting = 'focal';
 
-if strcmpi(model, 'rand')
+if strcmpi(simsetting, 'rand')
     %random uniform sampling
     for i = 1:nreps
         for j = 1:npars
             parsets(i,j) = parbounds(j, 1) + (parbounds(j,2) - parbounds(j, 1)).*rand(1,1);
         end
     end
-elseif strcmpi(model, 'focal')
+elseif strcmpi(simsetting, 'focal')
     %fixed parameters in simulation
     K = 1500;
     lambda = 0.2;

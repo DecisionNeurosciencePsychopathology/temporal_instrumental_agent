@@ -35,10 +35,10 @@ n_phi = 1;
 
 %% no choice autocorrelation by default
 % options.inG.autocorrelation = 'none';
-options.inG.autocorrelation = 'exponential'; %% implements AR(1) choice autocorrelation with exponential temporal
-% generalization
+options.inG.autocorrelation = 'choice_tbf'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
 % options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
+options.inF.autocorrelation = options.inG.autocorrelation;
 
 %% fit as multiple runs
 % multisession = 1;
@@ -321,7 +321,16 @@ if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autoc
     n_phi = n_phi + 2;
 elseif strcmp(options.inG.autocorrelation,'softmax_multitrial_smooth')
     n_phi = n_phi + 3;
+elseif strcmp(options.inG.autocorrelation,'choice_tbf') %Modifiy the models if we want to add the choice basis autocorrelation
+    n_phi = n_phi + 1;
+    n_theta = n_theta+1; %Add choice decay parameter
+    hidden_variables = hidden_variables + 1; %Add in choice basis
+    priors.muX0 = [priors.muX0; zeros(n_basis,1)];
+    priors.SigmaX0 = zeros(hidden_variables*n_basis);
 end
+
+
+
 
 
 options.inF.hidden_state = hidden_variables;
@@ -329,6 +338,10 @@ options.inF.hidden_state = hidden_variables;
 %Map the necessary options from F to G
 options.inG.hidden_state = options.inF.hidden_state;
 options.inG.kalman = options.inF.kalman;
+
+
+
+    
 
 
 if multinomial

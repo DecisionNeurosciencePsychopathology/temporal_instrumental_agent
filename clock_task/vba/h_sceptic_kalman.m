@@ -24,6 +24,11 @@ nbasis = inF.nbasis; %Grab basis numbers
 hidden_state_index=1:inF.hidden_state*nbasis;
 hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
 
+%Find length of theta. Depending on the autocorrelation and fitting
+%prop_spread we'll need to know this.
+theta_idx = length(theta);
+
+
 %Set the proper paramters NOTE gamma is first then phi for sigma volatility
 %model.
 if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
@@ -64,6 +69,11 @@ end
 mu=x_t(hidden_state_index(:,1)); %Value
 sigma = x_t(hidden_state_index(:,2)); %Uncertainty
 
+if strcmp(inF.autocorrelation,'choice_tbf');
+    choice = x_t(hidden_state_index(:,end)); %Basis fx's for choice
+    theta_idx = theta_idx-1; %Just in casse we want to fit prop_spread
+end
+
 
 % mu=x_t(1:nbasis); %Value
 % sigma = x_t(nbasis+1:end); %Uncertainty
@@ -71,7 +81,7 @@ sigma = x_t(hidden_state_index(:,2)); %Uncertainty
 
 % alpha = 1./(1+exp(-theta(1)));
 if inF.fit_propspread
-    prop_spread = 1./(1+exp(-theta(end))); %0..1 SD of Gaussian eligibility as proportion of interval
+    prop_spread = 1./(1+exp(-theta(theta_idx))); %0..1 SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
     
     %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
@@ -215,6 +225,12 @@ else
     % What our final for kalman will be is x_t + k_ij * delta so we need to
     % compute k
     fx(hidden_state_index(:,1)) = mu + k.*delta;
+end
+
+
+if strcmp(inF.autocorrelation,'choice_tbf')
+    choice_decay = 1./(1+exp(-theta(end)));
+    fx(hidden_state_index(:,end)) = choice_decay.*choice + e;
 end
 
 %FOR uv sum we need to to rewrite fx(1:nbasis) to be the uv sum analog to
