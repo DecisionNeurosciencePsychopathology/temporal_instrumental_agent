@@ -3,12 +3,22 @@
 library(R.matlab)
 
 source(file.path(getMainDir(), "temporal_instrumental_agent", "clock_task", "vba_fmri", "clock_functions.R"))
-
+setwd(file.path(getMainDir(), "temporal_instrumental_agent", "clock_task"))
 fitobjs <- list.files(path=file.path(getMainDir(), "clock_analysis", "fmri", "fmri_fits"), pattern="\\d+_fitinfo\\.RData", full.names=TRUE)
-fitarr <- get_fit_array(fitobjs, objname="f_poseps")
+fitarr <- get_fit_array(fitobjs, objname="f_negeps")
+
+pdf("epsilon_n76.pdf", width=8, height=8)
+library(ggplot2)
+ggplot(fitarr, aes(x=epsilonBeta)) + geom_histogram(binwidth=800) + theme_bw(base_size=24) + geom_vline(xintercept=0)
+dev.off()
 
 hist(fitarr$epsilonBeta)
-table(fitarr$epsilonBeta > 0)
+
+prop.table(table(fitarr$epsilonBeta > 0))
+mean(fitarr$epsilonBeta)
+median(fitarr$epsilonBeta)
+
+sd(fitarr$epsilonBeta)
 
 #now get the distribution from VBA
 #vba <- readMat("/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba/tc_logevidence.mat")
@@ -30,6 +40,8 @@ origpars <- c("K", "lambda", "scale", "alphaG", "alphaN", "rho", "epsilonBeta")
 VBApars <- c("VBA_K", "VBA_Lambda", "VBA_Nu", "VBA_AlphaG", "VBA_AlphaN", "VBA_Rho", "VBA_Epsilon")
 options(width=135)
 round(cor(alldf[,c(origpars, VBApars)]), 2)
+
+corwithtarget(alldf, pmin=.01, target=origpars, withvars=VBApars)
 
 lattice::splom(alldf[,c(origpars, VBApars)])
 lattice::splom(alldf[,c("rho", "VBA_Rho", "epsilonBeta", "VBA_Epsilon")])

@@ -1,6 +1,7 @@
-function compute_basis_adjustment(ntimesteps, nbasis, prop_spread, decay)
-
+function compute_basis_adjustment(ntimesteps, nbasis, prop_spread, decay, peversion)
+addpath('../')
 if nargin < 4, decay = 0; end
+if nargin < 5, peversion = 0; end %regular PE update alpha*e(reward - value)
 
 %use a fixed learning rate model with the basis to figure out how to reach asymptote for each basis function
 %what adjustments have to be made to the basis functions to get there?
@@ -39,7 +40,21 @@ while(any(abs(tolvec - mag) > tolerance))
         auc=sum(elig);
         elig=elig/auc*refspread;
         e_ij = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 2);
-        delta_ij = e_ij.*(mag(pvec(t)) - mu_ij);
+        
+        
+        if peversion == 0
+            %PE version 1: familiar e*(rew - Vb)
+            delta_ij = e_ij.*(mag(pvec(t)) - mu_ij);
+        elseif peversion == 1
+            %PE version 2: based on (our unnderstanding of) discussion with Yael Niv: rew - e*Vfunc
+            
+            %estimated value with respect to time
+            sumv_ij = sum(mu_ij*ones(1,ntimesteps) .* gaussmat, 2);
+            
+            %now we want the prediction error for each basis (WRONG)
+            %delta_ij = mag(pvec(t)) - ones(nbasis,1)*elig .* v_ij;
+            delta_ij = e_ij.*(mag(pvec(t)) - sumv_ij);
+        end
         
         
         d = -decay.*(1-e_ij).*mu_ij;
