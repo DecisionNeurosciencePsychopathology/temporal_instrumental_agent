@@ -28,11 +28,10 @@ mag = ev./prb;
 
 %for now, always deliver reward (no probability)
 tolerance = 2; %2 point discrepancy between basis approximation and underlying contingency
-tolvec = zeros(1,ntimesteps);
 mu_ij = zeros(nbasis,1);
-v_func = zeros(ntimesteps,1);
+v_func = zeros(1, ntimesteps);
 
-while(any(abs(tolvec - mag) > tolerance))
+while(any(abs(v_func - mag) > tolerance))
     %sample each timestep in random order (so that each is selected)
     
     if vchoice == 0
@@ -42,12 +41,8 @@ while(any(abs(tolvec - mag) > tolerance))
             mu_ij = updatev(choice, mu_ij);
             plotv(choice); %also recomputes v_func
         end
-
-        %after sampling all options, display correlation on plot and pause
-        r = corr(v_func', mag')
-        text(ntimesteps - 50, max([v_func, mag]) - 10, sprintf('%.3f', r));
-        pause(0.5);
-
+        
+        interimplot;
     else
         %value max choice: Fixed LR V, potentially with decay
         %arbitrary 100 trials
@@ -59,18 +54,17 @@ while(any(abs(tolvec - mag) > tolerance))
             %softmax choice rule over value function
             pchoice = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta))); %Divide by temperature
             %if (all(v_func==0)), v_func=rand(1, length(v_func)).*1e-6; end; %need small non-zero values to unstick softmax on first trial
-            choice = randsample(tvec, 1, true, pchoice); %softmax_stream, 
+            choice = randsample(tvec, 1, true, pchoice); %softmax_stream,
         end
         
-        %after a set of trials, display correlation on plot and pause
-        r = corr(v_func', mag')
-        text(ntimesteps - 50, max([v_func, mag]) - 10, sprintf('%.3f', r));
-        pause(0.5);
-
+        interimplot;
     end
+    
 end
 
+%%Nested functions below for plotting and value update
     function plotv(choice)
+        figure(1);
         plot(1:ntimesteps, mag, 'g');
         hold on;
         plot(1:ntimesteps, v_func, 'b'); %t-1
@@ -81,6 +75,26 @@ end
         plot(choice, mag(choice) + 1,'*b');
         hold off
         drawnow update;
+    end
+
+    function interimplot
+        %after a set of trials, display correlation on plot and pause
+        r = corr(v_func', mag')
+        text(ntimesteps - 50, max([v_func, mag]) - 10, sprintf('%.3f', r));
+        
+        %also show a plot of the difference in a separate panel
+        figure(2); 
+        dvec = v_func - mag;
+        [~, msort] = sort(mag);
+        rdiff = corr(mag', v_func' - mag')
+        scatter(mag(msort), dvec(msort));
+        
+        %compute reference line (apparently the intercept of 0 is actually the min in MATLAB)
+        %refline([range(dvec)/range(mag), min(dvec)]);
+        refline([range(dvec)/range(mag), 0]);
+        text(max(mag) - 15, max(v_func - mag) - 5, sprintf('r(mag, diff) = %.3f', rdiff));
+        %text(ntimesteps - 150, max(v_func - mag) - 10, sprintf('r(mag, diff) = %.3f', rdiff));
+        pause(1.2);
     end
 
     function newmu = updatev(choice, curmu)
