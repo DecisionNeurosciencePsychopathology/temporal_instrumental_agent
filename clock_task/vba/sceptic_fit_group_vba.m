@@ -38,8 +38,8 @@ else
 end
 
 %% chose models to fit
-%modelnames = {'kalman_softmax'};
-modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+modelnames = {'fixed' 'fixed_decay'};
+%modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
 % modelnames = {'kalman_logistic'};
@@ -100,7 +100,7 @@ else
 
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults,1);
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults);
 %             cd(results_dir);
 %             parsave(sprintf('output_%d',id(sub)),posterior,out);
             L(m,sub) = out.F;
@@ -109,6 +109,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_autocorrelation',nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_entropy_elig_reward_variant',nbasis,n_steps, u_aversion);
     save(filename);
 end

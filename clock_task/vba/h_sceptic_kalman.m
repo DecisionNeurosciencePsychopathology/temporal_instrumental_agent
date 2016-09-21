@@ -129,7 +129,13 @@ e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 
 %1) compute prediction error, scaled by eligibility trace
-delta = e.*(reward - mu);
+if inF.total_pe==1
+    delta = reward - e.*mu;    
+else
+    delta = e.*(reward - mu);
+end
+
+
 
 
 

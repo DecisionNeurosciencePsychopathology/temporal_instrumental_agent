@@ -35,7 +35,14 @@ n_phi = 1;
 
 %% no choice autocorrelation by default
 % options.inG.autocorrelation = 'none';
-options.inG.autocorrelation = 'choice_tbf'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
+options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
+options.inF.entropy = 1; %If we want to track entropy per trial
+track_entropy=0;
+
+%If we want to use the elig update variant in choice rule
+options.inF.total_pe=1;
+
+
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
 % options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
 options.inF.autocorrelation = options.inG.autocorrelation;
@@ -327,6 +334,10 @@ elseif strcmp(options.inG.autocorrelation,'choice_tbf') %Modifiy the models if w
     hidden_variables = hidden_variables + 1; %Add in choice basis
     priors.muX0 = [priors.muX0; zeros(n_basis,1)];
     priors.SigmaX0 = zeros(hidden_variables*n_basis);
+elseif options.inF.entropy == 1
+    track_entropy=2; %Add 2 hidden states to track entropy and max value pre-update
+    priors.muX0 = [priors.muX0; zeros(track_entropy,1)];
+    priors.SigmaX0 = zeros(hidden_variables*n_basis+track_entropy);
 end
 
 
@@ -347,7 +358,7 @@ options.inG.kalman = options.inF.kalman;
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
     rtrnd(rtrnd==0)=1;
-    dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi,'p',n_steps);
+    dim = struct('n',hidden_variables*n_basis+track_entropy,'n_theta',n_theta+fit_propspread,'n_phi',n_phi,'p',n_steps);
     options.sources(1) = struct('out',1:n_steps,'type',2);
     
     %% compute multinomial response -- renamed 'y' here instead of 'rtbin'
@@ -445,5 +456,5 @@ if saveresults
     %% save output figure
     % h = figure(1);
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation), 'posterior', 'out');
+    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion_total_pe_variant'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation), 'posterior', 'out');
 end

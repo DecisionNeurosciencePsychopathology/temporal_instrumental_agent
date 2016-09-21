@@ -51,13 +51,42 @@ elig=elig/auc*refspread;
 %Gaussian spread function.
 e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
+
+%If we want the entropy run the function here
+S = wentropy(x_t(1:nbasis),'log energy'); %Entropy
+max_value = max(x_t(1:nbasis)); %Max value pre update
+
+
 %1) compute prediction error, scaled by eligibility trace
-delta = e.*(reward - x_t(1:nbasis));
+if inF.total_pe
+    ntimesteps = inF.ntimesteps;
+    gaussmat=inF.gaussmat;
+    v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+    v_func = sum(v);
+    rnd_rt = round(rt);
+    
+    if rnd_rt==0
+        rnd_rt=1;
+    elseif rnd_rt>40
+        rnd_rt=40;
+    end
+    delta = e*(reward - v_func(round(rnd_rt)));    
+else
+    delta = e.*(reward - x_t(1:nbasis));
+end
+
 
 %% introduce decay
 decay = -gamma.*(1-e).*x_t(1:nbasis);
 
 fx = x_t(1:nbasis) + alpha.*delta + decay;
+
+if inF.entropy
+    S = is_nan_or_inf(S);
+    max_value = is_nan_or_inf(max_value);
+    fx(nbasis+1) = S; 
+    fx(nbasis+2) = max_value;
+end
 
 
 if strcmp(inF.autocorrelation,'choice_tbf')
@@ -66,3 +95,10 @@ if strcmp(inF.autocorrelation,'choice_tbf')
     fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
 end
 
+
+function out = is_nan_or_inf(var)
+    if isnan(var) || isinf(var)
+        out=0;
+    else 
+        out=var;
+    end
