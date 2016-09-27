@@ -129,10 +129,21 @@ e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 
 %1) compute prediction error, scaled by eligibility trace
-if inF.total_pe==1
-    delta = reward - e.*mu;    
+if inF.total_pe
+    ntimesteps = inF.ntimesteps;
+    gaussmat=inF.gaussmat;
+    v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+    v_func = sum(v);
+    rnd_rt = round(rt);
+    
+    if rnd_rt==0
+        rnd_rt=1;
+    elseif rnd_rt>40
+        rnd_rt=40;
+    end
+    delta = e*(reward - v_func(round(rnd_rt)));    
 else
-    delta = e.*(reward - mu);
+    delta = e.*(reward - x_t(1:nbasis));
 end
 
 

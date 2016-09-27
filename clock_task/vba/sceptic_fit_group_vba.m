@@ -87,7 +87,7 @@ else
     for m=1:length(modelnames)
         model = char(modelnames(m));
         %         p = ProgressBar(length(behavfiles));
-        parfor sub=1:length(behavfiles)
+        for sub=1:length(behavfiles)
             str = behavfiles{sub};
             
             %Really should just use regex here...

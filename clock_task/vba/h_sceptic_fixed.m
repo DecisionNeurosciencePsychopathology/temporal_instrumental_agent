@@ -31,7 +31,11 @@ if inF.fit_nbasis
 else
     nbasis = inF.nbasis;
 end
-% ntimesteps = inF.ntimesteps;
+
+ntimesteps = inF.ntimesteps;
+gaussmat=inF.gaussmat;
+v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+v_func = sum(v);
 
 %refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
 
@@ -61,18 +65,13 @@ max_value = max(x_t(1:nbasis)); %Max value pre update
 
 %1) compute prediction error, scaled by eligibility trace
 if inF.total_pe
-    ntimesteps = inF.ntimesteps;
-    gaussmat=inF.gaussmat;
-    v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
-    v_func = sum(v);
     rnd_rt = round(rt);
-    
     if rnd_rt==0
         rnd_rt=1;
     elseif rnd_rt>40
         rnd_rt=40;
     end
-    delta = e*(reward - v_func(round(rnd_rt)));    
+    delta = e*(reward - v_func(round(rnd_rt)));    %Niv version
 else
     delta = e.*(reward - x_t(1:nbasis));
 end
@@ -81,7 +80,8 @@ fx = x_t(1:nbasis) + alpha.*delta;
 
 if inF.entropy
     S = is_nan_or_inf(S);
-    max_value = is_nan_or_inf(max_value);
+    %max_value = is_nan_or_inf(max_value);
+    max_value = find_max_value_in_time(v_func);
     fx(nbasis+1) = S; 
     fx(nbasis+2) = max_value;
 end
@@ -98,4 +98,13 @@ function out = is_nan_or_inf(var)
     else 
         out=var;
     end
+    
+function time_point = find_max_value_in_time(val)
+    max_val  = max(val); %Get the max value
+    time_point = find(max_val==val); %Find the max
+    if length(time_point)>1 %If there are duplicates randomly select one
+        time_point = randsample(time_point,1);
+    end
+    
+
 
