@@ -46,7 +46,7 @@ modelnames = {'fixed' 'fixed_decay'};
 %% set parameters
 nbasis = 24;
 multinomial = 1;
-multisession = 0;
+multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 0;
 n_steps = 40;
@@ -87,7 +87,7 @@ else
     for m=1:length(modelnames)
         model = char(modelnames(m));
         %         p = ProgressBar(length(behavfiles));
-        for sub=1:length(behavfiles)
+        parfor sub=1:length(behavfiles)
             str = behavfiles{sub};
             
             %Really should just use regex here...

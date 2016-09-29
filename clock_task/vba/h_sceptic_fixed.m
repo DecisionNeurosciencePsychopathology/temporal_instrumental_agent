@@ -58,8 +58,11 @@ elig=elig/auc*refspread;
 e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 %If we want the entropy run the function here
-S = wentropy(x_t(1:nbasis),'log energy'); %Entropy
-max_value = max(x_t(1:nbasis)); %Max value pre update
+threshold = inF.H_threshold;
+active_elements = x_t(1:nbasis)>threshold;
+%H = wentropy(x_t(active_elements),'log energy'); %Entropy
+H = wentropy(x_t(active_elements),'shannon'); %Entropy
+%max_value = max(x_t(1:nbasis)); %Max value pre update
 
 
 
@@ -79,10 +82,10 @@ end
 fx = x_t(1:nbasis) + alpha.*delta;
 
 if inF.entropy
-    S = is_nan_or_inf(S);
+    H = is_nan_or_inf(H);
     %max_value = is_nan_or_inf(max_value);
     max_value = find_max_value_in_time(v_func);
-    fx(nbasis+1) = S; 
+    fx(nbasis+1) = H; 
     fx(nbasis+2) = max_value;
 end
 

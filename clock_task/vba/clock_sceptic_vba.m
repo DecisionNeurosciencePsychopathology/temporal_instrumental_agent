@@ -38,9 +38,10 @@ n_phi = 1;
 options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
 options.inF.entropy = 1; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
+options.inF.H_threshold = 0.01;
 
 %If we want to use the elig update variant in choice rule
-options.inF.total_pe=1;
+options.inF.total_pe=0;
 
 
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
