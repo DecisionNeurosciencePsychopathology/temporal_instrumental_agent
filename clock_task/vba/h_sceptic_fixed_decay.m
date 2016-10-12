@@ -39,6 +39,9 @@ gaussmat=inF.gaussmat;
 v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
 v_func = sum(v);
 
+%Create index vectors
+hidden_state_index=1:inF.hidden_state*nbasis;
+hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
 
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
 elig = gaussmf(inF.tvec, [sig_spread, rt]);
@@ -59,15 +62,16 @@ e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
 
 %If we want the entropy run the function here
-threshold = inF.H_threshold; %Add in threshold to value
-active_elements = x_t(1:nbasis)>threshold;
+% threshold = inF.H_threshold; %Add in threshold to value
+% active_elements = x_t(1:nbasis)>threshold;
 %H = wentropy(x_t(active_elements),'log energy'); %Entropy
-H = wentropy(x_t(active_elements),'shannon'); %Entropy
+%H = wentropy(x_t(active_elements),'shannon'); %Entropy
+H = calc_shannon_H( (x_t(1:nbasis)/sum(x_t(1:nbasis))) ); %Entropy
 %max_value = max(x_t(1:nbasis)); %Max value pre update
 
 
 %1) compute prediction error, scaled by eligibility trace
-if inF.total_pe
+if inF.total_pe %Niv version
     rnd_rt = round(rt);
     
     if rnd_rt==0
@@ -86,12 +90,18 @@ decay = -gamma.*(1-e).*x_t(1:nbasis);
 
 fx = x_t(1:nbasis) + alpha.*delta + decay;
 
+%track pe as a hidden state
+if inF.track_pe
+    fx(hidden_state_index(:,end))=delta;
+end
+
+
 if inF.entropy
     H = is_nan_or_inf(H);
     %max_value = is_nan_or_inf(max_value);
     max_value = find_max_value_in_time(v_func);
-    fx(nbasis+1) = H; 
-    fx(nbasis+2) = max_value;
+    fx(hidden_state_index(end)+1) = H; 
+    fx(hidden_state_index(end)+2) = max_value;
 end
 
 

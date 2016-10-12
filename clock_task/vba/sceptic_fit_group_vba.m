@@ -38,7 +38,7 @@ else
 end
 
 %% chose models to fit
-modelnames = {'fixed' 'fixed_decay'};
+modelnames = {'kalman_processnoise'};
 %modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
@@ -50,6 +50,8 @@ multisession = 1;
 fixed_params_across_runs = 1;
 fit_propspread = 0;
 n_steps = 40;
+
+results_dir = 'E:\data\sceptic\vba_out\new_lambda_results';
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
 saveresults = 1; %don't save to prevent script from freezing on Thorndike
@@ -100,7 +102,7 @@ else
 
             fprintf('Fitting %s subject %d \r',model,sub)
             %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,saveresults);
+            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,0,saveresults,0,results_dir);
 %             cd(results_dir);
 %             parsave(sprintf('output_%d',id(sub)),posterior,out);
             L(m,sub) = out.F;
