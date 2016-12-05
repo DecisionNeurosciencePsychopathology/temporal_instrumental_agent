@@ -10,7 +10,7 @@ addpath('/storage/group/mnh5174_collab/temporal_instrumental_agent'); %has glob.
 fitfiles = glob([results_dir, '/*.mat']);
 nruns=8;
 ntrials = 50; %number of trials in a run (used for dividing according to multisession)
-nbasis = 16;
+nbasis = 24; %16;
 nstates = 3; %V, PE, decay
 multisession=0; %multisession requires one to look at the right basis position within a given run (run-related offsets)
 npars = 4; %alpha, gamma, prop_spread, beta

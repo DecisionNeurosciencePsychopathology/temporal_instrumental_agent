@@ -9,7 +9,7 @@
 env
 cd $PBS_O_WORKDIR
 
-module load matlab
+module load matlab/R2014b
 export matlab_cpus=37
 
 matlab -nodisplay -r sceptic_fit_group_vba_fmri

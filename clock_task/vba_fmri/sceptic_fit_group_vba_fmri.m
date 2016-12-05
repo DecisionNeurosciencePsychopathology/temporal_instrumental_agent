@@ -4,17 +4,17 @@ close all;
 clear;
 %curpath = fileparts(mfilename('fullpath'));
 
-addpath(genpath('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task'));
-addpath('/storage/group/mnh5174_collab/temporal_instrumental_agent'); %has glob.m
+%addpath(genpath('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task'));
+addpath('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
 addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
 
 behavfiles = glob('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects/*.csv');
 group_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects';
 
 %% set parameters
-nbasis = 16; %16 basis functions total
+nbasis = 24; %16 basis functions total
 multinomial = 1;
-multisession = 1; %tend to get better fits for non-multisession
+multisession = 0; %tend to get better fits for non-multisession
 fixed_params_across_runs = 1;
 fit_propspread = 0;
 n_steps = 40;
