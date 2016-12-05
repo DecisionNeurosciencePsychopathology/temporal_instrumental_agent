@@ -27,6 +27,7 @@ function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond
 %  16) fixedLR_decay: current winning model for empirical data (fixedLR plus decay outside of temporal generalization function)
 %  17) kalman_sigmavolatility_local: Track volatility for each basis separately.
 %  18) kalman_sigmavolatility_precision: Use precision-weighted prediction errors to scale perceived volatility.
+%  19) fixedLR_decay_random: simple test of decay model where eligibility function is placed randomly, rather than at RT (random decay)
 
 if nargin < 2, agent = 'fixedLR_softmax'; end
 if nargin < 3, rngseeds=[98 83 66 10 21]; end
@@ -59,6 +60,9 @@ if strcmpi(agent, 'fixedLR_egreedy')
 elseif strcmpi(agent, 'fixedLR_egreedy_grw')
     rng(grw_step_rng_seed); %seed for GRW step sizes
     grw_step=round(range(tvec) * p.sig_grw * randn(ntrials,1)); %compute vector of step sizes for GRW
+elseif strcmpi(agent, 'fixedLR_decay_random')
+    rng(grw_step_rng_seed); %coopting GRW seed for the moment
+    randplacements = randi([1, ntimesteps],ntrials,1);
 end
 
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
@@ -156,7 +160,7 @@ if ismember(agent, {'kalman_uv_logistic', 'fixedLR_egreedy', 'fixedLR_egreedy_gr
 end
 
 %setup random number generator for softmax function if relevant
-if ismember(agent, {'fixedLR_softmax', 'fixedLR_decay', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
+if ismember(agent, {'fixedLR_softmax', 'fixedLR_decay', 'fixedLR_decay_random', 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', ...
         'kalman_sigmavolatility', 'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision', ...
         'kalman_uv_sum', 'kalman_uv_sum_negtau', 'kalman_uv_sum_discount', 'fixedLR_kl_softmax', ...
         'kalman_kl_softmax', 'kalman_processnoise_kl', 'kalman_uv_sum_kl', 'fixed_uv', 'fixed_uv_discount'})
@@ -209,6 +213,19 @@ for i = 1:ntrials
     elseif strcmpi(agent, 'fixedLR_decay')
         %this agent decays the value of basis functions outside of the temporal generalization
         decay = -p.gamma.*(1-e_ij(i,:)).*mu_ij(i,:);
+        mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:) + decay;
+    elseif strcmpi(agent, 'fixedLR_decay_random')
+        %this agent decays the value of basis functions outside of the temporal generalization
+        
+        elig_random = gaussmf(tvec, [sig_spread, randplacements(i)]);
+        
+        %compute sum of area under the curve of the gaussian function
+        auc=sum(elig_random);
+        
+        elig_random=elig_random/auc*refspread;        
+        e_random = sum(repmat(elig_random,nbasis,1).*gaussmat_trunc, 2);
+        
+        decay = -p.gamma.*(1-e_random').*mu_ij(i,:);
         mu_ij(i+1,:) = mu_ij(i,:) + p.alpha.*delta_ij(i,:) + decay;
     elseif strcmpi(agent, 'asymfixedLR_softmax')
         %need to avoid use of mean function for speed in optimization... would max work?
@@ -323,7 +340,7 @@ for i = 1:ntrials
         %compute final value function to use for choice
         if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', ...
                 'asymfixedLR_softmax', 'kalman_softmax', 'kalman_processnoise', 'kalman_sigmavolatility', ...
-                'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision', 'fixedLR_decay'})
+                'kalman_sigmavolatility_local', 'kalman_sigmavolatility_local_precision', 'fixedLR_decay', 'fixedLR_decay_random'})
             v_final = v_func; % just use value curve for choice
         elseif strcmpi(agent, 'kalman_uv_sum')
             uv_func=p.tau*v_func + (1-p.tau)*u_func; %mix together value and uncertainty according to tau

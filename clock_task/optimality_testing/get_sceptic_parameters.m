@@ -181,7 +181,7 @@ elseif ismember(agent, {'kalman_uv_sum_discount', 'kalman_uv_sum_negtau'})
         p.kappa = params(4);
         p.lambda = params(5);
     end
-elseif strcmpi(agent, 'fixedLR_decay')
+elseif ismember(agent, {'fixedLR_decay', 'fixedLR_decay_random'})
     if useastruct
         p.alpha  = params(strcmpi(astruct.parnames, 'alpha'));
         p.gamma = 1/(1+exp(-params(strcmpi(astruct.parnames, 'gamma')))); %exponentiate to convert to 0-1 scaling

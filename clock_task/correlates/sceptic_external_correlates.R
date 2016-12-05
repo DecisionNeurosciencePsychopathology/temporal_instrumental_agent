@@ -16,6 +16,7 @@ nontransformedpars$rownum <- 1:nrow(nontransformedpars)
 
 #and the original raw info
 fromfmri <- readMat("/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba_fmri/posterior_states_decay_nomultisession_psfixed0p0125.mat")
+#fromfmri <- readMat("/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba_fmri/posterior_states_decay_nomultisession_constrain0p0125_niv.mat")
 parmat <- data.frame(fromfmri$pars)[,1:5] #6th column is blank under fixed prop spread
 names(parmat) <- c("lunaid", "fmri_F", "fmri_alpha", "fmri_gamma", "fmri_beta")
 #funny glitch where the id is coming through with "1010" at the end due to digits in filename during parsing.
@@ -31,7 +32,7 @@ df$rownum <- 1:nrow(df)
 df$subject <- NULL
 
 #idlist
-idlist <- read.xls("/Users/michael/Google Drive/skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx", header=FALSE, col.names="lunaid")
+idlist <- read.xls(file.path(GoogleDriveDir(), "skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx"), header=FALSE, col.names="lunaid")
 idlist$rownum <- 1:nrow(idlist)
 
 #df <- merge(df, idlist, by="rownum")
@@ -48,8 +49,12 @@ iq <- plyr::rename(iq, c(LunaID="lunaid"))
 df <- merge(df, iq, by="lunaid")
 
 #selfreports (also has age and sex)
-selfreports <- read.csv("/Users/michael/Tresors/DEPENd/Projects/SPECC/SelfReports/data/surveys/SelfReportsMerged.csv")
-selfreports <- plyr::rename(selfreports, c(LUNA_ID="lunaid"))
+selfreports <- read.csv("/Users/michael/Box_Sync/DEPENd/Projects/SPECC/SelfReports/data/surveys/SelfReportsMerged.csv")
+selfreports <- dplyr::rename(selfreports, lunaid=LUNA_ID)
+
+##TODO: There is a second row for 10814 in here... need to figure out why.
+selfreports <- subset(selfreports, !(lunaid == 10814 & CompletionDate=="2014-08-11"))
+
 
 df <- merge(df, selfreports, by="lunaid", all=TRUE)
 #df <- subset(df, !lunaid==11246) #huge head movement -- exclude?
@@ -58,7 +63,7 @@ df <- merge(df, selfreports, by="lunaid", all=TRUE)
 #    "prop_spread_fixed_decay", "alpha_fixed_uv", "beta_fixed_uv", "prop_spread_fixed_uv", "tau_fixed_uv")
 
 learningvars <- c("kalman_uv_sum_tau", "kalman_uv_sum_beta", "fixed_decay_alpha", "fixed_decay_beta", "fixed_decay_gamma", 
-    "fixed_uv_alpha", "fixed_uv_beta", "fixed_uv_tau", "fmri_F", "fmri_alpha", "fmri_gamma", "fmri_beta")
+    "fixed_uv_alpha", "fixed_uv_beta", "fixed_uv_tau", "fmri_F", "fmri_alpha_t", "fmri_gamma_t", "fmri_beta_t")
 
 corvars <- c("VerbalTScore", "PerformanceTScore", "RISTIndex")
 corwithtarget(df, target=learningvars, withvars=corvars, pmin=.10, digits=3)
@@ -148,8 +153,8 @@ ggplot(df, aes(x=RISTIndex, y=fixed_decay_gamma)) + geom_point() + stat_smooth(m
 dev.off()
 
 df$performanceIQ <- 100 + (df$PerformanceTScore - 50)/10*15 #rescale T -> IQ
-pdf("PerformanceIQ_Gamma_Corr.pdf", width=5, height=3)
-ggplot(df, aes(x=performanceIQ, y=fixed_decay_gamma)) + geom_point() + stat_smooth(method="lm", se=FALSE) +
+pdf("PerformanceIQ_Gamma_Corr_Update.pdf", width=5, height=3)
+ggplot(df, aes(x=performanceIQ, y=fmri_gamma_t)) + geom_point() + stat_smooth(method="lm", se=FALSE) +
     theme_bw(base_size=15) + ylab(expression(paste("Decay parameter (",gamma, ")"))) + xlab("RIST Nonverbal Intelligence") +
     theme(axis.title.y=element_text(margin=margin(0,10,0,0))) +
     theme(axis.title.x=element_text(margin=margin(10,0,0,0)))
@@ -158,6 +163,9 @@ dev.off()
 cor.test(~performanceIQ + fixed_decay_gamma, df)
 cor.test(~performanceIQ + fixed_decay_gamma, subset(df, performanceIQ > 85)) #make sure the correlation is robust to outliers
 
+#these now reflect the post-Niv learning rule
+cor.test(~performanceIQ + fmri_gamma_t, df)
+cor.test(~performanceIQ + fmri_gamma_t, subset(df, performanceIQ > 85)) #make sure the correlation is robust to outliers
 
 #pdf("IQ_Gamma_Corr.pdf", width=8, height=5)
 #ggplot(df, aes(x=RISTIndex, y=gamma_fixed_decay)) + geom_point() + stat_smooth(method="lm")

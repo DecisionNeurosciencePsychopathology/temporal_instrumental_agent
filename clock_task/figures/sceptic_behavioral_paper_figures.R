@@ -202,6 +202,48 @@ ggplot(df, aes(x=m_ordered, y=freq, ymin=freq-se, ymax=freq+se)) + geom_pointran
     scale_y_continuous(breaks=c(0,0.25, 0.5, 0.75), labels=c("0", ".25", ".5", ".75"))
 dev.off()
 
+#ar1 and schoenberg results
+arfreqs <- readMat("ar_modelfreqs_Sep2016.mat")
+
+
+#manual entry from Jon email 19Sep2016
+mnames <- c("Fixed LR V",	"Fixed LR U + V", "Fixed LR V decay", "KF V", "KF Process Noise", "KF U + V", "KF Volatility")
+df <- data.frame(model=ordered(mnames), freq=arfreqs$ar1Ef, se=sqrt(diag(arfreqs$ar1Vf)))
+
+#for ggplot with coord_flip, need to reverse
+df$m_ordered <- factor(df$model, levels=rev(levels(df$model))) 
+
+pdf("Ar1 Main BMC v5.pdf", width=6, height=4.3)
+ggplot(df, aes(x=m_ordered, y=freq, ymin=freq-se, ymax=freq+se)) + geom_pointrange(stat="identity", size=1.3, fatten=2.5) +
+    annotate("text", x=5, y=0.45, label="EP = 1.0", hjust=0, vjust=0.5, size=4.5) + # ylim(-0.05,1.1) +
+    geom_label(mapping=aes(x=x,y=y,label=label, ymin=NULL, ymax=NULL), 
+        data=data.frame(x=0.8, y=0.40, label=as.character(expression(paste("BOR < ",10^{-32})))),
+        hjust=0, vjust=0, parse=TRUE, size=6, label.padding = unit(0.4, "lines")) +
+    ylab("Estimated Model Frequency") + xlab("Includes AR(1) choice") + coord_flip() +
+    theme_bw(base_size=20) + theme(axis.title.x=element_text(margin = margin(t = 15)),
+        panel.grid.major.y=element_blank(), panel.grid.minor.y=element_blank()) +
+    scale_y_continuous(breaks=c(0,0.25, 0.5, 0.75), labels=c("0", ".25", ".5", ".75"))
+dev.off()
+
+#manual entry from Jon email 19Sep2016
+df <- data.frame(model=ordered(mnames), freq=arfreqs$schEf, se=sqrt(diag(arfreqs$schVf)))
+
+#for ggplot with coord_flip, need to reverse
+df$m_ordered <- factor(df$model, levels=rev(levels(df$model))) 
+
+pdf("Scho Main BMC v5.pdf", width=6, height=4.3)
+ggplot(df, aes(x=m_ordered, y=freq, ymin=freq-se, ymax=freq+se)) + geom_pointrange(stat="identity", size=1.3, fatten=2.5) +
+    annotate("text", x=5, y=0.45, label="EP = 1.0", hjust=0, vjust=0.5, size=4.5) + # ylim(-0.05,1.1) +
+    geom_label(mapping=aes(x=x,y=y,label=label, ymin=NULL, ymax=NULL), 
+        data=data.frame(x=0.8, y=0.43, label=as.character(expression(paste("BOR < ",10^{-37})))),
+        hjust=0, vjust=0, parse=TRUE, size=6, label.padding = unit(0.4, "lines")) +
+    ylab("Estimated Model Frequency") + xlab("Includes Schoenberg choice") + coord_flip() +
+    theme_bw(base_size=20) + theme(axis.title.x=element_text(margin = margin(t = 15)),
+        panel.grid.major.y=element_blank(), panel.grid.minor.y=element_blank()) +
+    scale_y_continuous(breaks=c(0,0.25, 0.5, 0.75), labels=c("0", ".25", ".5", ".75"))
+dev.off()
+
+
 #frank TC (replicate v5 above)
 frank_bmcef <- readMat("elife_bmc_franktc_frequencies.mat")
 
