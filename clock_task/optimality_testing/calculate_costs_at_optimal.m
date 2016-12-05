@@ -2,15 +2,19 @@
 cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
 addpath('../');
 %optfiles = glob('output/optimize_output*.mat');
-optfiles = glob('output/optimize_output_allequate*.mat');
+%optfiles = glob('output/optimize_output_allequate*.mat');
+optfiles = glob('output/optimize_output_sinusoid_fixedLR_decay*.mat');
 
 nreps = 100;
-nbest = 5; %number of parameter sets to test
+%nbest = 5; %number of parameter sets to test
+nbest=1; %just for decay tests
 ntimesteps=500;
-ntrials = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
+%ntrials = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
+ntrials = [30 40 60 110];
 cliffpullback=20;
 plots=false;
-target='allequate';
+%target='allequate';
+target='sinusoid';
 
 if strcmpi(target, 'sinusoid')
     %draw a random sample from the phase-shifted sinusoids for each replication
@@ -30,7 +34,7 @@ if strcmpi(target, 'sinusoid')
         
         allshift(i,:,1) = evi;
         allshift(i,:,2) = prbi;
-        allshift(i,:,3) = evi./prb;
+        allshift(i,:,3) = evi./prbi;
     end
     
     %randomly sample with replacement the desired number of contingencies
@@ -197,7 +201,8 @@ for o = 1:(length(optfiles) + 1)
             seeds = randi([1 500], 1, 5);
             optmat(p).firstrt = randi([1 500], 1, 1);
             for q = 1:nbest
-                parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
+                %parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
+                parsq=[0.0627    1.9736    0.0528   -1.1632]; %just a hack for now as this is an optimal set that looks reasonable (24% decay)
                 oresults.(a.name).pars{t,p,q} = parsq;
                 if strcmpi(a.name, 'franktc')
                     %[costs(o,p), rts(o,p,:), ret{o,p}] = TC_Alg_forward(bestpars, priors, optmat(p), seeds, a.ntrials, [0 5000]);
@@ -229,7 +234,7 @@ for o = 1:(length(optfiles) + 1)
     end
 end
 
-save('/Users/michael/performance_at_optimal.mat', 'oresults', 'optmat', 'optfiles'); %'-v7.3'
+save('/Users/michael/TresorSync/performance_at_optimal_decaytest.mat', 'oresults', 'optmat', 'optfiles'); %'-v7.3'
 %this makes the file about 8GB!  'ret' 'v_it', 
 %save('/Users/michael/bootstrap_costs_at_best10.mat', 'costs', 'rts', 'optmat', 'optfiles'); %'-v7.3'
 

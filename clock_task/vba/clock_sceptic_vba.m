@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion, saveresults, graphics)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -18,12 +18,13 @@ close all
 %% uncertainty aversion for UV_sum
 if nargin < 7, fit_propspread = 0; end
 if nargin < 9, u_aversion = 0; end
-if nargin < 10, saveresults = 1; end
-if nargin < 11, graphics = 0; end
+if nargin < 10, data_str=0; end
+if nargin < 11, saveresults = 1; end
+if nargin < 12, graphics = 0; end
+if nargin < 13, results_dir = pwd; end
 
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
-
 
 if ~graphics
     options.DisplayWin = 0;
@@ -38,10 +39,13 @@ n_phi = 1;
 options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
 options.inF.entropy = 1; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
+options.inF.H_threshold = 0.01;
 
 %If we want to use the elig update variant in choice rule
-options.inF.total_pe=1;
+options.inF.total_pe=0;
 
+%If we want to track delta for regressors
+options.inF.track_pe = 1;
 
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
 % options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
@@ -54,35 +58,40 @@ options.inF.autocorrelation = options.inG.autocorrelation;
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % If we can't find the path have the user select it.
-os = computer;
-if strcmp(os(1:end-2),'PCWIN')
-    data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-    vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-    results_dir = 'E:/data/sceptic/vba_out/new_lambda_results/';
-else
-    [~, me] = system('whoami');
-    me = strtrim(me);
-    if strcmp(me,'Alex')==1
-        data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
-        results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-        
-    elseif strcmp(me(1:6),'dombax')==1
-        data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        vbadir = '/Volumes/bek/vba_results/uv_sum';
-        results_dir = '/Volumes/bek/vba_results/';
-        
-    elseif strcmpi(me(1:(min(length(me), 14))),'alexdombrovski')
-        data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
-        results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-        
+%Have the data file be an input now since we will be working with multiple
+%clock data
+if data_str==0
+    os = computer;
+    if strcmp(os(1:end-2),'PCWIN')
+        data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+        %vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
+        %results_dir = 'E:/data/sceptic/vba_out/new_lambda_results/';
     else
-        data = readtable(sprintf('subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-        results_dir = '/Volumes/bek/vba_results/';
+        [~, me] = system('whoami');
+        me = strtrim(me);
+        if strcmp(me,'Alex')==1
+            data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+            %vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
+            %results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+            
+        elseif strcmp(me(1:6),'dombax')==1
+            data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+            %vbadir = '/Volumes/bek/vba_results/uv_sum';
+            %results_dir = '/Volumes/bek/vba_results/';
+            
+        elseif strcmpi(me(1:(min(length(me), 14))),'alexdombrovski')
+            data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+            %vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
+            %results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
+            
+        else
+            data = readtable(sprintf('subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+            %results_dir = '/Volumes/bek/vba_results/';
+        end
     end
+else
+    data = readtable(data_str,'Delimiter',',','ReadVariableNames',true);
 end
-
 options.inF.fit_nbasis = 0;
 range_RT = 400;
 % n_steps = 4000;
@@ -109,7 +118,7 @@ options.verbose=1;
 % options.DisplayWin=1;
 
 %% set up kalman defaults
-options.inF.kalman.processnoise = 0;
+options.inF.kalman.kalmna_processnoise = 0;
 options.inF.kalman.kalman_sigmavolatility  = 0;
 options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
@@ -323,6 +332,17 @@ switch model
         
 end
 
+%Adjust initial arrays is tracking pe
+if options.inF.track_pe == 1
+    track_pe = 1;
+    hidden_variables = hidden_variables + 1;
+    priors.muX0 = [priors.muX0; zeros(n_basis,1)];
+    priors.SigmaX0 = zeros(hidden_variables*n_basis);
+else
+    track_pe = 0;
+end
+
+
 %Add in the lambda parameter
 if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autocorrelation,'softmax_multitrial')
     n_phi = n_phi + 2;
@@ -339,10 +359,6 @@ elseif options.inF.entropy == 1
     priors.muX0 = [priors.muX0; zeros(track_entropy,1)];
     priors.SigmaX0 = zeros(hidden_variables*n_basis+track_entropy);
 end
-
-
-
-
 
 options.inF.hidden_state = hidden_variables;
 
@@ -456,5 +472,5 @@ if saveresults
     %% save output figure
     % h = figure(1);
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save(sprintf([results_dir, '/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion_total_pe_variant'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation), 'posterior', 'out');
+    save([results_dir sprintf('/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion_total_pe_variant', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation)], 'posterior', 'out');
 end
