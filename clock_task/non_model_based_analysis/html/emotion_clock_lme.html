@@ -66,7 +66,26 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput">lme_group_emotion_reward_abspe = fitlme(goldl,<span class="string">'rt ~ 1 + condition_num + emotion*rewardlag + abspe*rewardlag + rtvmaxlag + rtlag + rtlag2 +rtlag3 + emotion*abspe + (1|subject) + (1|run) + (1|run:subject)'</span>, <span class="string">'DummyVarCoding'</span>, <span class="string">'effects'</span>)
+  </style></head><body><div class="content"><h1></h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Test the PIT idea:</a></li><li><a href="#2">plot basic PE effect</a></li><li><a href="#3">looking just at learnable contingencies</a></li><li><a href="#4">test all effects with only intercept as random at each of the lower levels</a></li></ul></div><h2>Test the PIT idea:<a name="1"></a></h2><pre>(1) in the instrumental context, appetitive outcome (reward) lengthens the subsequent RT
+because the relative value of staying in the trial increases relative to opportunity cost of doing something else.
+(2) On the other hand, happy faces facilitate responding, shortening the RT, and vice versa for fearful faces.</pre><pre class="codeinput"><span class="comment">%  get the data</span>
+cd(<span class="string">'/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses'</span>);
+load <span class="string">goldl</span>; <span class="comment">% only learnable contingencies, excluding missed and first trials of each run</span>
+load <span class="string">gold</span>;
+</pre><h2>plot basic PE effect<a name="2"></a></h2><h2>looking just at learnable contingencies<a name="3"></a></h2><pre class="codeinput">figure(1); clf;
+subplot(3,2,1)
+scatter(gold.pemaxlag(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Happy, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,2)
+scatter(gold.pemaxlag(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Happy, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,3)
+scatter(gold.pemaxlag(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Scrambled, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,4)
+scatter(gold.pemaxlag(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Scrambled, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,5)
+scatter(gold.pemaxlag(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Fear, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,6)
+scatter(gold.pemaxlag(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Fear, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+</pre><img vspace="5" hspace="5" src="emotion_clock_lme_01.png" alt=""> <h2>test all effects with only intercept as random at each of the lower levels<a name="4"></a></h2><pre class="codeinput">lme_group_emotion_reward_abspe = fitlme(goldl,<span class="string">'rt ~ 1 + condition_num + emotion*rewardlag + abspe*rewardlag + rtvmaxlag + rtlag + rtlag2 +rtlag3 + emotion*abspe + (1|subject) + (1|run) + (1|run:subject)'</span>, <span class="string">'DummyVarCoding'</span>, <span class="string">'effects'</span>)
 anova(lme_group_emotion_reward_abspe)
 </pre><pre class="codeoutput">
 lme_group_emotion_reward_abspe = 
@@ -175,7 +194,34 @@ ans =
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2016a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 
+%% Test the PIT idea: 
+%  (1) in the instrumental context, appetitive outcome (reward) lengthens the subsequent RT 
+%  because the relative value of staying in the trial increases relative to opportunity cost of doing something else.
+%  (2) On the other hand, happy faces facilitate responding, shortening the RT, and vice versa for fearful faces.
 
+%  get the data
+cd('/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses');
+load goldl; % only learnable contingencies, excluding missed and first trials of each run
+load gold;
+
+%% plot basic PE effect
+%% looking just at learnable contingencies
+figure(1); clf;
+subplot(3,2,1)
+scatter(gold.pemaxlag(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Happy, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,2)
+scatter(gold.pemaxlag(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Happy, IEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,3)
+scatter(gold.pemaxlag(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Scrambled, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,4)
+scatter(gold.pemaxlag(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Scrambled, IEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,5)
+scatter(gold.pemaxlag(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Fear, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,6)
+scatter(gold.pemaxlag(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Fear, IEV'); ylabel('RT'); xlabel('Prediction error');
+
+
+%%  test all effects with only intercept as random at each of the lower levels
 lme_group_emotion_reward_abspe = fitlme(goldl,'rt ~ 1 + condition_num + emotion*rewardlag + abspe*rewardlag + rtvmaxlag + rtlag + rtlag2 +rtlag3 + emotion*abspe + (1|subject) + (1|run) + (1|run:subject)', 'DummyVarCoding', 'effects')
 anova(lme_group_emotion_reward_abspe)
 

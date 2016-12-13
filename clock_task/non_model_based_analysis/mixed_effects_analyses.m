@@ -32,9 +32,6 @@ gold.abspe = abs(gold.pemax);
 gold.abspelag = abs(gold.pemaxlag);
 gold.emotion_num = 1.*strcmpi(cellstr(gold.emotion),'happy')-1.*strcmpi(cellstr(gold.emotion),'fear');
 
-goldl.condition_num = 1.*strcmpi(cellstr(goldl.rewFunc),'IEV');
-goldl.condition_num = nominal(goldl.condition_num);
-
 
 %% derive within-run rtumax to avoid the problem of confounding with unique run intercept
 % ugly, ugly code
@@ -52,6 +49,11 @@ for unique_run = 1:length(gold.rtumax)/50;
     end
     unique_run
 end
+cols = fields(gold);
+cols = cols(1:end-1);
+goldl = gold(~gold.exclude_unlearnable,cols);
+goldl.condition_num = 1.*strcmpi(cellstr(goldl.rewFunc),'IEV');
+goldl.condition_num = nominal(goldl.condition_num);
 
 gold.rtumax_runlag = [NaN; gold.rtumax_run(1:end-1)];
 gold.rtumax_run_meanlag = [NaN; gold.rtumax_run_mean(1:end-1)];
