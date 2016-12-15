@@ -205,7 +205,14 @@ for i = 1:ntrials
     end
     
     %1) compute prediction error, scaled by eligibility trace
-    delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
+    %this is the basis-wise update, which does not converge to underlying EV
+    %delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
+    
+    v_i=sum(mu_ij(i,:)'*ones(1,ntimesteps) .* gaussmat);
+    curv = v_i(rts(i)); %scalar value estimate at chosen response
+
+    %distribute estimated value at RT according to eligibility (works correctly)
+    delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - curv);
 
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
@@ -287,7 +294,7 @@ for i = 1:ntrials
     %compute summed/evaluated value function across all timesteps
     v_jt=mu_ij(i+1,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
     v_func = sum(v_jt); %subjective value by timestep as a sum of all basis functions
-    v_it(i,:) = v_func; %return value vector
+    v_it(i+1,:) = v_func; %return value vector
     
     if i == ntrials, break; end %do not compute i+1 choice on the final trial (invalid indexing problem)
     

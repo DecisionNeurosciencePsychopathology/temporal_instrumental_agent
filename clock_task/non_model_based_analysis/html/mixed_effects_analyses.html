@@ -1,0 +1,307 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>mixed_effects_analyses</title><meta name="generator" content="MATLAB 9.0"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-12-07"><meta name="DC.source" content="mixed_effects_analyses.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#1">Mixed-effects analyses of sceptic RT data</a></li><li><a href="#2">sanity check #1: inspect fields</a></li><li><a href="#3">sanity check #2: inspect rt distributions by condition</a></li><li><a href="#4">explain RT in terms of reinforcement:</a></li><li><a href="#5">only intercept as random effect</a></li><li><a href="#6">all "meta-learning parameters" as random effects:</a></li><li><a href="#7">compare models</a></li></ul></div><h2>Mixed-effects analyses of sceptic RT data<a name="1"></a></h2><pre class="codeinput"><span class="comment">% data read</span>
+cd(<span class="string">'/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses'</span>);
+load <span class="string">gold</span>;
+
+<span class="comment">% define categorical variables</span>
+<span class="comment">% gold = scepticfmribehaviorNov2016;</span>
+gold.subject = categorical(gold.subject);
+gold.LunaID = categorical(gold.LunaID);
+gold.omission = categorical(gold.omission);
+gold.omissionlag = categorical(gold.omissionlag);
+gold.rewFunc = categorical(gold.rewFunc);
+gold.emotion = categorical(gold.emotion);
+</pre><h2>sanity check #1: inspect fields<a name="2"></a></h2><pre class="codeinput">gold(1:2,:)
+</pre><pre class="codeoutput">
+ans = 
+
+    subject    run    trial    LunaID    entropy    rtvmax    vchosen      vmax     rtumax     umax     pemax     rewFunc    emotion    magnitude    probability    score      ev       rt     bestRewRT    bestEVRT    image    trial_abs    timestep    entropyH    entropyFixed    timesteplag    timestepchange    timestepchangelag    abstschange    abstschangelag    abstschangelag2    abstschangelag3    abstschangelag4    vdev    vdevlag    rtvmaxlag    udev    udevlag    rtumaxlag    absvdevlag    evdev     evdevlag    omission    omissionlag    entropylag    entropyHlag    entropyFlag    wizentropy    wizabstschange    distfromedge    distfromedgelag    rtlag
+    _______    ___    _____    ______    _______    ______    ________    ______    ______    ______    ______    _______    _______    _________    ___________    _____    ______    ____    _________    ________    _____    _________    ________    ________    ____________    ___________    ______________    _________________    ___________    ______________    _______________    _______________    _______________    ____    _______    _________    ____    _______    _________    __________    ______    ________    ________    ___________    __________    ___________    ___________    __________    ______________    ____________    _______________    _____
+
+    1          1      1        10637         NaN    NaN              0       NaN    NaN          NaN    10.693    IEV        fear       28           0.86485        28       24.221    1051    1051         1051        11       1            11          0           0               NaN            NaN               NaN                  NaN            NaN               NaN                NaN                NaN                NaN     NaN        NaN          NaN     NaN        NaN          NaN              NaN    NaN         Reward      NA             NaN           NaN            NaN                NaN           NaN           11              NaN                 NaN 
+    1          1      2        10637     0.32202     11       8.98e-11    9.9793     30       2521.9    21.675    IEV        fear       58           0.68726        58       39.879    2451    2451         2451         8       2            25          0           0                11             12               NaN                   12            NaN               NaN                NaN                NaN                 14     NaN        NaN           -5     NaN        NaN          NaN           9.9793    NaN         Reward      Reward         NaN             0              0            -2.8176       0.57445           15               11                1051 
+
+</pre><h2>sanity check #2: inspect rt distributions by condition<a name="3"></a></h2><p>scatterhist(gold.trial,gold.rt,'group',gold.rewFunc);figure(gcf)</p><pre class="codeinput">figure(1); clf; boxplot(gold.rt,gold.rewFunc);
+<span class="comment">%</span>
+<span class="comment">%</span>
+<span class="comment">% % fit basic LM:</span>
+<span class="comment">% lm_group = fitlm(gold,'rt ~ 1 + trial + subject + trial:subject + rewFunc + rewFunc:trial');</span>
+<span class="comment">%</span>
+<span class="comment">% % fit basic LME:</span>
+<span class="comment">% lme_group = fitlme(gold,'rt ~ 1 + rewFunc + trial + rewFunc:trial + (1 + rewFunc|subject) ');</span>
+</pre><img vspace="5" hspace="5" src="mixed_effects_analyses_01.png" alt=""> <h2>explain RT in terms of reinforcement:<a name="4"></a></h2><h2>only intercept as random effect<a name="5"></a></h2><pre class="codeinput">lme_group_oneway = fitlme(gold,<span class="string">'rt ~ 1 + rtvmaxlag + trial + rtlag + rtvmaxlag:trial + rtumaxlag + rtumaxlag:trial + (1|subject)'</span>)
+</pre><pre class="codeoutput">
+lme_group_oneway = 
+
+
+Linear mixed-effects model fit by ML
+
+Model information:
+    Number of observations           29603
+    Fixed effects coefficients           7
+    Random effects coefficients         76
+    Covariance parameters                2
+
+Formula:
+    rt ~ 1 + rtlag + trial*rtvmaxlag + trial*rtumaxlag + (1 | subject)
+
+Model fit statistics:
+    AIC           BIC           LogLikelihood    Deviance  
+    4.7826e+05    4.7833e+05    -2.3912e+05      4.7824e+05
+
+Fixed effects coefficients (95% CIs):
+    Name                     Estimate    SE           tStat      DF   
+    '(Intercept)'              701.19       44.184      15.87    29596
+    'trial'                    1.9158       1.2978     1.4762    29596
+    'rtvmaxlag'                19.532       1.1196     17.445    29596
+    'rtumaxlag'                4.0274       1.1484     3.5071    29596
+    'rtlag'                   0.35763    0.0057042     62.696    29596
+    'trial:rtvmaxlag'         0.17109     0.036161     4.7314    29596
+    'trial:rtumaxlag'        -0.20743     0.036667    -5.6572    29596
+
+
+    pValue        Lower       Upper   
+    1.7595e-56      614.58      787.79
+        0.1399    -0.62794      4.4595
+     8.184e-68      17.337      21.726
+    0.00045371      1.7766      6.2783
+             0     0.34645     0.36881
+    2.2398e-06     0.10022     0.24197
+    1.5531e-08     -0.2793    -0.13556
+
+Random effects covariance parameters (95% CIs):
+Group: subject (76 Levels)
+    Name1                Name2                Type         Estimate    Lower 
+    '(Intercept)'        '(Intercept)'        'std'        159.48      134.18
+
+
+    Upper 
+    189.55
+
+Group: Error
+    Name             Estimate    Lower    Upper 
+    'Res Std'        776.64      770.4    782.93
+
+</pre><h2>all "meta-learning parameters" as random effects:<a name="6"></a></h2><pre class="codeinput">lme_group = fitlme(gold,<span class="string">'rt ~ 1 + rtvmaxlag + trial + rtlag + rtvmaxlag:trial + rtumaxlag + rtumaxlag:trial + (1|subject) + (1+rtvmaxlag| subject) + (1+trial|subject) + (1+rtvmaxlag:trial|subject) + (1+rtumaxlag |subject) + (1+rtumaxlag:trial |subject)'</span>)
+</pre><pre class="codeoutput">
+lme_group = 
+
+
+Linear mixed-effects model fit by ML
+
+Model information:
+    Number of observations           29603
+    Fixed effects coefficients           7
+    Random effects coefficients        836
+    Covariance parameters               17
+
+Formula:
+    Linear Mixed Formula with 5 predictors.
+
+Model fit statistics:
+    AIC           BIC           LogLikelihood    Deviance  
+    4.7764e+05    4.7783e+05    -2.3879e+05      4.7759e+05
+
+Fixed effects coefficients (95% CIs):
+    Name                     Estimate    SE           tStat      DF   
+    '(Intercept)'              686.05       60.424     11.354    29596
+    'trial'                    1.9155       1.3419     1.4275    29596
+    'rtvmaxlag'                19.009       2.0673     9.1952    29596
+    'rtumaxlag'                7.4795       1.2305     6.0786    29596
+    'rtlag'                   0.32178    0.0057742     55.727    29596
+    'trial:rtvmaxlag'         0.25384     0.037567     6.7571    29596
+    'trial:rtumaxlag'        -0.27171     0.038226    -7.1079    29596
+
+
+    pValue        Lower       Upper   
+    8.1595e-30      567.62      804.49
+       0.15346    -0.71467      4.5457
+    3.9806e-20      14.957      23.061
+    1.2274e-09      5.0677      9.8912
+             0     0.31046     0.33309
+    1.4343e-11     0.18021     0.32748
+    1.2045e-12    -0.34663    -0.19678
+
+Random effects covariance parameters (95% CIs):
+Group: subject (76 Levels)
+    Name1                Name2                Type         Estimate    Lower
+    '(Intercept)'        '(Intercept)'        'std'        22.069      NaN  
+
+
+    Upper
+    NaN  
+
+Group: subject (76 Levels)
+    Name1                Name2                Type          Estimate    Lower 
+    '(Intercept)'        '(Intercept)'        'std'           298.48    242.66
+    'rtvmaxlag'          '(Intercept)'        'corr'        -0.99998       NaN
+    'rtvmaxlag'          'rtvmaxlag'          'std'           14.702    12.235
+
+
+    Upper 
+    367.13
+       NaN
+    17.666
+
+Group: subject (76 Levels)
+    Name1                Name2                Type          Estimate    Lower 
+    '(Intercept)'        '(Intercept)'        'std'           164.71       NaN
+    'trial'              '(Intercept)'        'corr'        -0.99986       NaN
+    'trial'              'trial'              'std'           2.3592    1.0052
+
+
+    Upper
+      NaN
+      NaN
+    5.537
+
+Group: subject (76 Levels)
+    Name1                    Name2                    Type          Estimate
+    '(Intercept)'            '(Intercept)'            'std'           83.243
+    'trial:rtvmaxlag'        '(Intercept)'            'corr'        -0.41746
+    'trial:rtvmaxlag'        'trial:rtvmaxlag'        'std'          0.05351
+
+
+    Lower    Upper
+    NaN      NaN  
+    NaN      NaN  
+    NaN      NaN  
+
+Group: subject (76 Levels)
+    Name1                Name2                Type          Estimate    Lower
+    '(Intercept)'        '(Intercept)'        'std'           107.35    NaN  
+    'rtumaxlag'          '(Intercept)'        'corr'        -0.99988    NaN  
+    'rtumaxlag'          'rtumaxlag'          'std'           2.9229    NaN  
+
+
+    Upper
+    NaN  
+    NaN  
+    NaN  
+
+Group: subject (76 Levels)
+    Name1                    Name2                    Type          Estimate
+    '(Intercept)'            '(Intercept)'            'std'           119.32
+    'trial:rtumaxlag'        '(Intercept)'            'corr'              -1
+    'trial:rtumaxlag'        'trial:rtumaxlag'        'std'         0.064489
+
+
+    Lower       Upper  
+         NaN        NaN
+         NaN        NaN
+    0.019365    0.21476
+
+Group: Error
+    Name             Estimate    Lower     Upper 
+    'Res Std'        765         758.82    771.23
+
+</pre><h2>compare models<a name="7"></a></h2><pre class="codeinput">compare(lme_group_oneway, lme_group);
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2016a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Mixed-effects analyses of sceptic RT data
+
+% data read 
+cd('/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses');
+load gold;
+
+% define categorical variables
+% gold = scepticfmribehaviorNov2016;
+gold.subject = categorical(gold.subject);
+gold.LunaID = categorical(gold.LunaID);
+gold.omission = categorical(gold.omission);
+gold.omissionlag = categorical(gold.omissionlag);
+gold.rewFunc = categorical(gold.rewFunc);
+gold.emotion = categorical(gold.emotion);
+
+%% sanity check #1: inspect fields
+gold(1:2,:)
+
+%% sanity check #2: inspect rt distributions by condition
+% scatterhist(gold.trial,gold.rt,'group',gold.rewFunc);figure(gcf)
+figure(1); clf; boxplot(gold.rt,gold.rewFunc);
+% 
+% 
+% % fit basic LM:
+% lm_group = fitlm(gold,'rt ~ 1 + trial + subject + trial:subject + rewFunc + rewFunc:trial');
+% 
+% % fit basic LME:
+% lme_group = fitlme(gold,'rt ~ 1 + rewFunc + trial + rewFunc:trial + (1 + rewFunc|subject) ');
+
+%% explain RT in terms of reinforcement:
+%% only intercept as random effect
+lme_group_oneway = fitlme(gold,'rt ~ 1 + rtvmaxlag + trial + rtlag + rtvmaxlag:trial + rtumaxlag + rtumaxlag:trial + (1|subject)')
+
+%% all "meta-learning parameters" as random effects:
+lme_group = fitlme(gold,'rt ~ 1 + rtvmaxlag + trial + rtlag + rtvmaxlag:trial + rtumaxlag + rtumaxlag:trial + (1|subject) + (1+rtvmaxlag| subject) + (1+trial|subject) + (1+rtvmaxlag:trial|subject) + (1+rtumaxlag |subject) + (1+rtumaxlag:trial |subject)')
+
+%% compare models
+compare(lme_group_oneway, lme_group);
+##### SOURCE END #####
+--></body></html>

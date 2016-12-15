@@ -1,0 +1,229 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>emotion_clock_lme</title><meta name="generator" content="MATLAB 9.0"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-12-09"><meta name="DC.source" content="emotion_clock_lme.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1></h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Test the PIT idea:</a></li><li><a href="#2">plot basic PE effect</a></li><li><a href="#3">looking just at learnable contingencies</a></li><li><a href="#4">test all effects with only intercept as random at each of the lower levels</a></li></ul></div><h2>Test the PIT idea:<a name="1"></a></h2><pre>(1) in the instrumental context, appetitive outcome (reward) lengthens the subsequent RT
+because the relative value of staying in the trial increases relative to opportunity cost of doing something else.
+(2) On the other hand, happy faces facilitate responding, shortening the RT, and vice versa for fearful faces.</pre><pre class="codeinput"><span class="comment">%  get the data</span>
+cd(<span class="string">'/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses'</span>);
+load <span class="string">goldl</span>; <span class="comment">% only learnable contingencies, excluding missed and first trials of each run</span>
+load <span class="string">gold</span>;
+</pre><h2>plot basic PE effect<a name="2"></a></h2><h2>looking just at learnable contingencies<a name="3"></a></h2><pre class="codeinput">figure(1); clf;
+subplot(3,2,1)
+scatter(gold.pemaxlag(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Happy, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,2)
+scatter(gold.pemaxlag(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == 1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Happy, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,3)
+scatter(gold.pemaxlag(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Scrambled, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,4)
+scatter(gold.pemaxlag(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == 0 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Scrambled, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,5)
+scatter(gold.pemaxlag(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>)),gold.rt(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'DEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Fear, DEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+subplot(3,2,6)
+scatter(gold.pemaxlag(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>)),gold.rt(gold.emotion_num == -1 &amp; strcmpi(cellstr(gold.rewFunc),<span class="string">'IEV'</span>))); axis([-80 120 0 4000]); title(<span class="string">'Fear, IEV'</span>); ylabel(<span class="string">'RT'</span>); xlabel(<span class="string">'Prediction error'</span>);
+</pre><img vspace="5" hspace="5" src="emotion_clock_lme_01.png" alt=""> <h2>test all effects with only intercept as random at each of the lower levels<a name="4"></a></h2><pre class="codeinput">lme_group_emotion_reward_abspe = fitlme(goldl,<span class="string">'rt ~ 1 + condition_num + emotion*rewardlag + abspe*rewardlag + rtvmaxlag + rtlag + rtlag2 +rtlag3 + emotion*abspe + (1|subject) + (1|run) + (1|run:subject)'</span>, <span class="string">'DummyVarCoding'</span>, <span class="string">'effects'</span>)
+anova(lme_group_emotion_reward_abspe)
+</pre><pre class="codeoutput">
+lme_group_emotion_reward_abspe = 
+
+
+Linear mixed-effects model fit by ML
+
+Model information:
+    Number of observations           21954
+    Fixed effects coefficients          15
+    Random effects coefficients        540
+    Covariance parameters                4
+
+Formula:
+    Linear Mixed Formula with 10 predictors.
+
+Model fit statistics:
+    AIC           BIC           LogLikelihood    Deviance  
+    3.5142e+05    3.5157e+05    -1.7569e+05      3.5138e+05
+
+Fixed effects coefficients (95% CIs):
+    Name                             Estimate    SE           tStat      DF   
+    '(Intercept)'                      732.66       37.267      19.66    21939
+    'emotion_fear'                     72.404       23.562     3.0729    21939
+    'emotion_happy'                   -80.518       23.839    -3.3776    21939
+    'rtvmaxlag'                        10.995      0.91852      11.97    21939
+    'rtlag'                           0.30541    0.0068546     44.555    21939
+    'rtlag2'                         0.033313    0.0073823     4.5126    21939
+    'rtlag3'                         0.014245    0.0068374     2.0834    21939
+    'rewardlag'                        144.88       17.481     8.2883    21939
+    'abspe'                            3.9079       0.7109     5.4972    21939
+    'condition_num_0'                 -171.44       12.498    -13.717    21939
+    'emotion_fear:rewardlag'          -37.223       14.811    -2.5132    21939
+    'emotion_happy:rewardlag'          63.438       14.991     4.2319    21939
+    'emotion_fear:abspe'              -2.7299      0.68619    -3.9783    21939
+    'emotion_happy:abspe'              1.0406      0.68125     1.5275    21939
+    'rewardlag:abspe'                  4.8063      0.93621     5.1338    21939
+
+
+    pValue        Lower         Upper   
+    2.5794e-85        659.61      805.71
+     0.0021228         26.22      118.59
+    0.00073262       -127.24     -33.791
+    6.4654e-33        9.1943      12.795
+             0       0.29197     0.31884
+    6.4374e-06      0.018843    0.047783
+       0.03723    0.00084293    0.027646
+    1.2144e-16        110.62      179.15
+     3.902e-08        2.5145      5.3014
+    1.1981e-42       -195.93     -146.94
+       0.01197       -66.253     -8.1926
+     2.327e-05        34.056      92.821
+    6.9619e-05       -4.0749     -1.3849
+       0.12665       -0.2947      2.3759
+    2.8631e-07        2.9713      6.6414
+
+Random effects covariance parameters (95% CIs):
+Group: subject (76 Levels)
+    Name1                Name2                Type         Estimate    Lower 
+    '(Intercept)'        '(Intercept)'        'std'        223.67      185.23
+
+
+    Upper
+    270.1
+
+Group: run (8 Levels)
+    Name1                Name2                Type         Estimate    Lower
+    '(Intercept)'        '(Intercept)'        'std'        37.299      16.66
+
+
+    Upper 
+    83.506
+
+Group: run:subject (456 Levels)
+    Name1                Name2                Type         Estimate    Lower
+    '(Intercept)'        '(Intercept)'        'std'        196.63      177.9
+
+
+    Upper 
+    217.33
+
+Group: Error
+    Name             Estimate    Lower     Upper 
+    'Res Std'        709.23      702.54    715.98
+
+
+ans = 
+
+
+    ANOVA MARGINAL TESTS: DFMETHOD = 'RESIDUAL'
+
+    Term                       FStat     DF1    DF2      pValue    
+    '(Intercept)'              386.51    1      21939    2.5794e-85
+    'emotion'                  6.5795    2      21939     0.0013913
+    'rtvmaxlag'                143.28    1      21939    6.4654e-33
+    'rtlag'                    1985.2    1      21939             0
+    'rtlag2'                   20.363    1      21939    6.4374e-06
+    'rtlag3'                   4.3404    1      21939       0.03723
+    'rewardlag'                68.695    1      21939    1.2144e-16
+    'abspe'                    30.219    1      21939     3.902e-08
+    'condition_num'            188.17    1      21939    1.1981e-42
+    'emotion:rewardlag'         9.109    2      21939    0.00011109
+    'emotion:abspe'             8.092    2      21939    0.00030689
+    'rewardlag:abspe'          26.356    1      21939    2.8631e-07
+
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2016a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+
+%% Test the PIT idea: 
+%  (1) in the instrumental context, appetitive outcome (reward) lengthens the subsequent RT 
+%  because the relative value of staying in the trial increases relative to opportunity cost of doing something else.
+%  (2) On the other hand, happy faces facilitate responding, shortening the RT, and vice versa for fearful faces.
+
+%  get the data
+cd('/Users/localadmin/Google Drive/skinner/projects_analyses/SCEPTIC/model_free_analyses');
+load goldl; % only learnable contingencies, excluding missed and first trials of each run
+load gold;
+
+%% plot basic PE effect
+%% looking just at learnable contingencies
+figure(1); clf;
+subplot(3,2,1)
+scatter(gold.pemaxlag(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Happy, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,2)
+scatter(gold.pemaxlag(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == 1 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Happy, IEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,3)
+scatter(gold.pemaxlag(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Scrambled, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,4)
+scatter(gold.pemaxlag(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == 0 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Scrambled, IEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,5)
+scatter(gold.pemaxlag(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'DEV')),gold.rt(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'DEV'))); axis([-80 120 0 4000]); title('Fear, DEV'); ylabel('RT'); xlabel('Prediction error');
+subplot(3,2,6)
+scatter(gold.pemaxlag(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'IEV')),gold.rt(gold.emotion_num == -1 & strcmpi(cellstr(gold.rewFunc),'IEV'))); axis([-80 120 0 4000]); title('Fear, IEV'); ylabel('RT'); xlabel('Prediction error');
+
+
+%%  test all effects with only intercept as random at each of the lower levels
+lme_group_emotion_reward_abspe = fitlme(goldl,'rt ~ 1 + condition_num + emotion*rewardlag + abspe*rewardlag + rtvmaxlag + rtlag + rtlag2 +rtlag3 + emotion*abspe + (1|subject) + (1|run) + (1|run:subject)', 'DummyVarCoding', 'effects')
+anova(lme_group_emotion_reward_abspe)
+
+##### SOURCE END #####
+--></body></html>

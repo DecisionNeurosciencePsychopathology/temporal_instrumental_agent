@@ -22,6 +22,10 @@ w=x_t(hidden_state_index(:,1)); %Value weight vector
 %pe = x_t(hidden_state_index(:,2)); %prediction error (not updated per se -- just tracked)
 %decay = x_t(hidden_state_index(:,3)); %decay vector (not updated, just tracked)
 
+ntimesteps=inF.ntimesteps;
+v=w*ones(1,ntimesteps) .* inF.gaussmat;
+v_func = sum(v);
+
 if inF.fit_propspread
     prop_spread = inF.max_prop_spread ./ (1+exp(-theta(3))); %0..max SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
@@ -37,7 +41,7 @@ else
     refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
 end
 
-rt = u(1); %response time 0..400
+rt = u(1); %response time 0..40, but can be fractional
 reward = u(2); %obtained reward
 
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
@@ -58,7 +62,20 @@ elig=elig/auc*refspread;
 e = sum(repmat(elig,inF.nbasis,1).*inF.gaussmat_trunc, 2);
 
 %compute prediction error, scaled by eligibility trace
-delta = e.*(reward - w);
+nivpe=0; %using basis-wise V for now
+if nivpe
+  %%clunky to put this inside observation function
+  rtrnd=round(rt);
+  if rtrnd < 1
+    rtrnd = 1;
+  elseif rtrnd > ntimesteps
+    rtrnd = ntimesteps;
+  end
+    
+  delta = e.*(reward - v_func(rtrnd));
+else
+  delta = e.*(reward - w);
+end
 
 % introduce decay
 decay = -gamma.*(1-e).*w;

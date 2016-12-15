@@ -36,6 +36,7 @@ n_phi = 1;
 
 %% no choice autocorrelation by default
 % options.inG.autocorrelation = 'none';
+<<<<<<< Updated upstream
 options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
 options.inF.entropy = 1; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
@@ -48,6 +49,11 @@ options.inF.total_pe=0;
 options.inF.track_pe = 1;
 
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
+=======
+% options.inG.autocorrelation = 'exponential'; %% implements AR(1) choice autocorrelation with exponential temporal
+% generalization
+options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
+>>>>>>> Stashed changes
 % options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
 options.inF.autocorrelation = options.inG.autocorrelation;
 
