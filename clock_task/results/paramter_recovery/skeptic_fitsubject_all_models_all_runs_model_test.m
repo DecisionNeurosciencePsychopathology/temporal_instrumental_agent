@@ -64,7 +64,7 @@ for run=1:length(runs);
         options.agent = agent;
         cost = cost + ClockWalking_3D_discountedEv_forRMsearch_subj_fitting(options,rts_obs,rews,optmat,rngseeds,params); %rews not really used
     else
-        cost = cost + clock_sceptic_agent_forRMsearch(params, rts_obs, rews,cond, rngseeds,ntrials, nbasis, ntimesteps, 0,sigma_noise,agent);
+        cost = cost + clock_sceptic_agent_forRMsearch(params, rts_obs, rews,cond, rngseeds,ntrials, nbasis, ntimesteps,sigma_noise,agent,0);
     end                                  
     %sprintf('\n',params);
 end

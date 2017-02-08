@@ -31,7 +31,7 @@ theta_idx = length(theta);
 
 %Set the proper paramters NOTE gamma is first then phi for sigma volatility
 %model.
-if inF.kalman.processnoise, omega = 1./(1+exp(-theta(1))); end
+if inF.kalman.kalman_processnoise, omega = 1./(1+exp(-theta(1))); end
 if inF.kalman.kalman_sigmavolatility || inF.kalman.kalman_sigmavolatility_local || inF.kalman.kalman_sigmavolatility_precision
     if inF.no_gamma
         gamma = 1-phi;
@@ -125,15 +125,15 @@ elig=elig/auc*refspread;
 %Gaussian spread function.
 e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 
-
-
+%%%%Additional calculations (entropy, v_func,...)%%%%
+H = calc_shannon_H(( mu / sum( mu ) )); %Entropy
+ntimesteps = inF.ntimesteps;
+gaussmat=inF.gaussmat;
+v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+v_func = sum(v);
 
 %1) compute prediction error, scaled by eligibility trace
-if inF.total_pe
-    ntimesteps = inF.ntimesteps;
-    gaussmat=inF.gaussmat;
-    v=x_t(1:nbasis)*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
-    v_func = sum(v);
+if inF.total_pe %Niv version
     rnd_rt = round(rt);
     
     if rnd_rt==0
@@ -145,10 +145,6 @@ if inF.total_pe
 else
     delta = e.*(reward - x_t(1:nbasis));
 end
-
-
-
-
 
 %Kalman variants of learning and uncertainty
 
@@ -244,6 +240,20 @@ else
     fx(hidden_state_index(:,1)) = mu + k.*delta;
 end
 
+%track pe as a hidden state
+if inF.track_pe
+    fx(hidden_state_index(:,end))=delta;
+end
+
+
+%Entropy update to hidden states
+if inF.entropy
+    H = is_nan_or_inf(H);
+    %max_value = is_nan_or_inf(max_value);
+    max_value = find_max_value_in_time(v_func);
+    fx(hidden_state_index(end)+1) = H; 
+    fx(hidden_state_index(end)+2) = max_value;
+end
 
 if strcmp(inF.autocorrelation,'choice_tbf')
     choice_decay = 1./(1+exp(-theta(end)));
@@ -254,5 +264,18 @@ end
 %the old clock sceptic script
 
 
+function out = is_nan_or_inf(var)
+if isnan(var) || isinf(var)
+    out=0;
+else
+    out=var;
+end
+
+function time_point = find_max_value_in_time(val)
+max_val  = max(val); %Get the max value
+time_point = find(max_val==val); %Find the max
+if length(time_point)>1 %If there are duplicates randomly select one
+    time_point = randsample(time_point,1);
+end
 
 

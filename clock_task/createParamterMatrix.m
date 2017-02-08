@@ -1,9 +1,9 @@
 function data=createParamterMatrix
 %Script to grab every variable from vba output and put it into a struct
 
- modelnames = {'qlearning','fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
-    'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv'};
-
+  modelnames = {'fixed','fixed_uv','fixed_decay','kalman_softmax','kalman_processnoise'...
+               'kalman_uv_sum','kalman_sigmavolatility','kalman_logistic'};
+ %modelnames = {'kalman_processnoise'};
 %  modelnames = {'fixed','fixed_decay', 'kalman_softmax', 'kalman_processnoise'...
 %     'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv'};
 % % modelnames = {'kalman_logistic','kalman_sigmavolatility','kalman_uv_sum','fixed_uv','qlearning'};
@@ -19,7 +19,8 @@ data = struct;
 
 for i = 1:length(modelnames)
     
-    arg_string = sprintf('/SHIFTED_U_CORRECT*_%s_multinomial1_multi*0_fixed*1_ua*1_sc*fixed_prop_spread.mat',modelnames{i}); %Not organzied by model
+    %arg_string = sprintf('/SHIFTED_U_CORRECT*_%s_multinomial1_multi*0_fixed*1_ua*1_sc*fixed_prop_spread.mat',modelnames{i}); %Not organzied by model
+    arg_string = sprintf('/SHIFTED_U_CORRECT*_%s_multinomial1_multi*0_fixed*pe_variant.mat',modelnames{i}); %Not organzied by model
 
     
     %Initialize storage vars
@@ -27,13 +28,14 @@ for i = 1:length(modelnames)
     obs_params = [];
     
     %Grab the files
+    data_dir = 'E:\data\sceptic\vba_out\new_lambda_results';
     %fnames = glob(['/Volumes/bek/vba_results/', modelnames{i},arg_string]);
-    fnames = glob(['/Volumes/bek/vba_results/', arg_string]); %Not organzied by model
+    fnames = glob([data_dir arg_string]); %Not organzied by model
     
     %Special qlearning case was called q_step
     if strcmp(modelnames{i},'qlearning')
         arg_string = '/SHIFTED_U_CORRECT*_multinomial1_multi*1_fixed*1*.mat';
-        fnames = glob(['/Volumes/bek/vba_results/',modelnames{i}, arg_string]); %Not organzied by model
+        fnames = glob([data_dir modelnames{i} arg_string]); %Not organzied by model
     end
     
 
@@ -54,9 +56,14 @@ for i = 1:length(modelnames)
         evo_params = [evo_params posterior.muTheta];
         obs_params = [obs_params posterior.muPhi];
         fprintf('.')
+        
+        %Grab L's too
+        L(i,j)=out.F;
+        
     end
     fprintf('Done!\n\n')
-    data = organizeData(data,modelnames{i},evo_params,obs_params,out);
+    %data = organizeData(data,modelnames{i},evo_params,obs_params,out);
+    data.L=L;
     
 end
 
@@ -84,15 +91,25 @@ else
         
         s.transformed.(name).discrim = 1./(1+exp(-P(2,:)));
         s.non_transformed.(name).discrim = P(2,:);
+        
+        s.transformed.(name).tradeoff = 1./(1+exp(-theta(1,:)));
+        s.non_transformed.(name).tradeoff = theta(1,:);
     else
         s.transformed.(name).beta = exp(P);
         s.non_transformed.(name).beta = P;
     end
     %ProcessNoise
     %if out.options.inF.kalman.kalman_processnoise %Correct
-    if out.options.inF.kalman.processnoise
-        s.transformed.(name).omega = 1./(1+exp(-theta(1,:)));
-        s.non_transformed.(name).omega = theta(1,:);
+    try
+        if out.options.inF.kalman.processnoise
+            s.transformed.(name).omega = 1./(1+exp(-theta(1,:)));
+            s.non_transformed.(name).omega = theta(1,:);
+        end
+    catch
+        if out.options.inF.kalman.kalman_processnoise
+            s.transformed.(name).omega = 1./(1+exp(-theta(1,:)));
+            s.non_transformed.(name).omega = theta(1,:);
+        end
     end
     %SigVol
     if out.options.inF.kalman.kalman_sigmavolatility || out.options.inF.kalman.kalman_sigmavolatility_local || out.options.inF.kalman.kalman_sigmavolatility_precision

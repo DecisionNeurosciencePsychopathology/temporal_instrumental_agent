@@ -1,4 +1,4 @@
-function gen_temperatureFixed_rts(agent,uniform_flag,auto_corr_flag)
+function gen_temperatureFixed_rts(agent,uniform_flag,auto_corr_flag,niv_flag)
 %This script will generate a set of rts and rews to be used in future
 %parameter recovery simulations.
 % IN:
@@ -11,6 +11,8 @@ if nargin <2
     uniform_flag=0;
 elseif nargin <3
     auto_corr_flag=0;
+elseif nargin <4
+    niv_flag=0;
 end
 
 %Create the defualt data hub if it doesn't exisit
@@ -122,6 +124,8 @@ end
 %If autocorrelating make sure to add _autocorr at end of model name
 if auto_corr_flag
    agent = [agent '_autocorrelation']; 
+elseif niv_flag
+   agent = [agent '_niv_version'];
 end
     
     

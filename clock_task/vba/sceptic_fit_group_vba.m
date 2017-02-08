@@ -4,6 +4,9 @@
 clear;
 %curpath = fileparts(mfilename('fullpath'));
 
+%Do we want to use M Frank data?
+use_frank_data = 1;
+
 %behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
 %%
 %Quick username check, and path setting, this may have to change depending
@@ -37,21 +40,27 @@ else
     end
 end
 
+%If we want to use M Frank's data
+if use_frank_data
+    behavfiles = glob('C:\kod\temporal_instrumental_agent\clock_task\frank_subjects\*.csv');
+    results_dir = 'E:\data\sceptic\vba_out\frank_data';
+else
+    results_dir = 'E:\data\sceptic\vba_out\new_lambda_results';
+end
+
 %% chose models to fit
-modelnames = {'kalman_processnoise'};
-%modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+%modelnames = {'kalman_processnoise'};
+modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
 % modelnames = {'kalman_logistic'};
 %% set parameters
 nbasis = 24;
 multinomial = 1;
-multisession = 1;
+multisession = 0;
 fixed_params_across_runs = 1;
 fit_propspread = 0;
-n_steps = 40;
-
-results_dir = 'E:\data\sceptic\vba_out\new_lambda_results';
+n_steps = 50;
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
 saveresults = 1; %don't save to prevent script from freezing on Thorndike
@@ -111,6 +120,6 @@ else
         
     end
     cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_entropy_elig_reward_variant',nbasis,n_steps, u_aversion);
+    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_frank_all_subjs',nbasis,n_steps, u_aversion);
     save(filename);
 end

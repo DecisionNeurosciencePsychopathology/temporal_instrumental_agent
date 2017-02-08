@@ -1,10 +1,15 @@
-function analyzeUniformFittedData(org_data,fitted_data)
+function s=analyzeUniformFittedData(org_data,fitted_data)
 %Reutrn scatter plots of fitted data from rmsearch and residuals
 %ex analyzeUniformFittedData(uniform_test_data,uniform_fitted_results)
+
+
+%Initialize output var
+s = struct;
 
 model_names = fieldnames(org_data);
 
 for i = 1:length(model_names)
+    
     org_params = org_data.(model_names{i}).params;
     %We need to remove the column of data containing Beta from the org
     %params
@@ -73,6 +78,11 @@ for i = 1:length(model_names)
             %title(p_names{j});
             title({p_names{j}, ['R^2 = ' num2str(R_squared)]});
         end
+        
+        %Save the R^2
+        tmp_name={regexprep(model_names{i},'[^\w'']','')};
+        s.(tmp_name{:}).R_squared(j)=R_squared;
+        
         
         h_1 = lsline;
         set(h_1(1), 'color',[.75 .75 .75 0.8],'LineWidth',3.5)

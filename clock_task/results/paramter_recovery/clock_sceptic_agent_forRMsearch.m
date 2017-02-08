@@ -1,4 +1,4 @@
-function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,cond, rngseeds, ntrials, nbasis, ntimesteps, reversal,sigma_noise_input,agent,RT_limit)
+function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,cond, rngseeds, ntrials, nbasis, ntimesteps,sigma_noise_input,agent,reversal,RT_limit)
 % This is the primary script that attempts to solve clock contingencies using variants of the sceptic agent.
 % Variants are described using the parameter agent, which determines the behavior of the forward model.
 % This script is used for testing the optimality of variants of sceptic for solving clock contingencies.
@@ -24,14 +24,15 @@ function [cost,ret] = clock_sceptic_agent_forRMsearch(params, rt_obs, rew_obs,co
 %  13) kalman_uv_sum_kl;        kalman learning rule; V and U are mixed by tau; KL discounting of value curve by PEs; softmax choice over U+V
 %  14) fixed_uv;                fixed learning rate (alpha) for PE+ and PE-; V and U are mixed by tau; softmax choice over U+V
 
-if nargin < 2, agent = 'fixedLR_softmax'; end
-if nargin < 3, rngseeds=[98 83 66 10]; end
-if nargin < 4, cond = 'DEV'; end
-if nargin < 5, ntrials=100; end
-if nargin < 6, nbasis = 24; end
-if nargin < 7, ntimesteps=500; end
-if nargin < 8, reversal = 0; end %No reversal by default
-if nargin < 9, RT_limit = 0; end %Model RTs not bounded by subject's observed RTs by default
+if nargin < 4, agent = 'kalman_softmax'; end
+if nargin < 5, rngseeds=[98 83 66 10]; end
+if nargin < 6, cond = 'DEV'; end
+if nargin < 7, ntrials=100; end
+if nargin < 8, nbasis = 24; end
+if nargin < 9, ntimesteps=500; end
+if nargin < 10, sigma_noise_input = 0; end %Model RTs not bounded by subject's observed RTs by default
+if nargin < 11, reversal = 0; end %No reversal by default
+if nargin < 12, RT_limit = 0; end %Model RTs not bounded by subject's observed RTs by default
 
 omega=0;                    %if not a PE-enhanced process noise model, remove this influence
 gamma=0;                    %zero gamma and phi for all models except kalman_sigmavolatility
@@ -72,8 +73,10 @@ if prop_spread < 0 || prop_spread > 1, error('prop_spread outside of bounds'); e
 [c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 
 %define autocorrelation
-autocorrelation = 'exponential';
+autocorrelation = '';
 
+%Use niv version or not
+niv_version = 1;
 
 %populate free parameters for the requested agent/model
 %note: Kalman filter does not have a free learning rate parameter.
@@ -172,7 +175,7 @@ end
 %Add in new parameters
 if strcmp(autocorrelation,'exponential')
     lambda = params(length(params)-2);
-    chi = params(length(params)-1); 
+    chi = params(length(params)-1);
 end
 
 %cond can be a character string (e.g., DEV) in which case the agent draws from the reward function on each trial.
@@ -312,8 +315,15 @@ for i = 1:ntrials
     %         [rew_i(i) ev_i(i)] = RewFunction(rt_obs(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     %     end
     
-    %1) compute prediction error, scaled by eligibility trace
-    delta_ij(i,:) = e_ij(i,:).*(rew_obs(i) - mu_ij(i,:));
+    %1) compute prediction error, scaled by eligibility trace -- how
+    %version or the niv version
+    if niv_version==1 %ie total pe version
+        v_jt_tmp=mu_ij(i,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+        v_func_tmp = sum(v_jt_tmp); %subjective value by timestep as a sum of all basis functions
+        delta_ij(i,:) = e_ij(i,:).*(rew_obs(i) - v_func_tmp(rt_obs(i)));
+    else
+        delta_ij(i,:) = e_ij(i,:).*(rew_obs(i) - mu_ij(i,:));
+    end
     
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})

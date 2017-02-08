@@ -11,7 +11,10 @@ options(14)=100;    % Max. number of f-evaluations per internal
 fargs={};
 
 %Added in auto correlation option
-auto_corr_flag = 1;
+auto_corr_flag = 0;
+
+%Using niv total pe rule
+niv_flag = 1;
 
 
 tic
@@ -88,7 +91,7 @@ num_start_pts=25;
 a = initialize_stability_struct;
 
 %Input model numbers from list
-models = [20];
+models = [5 6 8 9 17];
 
 
 % a(models(i)).name = {};
@@ -99,12 +102,17 @@ models = [20];
 
 
 %test_cases={'param_set1', 'param_set2', 'grw' 'param_set3'};
-test_cases={'pseudo_subj_data_fitting' 'subj_fitting'};
+%test_cases={'pseudo_subj_data_fitting' 'subj_fitting'};
+test_cases={'niv'};
 ct=0;
 %When fitting generated rts for specified paramters
 %%%load('model_test_data2.mat')
 %When computing std error of noise
-load('param_recovery_test_data.mat')
+if niv_flag
+    load('niv_recovery_test_data.mat')
+else
+    load('param_recovery_test_data.mat')
+end
 load('param_recov.mat') %Load prev data
 %Set condition for seed
 condition = 'IEV';
@@ -128,6 +136,8 @@ if strcmpi(test_case,'subj_fitting')
     data = behavfiles;
 elseif strcmpi(test_case,'pseudo_subj_data_fitting')
     data=fieldnames(param_recovery_test_data.(a(models(i)).name).ret);
+elseif strcmpi(test_case,'niv')
+    data=fieldnames(niv_recovery_test_data.(a(models(i)).name).ret);
 end
 
 
@@ -168,6 +178,10 @@ for sub = 1:length(data) %Start with 8 since it died
         %If subject fitting set data as behav struct
         if strcmpi(test_case,'subj_fitting')
             test_data = behav{sub};
+        elseif strcmpi(test_case,'niv')
+            test_data_1=niv_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
+            test_data_2=niv_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
+            test_data = [test_data_1; test_data_2];
         else
             test_data_1=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rts;
             test_data_2=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).rew_i;
@@ -180,7 +194,11 @@ for sub = 1:length(data) %Start with 8 since it died
             optmat=param_recovery_test_data.(a(models(i)).name).ret.(['set_' num2str(sub)]).optmat;
             a = initialize_stability_struct(id,test_data,rngseeds,0,optmat);
         else
-            sigma_noise_input = param_recovery_test_data.(a(models(i)).name).ret.set_1.sigma_noise;
+            if strcmpi(test_case,'niv')
+                sigma_noise_input = niv_recovery_test_data.(a(models(i)).name).ret.set_1.sigma_noise;
+            else
+                sigma_noise_input = param_recovery_test_data.(a(models(i)).name).ret.set_1.sigma_noise;
+            end
             a = initialize_stability_struct(id,test_data,rngseeds,sigma_noise_input);
         end
         
@@ -193,6 +211,7 @@ for sub = 1:length(data) %Start with 8 since it died
             bad_apples{sub,1} = {sub,a(models(i)).name};
             fitted_vars.(test_case).(a(models(i)).name).(['subj_' num2str(id)]).cost_rmsearch = [];
             save bad_apples bad_apples
+            continue
         end
         
         
@@ -231,6 +250,6 @@ c = clock;
 %save fitted_vars_newest_temp_model_test fitted_vars
 
 
-save param_recov fitted_vars
+save param_recov_niv fitted_vars
 save(['fitted_vars_' mat2str(c) '.mat'],'fitted_vars');
 

@@ -42,8 +42,10 @@ prop_spread = params(1);    %proportion of discrete interval over which to sprea
 
 
 %define autocorrelation
-autocorrelation = 'exponential';
+autocorrelation = '';
 
+%Use niv version or not
+niv_version = 1;
 
 %states for random generators are shared across functions to allow for repeatable draws
 global rew_rng_state explore_rng_state;
@@ -298,8 +300,15 @@ for i = 1:ntrials
         [rew_i(i) ev_i(i)] = RewFunction(rts(i).*10, cond); %multiply by 10 because underlying functions range 0-5000ms
     end
     
-    %1) compute prediction error, scaled by eligibility trace
-    delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
+    %1) compute prediction error, scaled by eligibility trace -- how
+    %version or the niv version
+    if niv_version==1 %ie total pe version
+        v_jt_tmp=mu_ij(i,:)'*ones(1,ntimesteps) .* gaussmat; %use vector outer product to replicate weight vector
+        v_func_tmp = sum(v_jt_tmp); %subjective value by timestep as a sum of all basis functions
+        delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - v_func_tmp(rts(i)));
+    else
+        delta_ij(i,:) = e_ij(i,:).*(rew_i(i) - mu_ij(i,:));
+    end
 
     %Variants of learning rule
     if ismember(agent, {'fixedLR_softmax', 'fixedLR_egreedy', 'fixedLR_egreedy_grw', 'fixedLR_kl_softmax'})
