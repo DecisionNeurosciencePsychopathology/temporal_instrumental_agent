@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir,data_file)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -22,9 +22,16 @@ if nargin < 10, data_str=0; end
 if nargin < 11, saveresults = 1; end
 if nargin < 12, graphics = 0; end
 if nargin < 13, results_dir = pwd; end
+if nargin < 14, data_file =''; end
 
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
+
+%Default task name
+task_name = 'hallquist_clock';
+
+
+
 
 if ~graphics
     options.DisplayWin = 0;
@@ -36,9 +43,8 @@ n_phi = 1;
 
 %% no choice autocorrelation by default
 % options.inG.autocorrelation = 'none';
-<<<<<<< Updated upstream
 options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
-options.inF.entropy = 1; %If we want to track entropy per trial
+options.inF.entropy = 0; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
 options.inF.H_threshold = 0.01;
 
@@ -49,11 +55,6 @@ options.inF.total_pe=0;
 options.inF.track_pe = 1;
 
 % options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
-=======
-% options.inG.autocorrelation = 'exponential'; %% implements AR(1) choice autocorrelation with exponential temporal
-% generalization
-options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
->>>>>>> Stashed changes
 % options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
 options.inF.autocorrelation = options.inG.autocorrelation;
 
@@ -69,7 +70,7 @@ options.inF.autocorrelation = options.inG.autocorrelation;
 if data_str==0
     os = computer;
     if strcmp(os(1:end-2),'PCWIN')
-        data = readtable(sprintf('c:/kod/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+        data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
         %vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
         %results_dir = 'E:/data/sceptic/vba_out/new_lambda_results/';
     else
@@ -99,7 +100,25 @@ else
     data = readtable(data_str,'Delimiter',',','ReadVariableNames',true);
 end
 options.inF.fit_nbasis = 0;
+
+%Set rt range
 range_RT = 400;
+
+%If we are calling this function from a different task dir, update the rt
+%range acordingly and designate the proper task name
+stack_call=dbstack;
+for i = 1:length(stack_call)
+    if strfind(stack_call(i).name,'explore')
+        range_RT = 500;
+        task_name = 'explore_clock';
+        break
+    elseif strfind(stack_call(i).name,'bpd')
+        range_RT = 500;
+        task_name = 'bpd_clock';
+        break
+    end
+end
+
 % n_steps = 4000;
 n_t = size(data,1);
 n_runs = n_t/50;
@@ -124,7 +143,7 @@ options.verbose=1;
 % options.DisplayWin=1;
 
 %% set up kalman defaults
-options.inF.kalman.kalmna_processnoise = 0;
+options.inF.kalman.kalman_processnoise = 0;
 options.inF.kalman.kalman_sigmavolatility  = 0;
 options.inF.kalman.kalman_softmax = 0;
 options.inF.kalman.kalman_logistic = 0;
@@ -478,5 +497,9 @@ if saveresults
     %% save output figure
     % h = figure(1);
     % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save([results_dir sprintf('/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_autocorreltaion_total_pe_variant', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation)], 'posterior', 'out');
+    save([results_dir sprintf('/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_%s', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation,task_name)], 'posterior', 'out', '-v7.3');
+    
+    %You need to think of a way to name these results something so Mike's
+    %data, exp and bpd data are all seperate!
+    
 end
