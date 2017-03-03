@@ -11,3 +11,4 @@ MatlabServer.m
 *.fig
 
 *.mat
+*.RData
