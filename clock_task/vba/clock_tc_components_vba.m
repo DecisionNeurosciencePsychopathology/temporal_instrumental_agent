@@ -8,7 +8,7 @@ function [posterior,out] = clock_tc_components_vba(file,showfig,model,basedir)
 % multinomial:  if 1 fits p_chosen from the softmax; continuous RT (multinomial=0) works less well
 % multisession: treats runs/conditions as separate, helps fit (do not allow X0 to vary though)
 
-close all
+%close all
 
 n_t = 400; %400 trials
 n_runs = 8;
@@ -43,7 +43,7 @@ if multisession %improves fits moderately
         options.multisession.fixed.theta = 'all';
         options.multisession.fixed.phi = 'all';
         % allow unique initial values for each run?
-        options.multisession.fixed.X0 = [1 3 4 5 7 8 9 10]; %don't fix V (element 2) across runs (only for full model at the moment)
+        options.multisession.fixed.X0 = [1 3 4 5 6 7 8 9 10]; %don't fix V (element 2) across runs (only for full model at the moment)
     end
 end
 
@@ -64,6 +64,8 @@ rtrescale = 1000; %put the RT-related hidden states on a similar scale as the ot
 
 %priors.SigmaPhi = diag([1, 15, 15, 1, 1]); %initial variance of the phi parameters
 
+priorNu = -4.5; %transforms to .11 with sigmoid and max of 10
+priorLambda = -1; %transforms to .27
 
 %in full Frank TC, n_phi is 5 and n_theta is 2
 %number of hidden states (n) is 10
@@ -83,7 +85,7 @@ elseif strcmpi(model, 'K_Lambda')
     priors.muTheta = []; %rmfield(priors, {'muTheta', 'SigmaTheta'}); %just to be safe
     priors.SigmaTheta = [];
     
-    priors.muPhi = [0, 0]; %K, Lambda
+    priors.muPhi = [0, priorLambda]; %K, Lambda
     priors.SigmaPhi = diag([1, 15]);
 elseif strcmpi(model, 'K_Lambda_Nu')
     n_states=2;
@@ -92,7 +94,7 @@ elseif strcmpi(model, 'K_Lambda_Nu')
     priors.muTheta = []; %rmfield(priors, {'muTheta', 'SigmaTheta'}); %just to be safe
     priors.SigmaTheta = [];
     
-    priors.muPhi = [0, 0, 0]; %K, Lambda, Nu
+    priors.muPhi = [0, priorLambda, priorNu]; %K, Lambda, Nu
     priors.SigmaPhi = diag([1, 15, 15]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -107,7 +109,7 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG')
     priors.muTheta = 0; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15; %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
 
-    priors.muPhi = [0, 0, 0]; %K, Lambda, Nu
+    priors.muPhi = [0, priorLambda, priorNu]; %K, Lambda, Nu
     priors.SigmaPhi = diag([1, 15, 15]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -123,7 +125,7 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN')
     priors.muTheta = [0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
 
-    priors.muPhi = [0, 0, 0]; %K, Lambda, Nu
+    priors.muPhi = [0, priorLambda, priorNu]; %K, Lambda, Nu
     priors.SigmaPhi = diag([1, 15, 15]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -140,7 +142,7 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN_Rho')
     priors.muTheta = [0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
 
-    priors.muPhi = [0, 0, 0, 0]; %K, Lambda, Nu, Rho
+    priors.muPhi = [0, priorLambda, priorNu, 0]; %K, Lambda, Nu, Rho
     priors.SigmaPhi = diag([1, 15, 15, 1]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -163,7 +165,7 @@ elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon')
     priors.muTheta = [0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
 
-    priors.muPhi = [0, 0, 0, 0, 0]; %K, Lambda, Nu, Rho, Epsilon
+    priors.muPhi = [0, priorLambda, priorNu, 0, 0]; %K, Lambda, Nu, Rho, Epsilon
     priors.SigmaPhi = diag([1, 15, 15, 1, 1]);
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -184,7 +186,7 @@ elseif strcmpi(model, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
     priors.muTheta = [0, 0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
     priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero. all three pars are 0..1 inverse logit
 
-    priors.muPhi = [0, 0, 0, 0]; %K, Lambda, Rho, Epsilon
+    priors.muPhi = [0, priorLambda, 0, 0]; %K, Lambda, Rho, Epsilon
     priors.SigmaPhi = diag([1, 15, 1, 1]); %1 is for fastnormcdf pars; 15 is for 0..1 inverse logit
     
     priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
@@ -275,14 +277,14 @@ fprintf('Model converged in %.2f seconds\n', elapsed);
 
 if strcmpi(model, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
     posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT);
-    posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); %in the sticky model, this scales lambda*sticky(t)
+    posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); %in the sticky modmel, this scales lambda*sticky(t)
     posterior.transformed.rho = options.inG.rhoMultiply * gaminv(fastnormcdf(posterior.muPhi(3)), 2, 2);
     posterior.transformed.epsilon = options.inG.epsilonMultiply * posterior.muPhi(4);
     posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1)));
     posterior.transformed.alphaN = options.inF.maxAlpha / (1+exp(-posterior.muTheta(2)));
     posterior.transformed.decay = 1 / (1+exp(-posterior.muTheta(3)));
 else
-    if ~isempty(regexp(model, 'K_', 'once')), posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT); end
+    if ~isempty(regexp(model, '^K_?', 'once')), posterior.transformed.K = unifinv(fastnormcdf(posterior.muPhi(1)), 0, options.inG.maxRT); end
     if ~isempty(regexp(model, '_Lambda', 'once')), posterior.transformed.lambda = 1 / (1+exp(-posterior.muPhi(2))); end
     if ~isempty(regexp(model, '_Nu', 'once')), posterior.transformed.nu = options.inG.maxNu / (1+exp(-posterior.muPhi(3))); end
     if ~isempty(regexp(model, '_AlphaG', 'once')), posterior.transformed.alphaG = options.inF.maxAlpha / (1+exp(-posterior.muTheta(1))); end

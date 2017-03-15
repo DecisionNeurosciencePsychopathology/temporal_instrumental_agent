@@ -71,7 +71,7 @@ gx = 0; %empty predicted RT
 phipos = 1; %current position within phi vector
 
 %handle K + lambda
-if ~isempty(regexp(inG.tcvariant, 'K_', 'once'))
+if ~isempty(regexp(inG.tcvariant, '^K_?', 'once')) %for K only model, there is no underscore after K
     K = unifinv(fastnormcdf(phi(phipos)), 0, inG.maxRT);
     gx = gx + K;
     phipos = phipos + 1;
@@ -105,7 +105,7 @@ end
 if ~isempty(regexp(inG.tcvariant, '_Nu', 'once'))
     %need overall average RT for the block for "Go for the gold"
     meanRT = inG.meanRT;
-    nu = inG.maxNu ./ (1+exp(-phi(phipos))); %exponential transform to 0..100
+    nu = inG.maxNu ./ (1+exp(-phi(phipos))); %exponential transform to 0..10
     gx = gx + nu*(bestRT - meanRT);
     phipos = phipos + 1;
 end

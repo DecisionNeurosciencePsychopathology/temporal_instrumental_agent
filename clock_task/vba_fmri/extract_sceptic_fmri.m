@@ -25,6 +25,7 @@ pars = NaN(nsubjs, npars+2);
 
 for f = 1:length(fitfiles)
     load(fitfiles{f});
+    nruns=size(posterior.muX, 2)/ntrials;
     %for multisession, the muX matrix is 384 x 400
     %400 is the number of trials
     %384 is 16 (basis) x 3 (V, PE, decay) x 8 runs

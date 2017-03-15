@@ -31,9 +31,9 @@ end
 n_theta = 1;
 n_phi = 1;
 
-basedir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects';
+basedir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects/SPECC';
 results_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/vba_fmri/vba_out';
-data = readtable(sprintf('%s/fMRIEmoClock_%d_tc_tcExport.csv', basedir, id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('%s/fMRIEmoClock_%s_tc_tcExport.csv', basedir, id),'Delimiter',',','ReadVariableNames',true);
 
 %% u is 2 x ntrials where first row is rt and second row is reward
 % If we can't find the path have the user select it.
@@ -65,7 +65,7 @@ options.inF.max_prop_spread = 0.0125;
 %[c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(40, 16, .08);
 %save('sceptic_fmri_basis_setup.mat', 'c', 'sig', 'tvec', 'sig_spread', 'gaussmat', 'gaussmat_trunc', 'refspread');
 
-%uses max prop spread parametr to obtain refspread in case where fit_propspread = 0;
+%uses max prop spread parameter to obtain refspread in case where fit_propspread = 0;
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, options.inF.max_prop_spread);
 
 %Set up sigma noise for every point in u or hidden state?
@@ -155,7 +155,7 @@ end
 if saveresults
     %% save output figure
     % h = figure(1);
-    % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save(sprintf([results_dir, '/SHIFTED_U_CORRECT_%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
+    % savefig(h,sprintf('results/%s_%s_multinomial%d_multisession%d_fixedParams%d', id,model,multinomial,multisession,fixed_params_across_runs))
+    save(sprintf([results_dir, '/SHIFTED_U_CORRECT_%s_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit'], id, model, multinomial,multisession,fixed_params_across_runs, u_aversion), 'posterior', 'out');
 end
 

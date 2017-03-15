@@ -24,7 +24,7 @@ end
 clear m
 
 %uncomment to run only the full model
-models={'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon'};
+%models={'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon'};
 %models={'K_Sticky_AlphaG_AlphaN_Rho_Epsilon'};
 
 posteriors = cell(nsubjs, length(models));
@@ -40,7 +40,7 @@ try
         ipost = cell(1, length(models));
         iout = cell(1, length(models));
         for j = 1:length(models)
-            [ipost{j}, iout{j}] = clock_tc_components_vba(allsubjs(i).name, 0, models{j}, basedir); %suppress figure (0)
+            [ipost{j}, iout{j}] = clock_tc_components_vba(allsubjs(i).name, 1, models{j}, basedir); %suppress figure (0)
         end
         posteriors(i,:) = ipost;
         outputs(i,:) = iout;
@@ -53,7 +53,7 @@ end
 
 delete(poolobj);
 
-save('allfranktc.mat', 'posteriors', 'outputs', 'models', 'ids', '-v7.3');
+save('allfranktc_newpriors.mat', 'posteriors', 'outputs', 'models', 'ids', '-v7.3');
 
 %RFX BMC
 %load('allfranktc.mat')
@@ -78,7 +78,7 @@ end
 % %bmc expects it to be models x evidence/subjects -- transpose
 % load('tc_logevidence_exponentialepsilon.mat');
 logEvidence = logEvidence';
-save('tc_logevidence.mat', 'logEvidence', 'ids', 'models', 'parameters', 'rawparameters');
+save('tc_logevidence_newpriors.mat', 'logEvidence', 'ids', 'models', 'parameters', 'rawparameters');
 
 %[BMCposterior,BMCout] = VBA_groupBMC(logEvidence);
 

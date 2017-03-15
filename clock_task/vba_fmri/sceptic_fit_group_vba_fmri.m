@@ -8,7 +8,7 @@ clear;
 addpath('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
 addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
 
-behavfiles = glob('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects/*.csv');
+behavfiles = glob('/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects/SPECC/*.csv');
 group_dir = '/storage/group/mnh5174_collab/temporal_instrumental_agent/clock_task/subjects';
 
 %% set parameters
@@ -22,7 +22,7 @@ n_steps = 40;
 saveresults = 1; %don't save to prevent script from freezing on Thorndike
 
 % get ID list
-id = NaN(length(behavfiles),1);
+id = cell(length(behavfiles),1);
 
 %% main loop
 L = NaN(1,length(behavfiles));
@@ -35,16 +35,17 @@ else
     ncpus=str2double(ncpus);
 end
 
-poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
+%poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 
 model = 'fixed_decay'; % will run to get value and prediction errors.
 %     p = ProgressBar(length(behavefiles));
-parfor sub = 1:length(behavfiles)
-%for sub = 1:length(behavfiles)
+%parfor sub = 1:length(behavfiles)
+for sub = 1:length(behavfiles)
     [~, str] = fileparts(behavfiles{sub});
-    id(sub) = str2double(str(isstrprop(str,'digit')));
-    fprintf('Fitting subject %d id: %d \r',sub, id(sub))
-    [posterior,out] = clock_sceptic_vba_fmri(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
+    id{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+    %id(sub) = str2double(str(isstrprop(str,'digit')));
+    fprintf('Fitting subject %d id: %s \r',sub, char(id{sub}));
+    [posterior,out] = clock_sceptic_vba_fmri(char(id{sub}),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
     L(sub) = out.F;
     %gamma_decay(sub) = posterior.muTheta(2);
     %tau(sub) = posterior.muTheta(1); %For fixed_uv
