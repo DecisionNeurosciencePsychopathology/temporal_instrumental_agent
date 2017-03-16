@@ -34,10 +34,10 @@ fixed_params_across_runs = 1;
 data = readtable(sprintf('%s/%s', basedir, file),'Delimiter',',','ReadVariableNames',true);
 rts = data{trialsToFit, 'rt'};
 rewards = data{trialsToFit, 'score'};
-
+runsplit = repmat(n_t/n_runs,1,n_runs); %50 50 50 etc.
 %% split into conditions/runs
 if multisession %improves fits moderately
-    options.multisession.split = repmat(n_t/n_runs,1,n_runs);
+    options.multisession.split = runsplit
     %% fix parameters
     if fixed_params_across_runs
         options.multisession.fixed.theta = 'all';
@@ -65,7 +65,10 @@ rtrescale = 1000; %put the RT-related hidden states on a similar scale as the ot
 %priors.SigmaPhi = diag([1, 15, 15, 1, 1]); %initial variance of the phi parameters
 
 priorNu = -4.5; %transforms to .11 with sigmoid and max of 10
+%priorNu = -3;
 priorLambda = -1; %transforms to .27
+%priorLambda = -0.5;
+multinomial = 0; %Gaussian prediction by default
 
 %in full Frank TC, n_phi is 5 and n_theta is 2
 %number of hidden states (n) is 10
@@ -200,6 +203,33 @@ elseif strcmpi(model, 'K_Sticky_AlphaG_AlphaN_Rho_Epsilon')
         mean(rts)/rtrescale, ... %initial RTlocavg
         0, ... %sign of exploration influence
 	0 ]; %sticky scalar
+elseif strcmpi(model, 'K_Lambda_Nu_AlphaG_AlphaN_Rho_Epsilon_Multinomial')
+    n_states = 10;
+    n_theta = 2; %alphaG and alphaN
+    n_phi = 6; %K, Lambda, Nu, Rho, Epsilon, Spread
+    %n_phi = 5; %K, Lambda, Nu, Rho, Epsilon
+    
+    %theta is alphaG (1), alphaN (2)
+    priors.muTheta = [0, 0]; %learning rate prior of 2.5: 5/(1+exp(0))
+    priors.SigmaTheta = 15*eye(n_theta); %15 (broad) variance identity matrix -- leads to sd of 3.87, and 1/(1+exp(7.75)) approaches zero
+
+    priors.muPhi = [-4, priorLambda, priorNu, 0, 0, 5]; %K, Lambda, Nu, Rho, Epsilon, Spread
+    priors.SigmaPhi = diag([1, 15, 15, 1, 1, 15]);
+    %priors.muPhi = [0, priorLambda, priorNu, 2, 2]; %K, Lambda, Nu, Rho, Epsilon
+    %priors.SigmaPhi = diag([1, 15, 15, 1, 1]);
+    
+    priors.muX0 = [mean(rts)/rtrescale, ... %initial value of best RT
+        0, ... %V (value)
+        0, ... %Go
+        0, ... %NoGo
+        1.01, ... %a_fast (initial beta distribution hyperparameters)
+        1.01, ... %b_fast
+        1.01, ... %a_slow
+        1.01, ... %b_slow
+        mean(rts)/rtrescale, ... %initial RTlocavg
+        0]; %sign of exploration influence
+    
+    multinomial = 1;
 end
 
 dim = struct('n',n_states,'n_theta',n_theta,'n_phi',n_phi, 'n_t', n_t);
@@ -240,12 +270,32 @@ options.GnTolFun = 1e-8;
 options.verbose=1;
 
 %rtsbyrun = reshape(rts, n_t/n_runs, n_runs)'; %convert to 8 x 50
-runsum = [0, cumsum(options.multisession.split)];
+runsum = [0, cumsum(runsplit)];
 rtslag = NaN(n_runs, n_t/n_runs);
 for i = 1:(length(runsum)-1)
     rtslag(i, :) = rts([runsum(i)+1, (runsum(i)+1):(runsum(i+1)-1)]);
 end
 rtslag = reshape(rtslag', n_t, 1); %flatten into vector row-wise
+
+if multinomial
+    ntimesteps = 40; %number of time bins
+    range_RT = 4000; %maximum observed RT
+    options.inG.ntimesteps = ntimesteps;
+    options.inG.range_RT = range_RT;
+    
+    rtrnd = round(rts*ntimesteps/range_RT)';
+    rtrnd(rtrnd==0)=1;
+    dim.p = ntimesteps; %dimension of choice vector
+    %options.sources(1) = struct('out',1:ntimesteps,'type',2); 
+    options.sources(1) = struct('out',1:ntimesteps,'type',2); 
+    
+    y = zeros(ntimesteps, length(trialsToFit));
+    for i = 1:length(trialsToFit)
+        y(rtrnd(i), i) = 1;
+    end
+    
+    options.binomial = 1; %multinomial fitting
+end
 
 rewardsbyrun = reshape(rewards, n_t/n_runs, n_runs)'; %convert to 8 x 50
 rew_max = NaN(n_runs, n_t/n_runs);
@@ -268,6 +318,9 @@ rew_std = reshape(rew_std', n_t, 1); %flatten into vector row-wise
 
 %for now, all models receive all inputs... but some don't use them internally
 u  = [rts'; rtslag'; rewards'; rew_max'; rew_std'];
+
+%alex: let me know if you think the right-shift is needed here to get the t versus t-1 right
+%u = [zeros(size(u,1),1) u(:,1:end-1)];
 
 fprintf('Fitting model: %s\n', model);
 tic;
@@ -293,6 +346,7 @@ else
     %if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = unifinv(fastnormcdf(posterior.muPhi(5)), 0, options.inG.maxEpsilon); end %uniform variant
     if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = expinv(fastnormcdf(posterior.muPhi(5)), options.inG.expEpsilonMean); end %exponential variant
     %if ~isempty(regexp(model, '_Epsilon', 'once')), posterior.transformed.epsilon = options.inG.epsilonMultiply * posterior.muPhi(5); end %+/- Gaussian variant
+    %if ~isempty(regexp(model, '_Multinomial', 'once')), posterior.transformed.spread = posterior.muPhi(6); end
 end
 
 %% save output figure

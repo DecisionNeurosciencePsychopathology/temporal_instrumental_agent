@@ -115,7 +115,7 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
     %compute the means and variances of fast and slow betas
     mean_slow = a_slow/(a_slow + b_slow);
     mean_fast = a_fast/(a_fast + b_fast);
-    var_slow = a_slow*b_slow/( (a_slow + b_slow)^2 * (a_slow + b_slow + 1) );
+    var_slow = a_slow * b_slow / ( (a_slow + b_slow)^2 * (a_slow + b_slow + 1) );
     var_fast = a_fast * b_fast / ( (a_fast + b_fast)^2 * (a_fast + b_fast + 1) );
     
     explore=0; %default to 0 explore term unless updated in tc_evolution
@@ -137,8 +137,9 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
         %use a long-tailed gamma(2,2) distribution to approximate 0..10000 parameter
         %at probability .999, gamma is ~18, so need to multiply by about 400 to achieve 0..10000 scaling
         %rho = inG.rhoMultiply * gaminv(normcdf(phi(4), inG.priors.muPhi(4), inG.priors.SigmaPhi(4,4)), 2, 2);
-        rho = inG.rhoMultiply * gaminv(fastnormcdf(phi(4)), 2, 2); %use precompiled std norm cdf code for speed
+        rho = inG.rhoMultiply * gaminv(fastnormcdf(phi(phipos)), 2, 2); %use precompiled std norm cdf code for speed
 
+        phipos = phipos + 1;
         gx = gx + rho*(mean_slow - mean_fast);
     end
     
@@ -164,4 +165,41 @@ if ~isempty(regexp(inG.tcvariant, '_Rho|_Epsilon', 'once'))
 
         gx = gx + epsilon*explore;
     end
+end
+
+if ~isempty(regexp(inG.tcvariant, '_Multinomial', 'once'))
+  %gx should already contain the predicted RT (expectation)
+  %now we just need to add a spread around it
+  sd_U = (sqrt(var_slow) + sqrt(var_fast)) / 2; %use uncertainty to scale spread
+  
+  %compute SD of Gaussian
+  %spread = phi(phipos)*sd_U*10; %x10 scale-up
+  %spread = phi(phipos)*10; %x10 scale-up
+  spread = phi(phipos);
+  %spread = 4;
+  
+  tvec = 1:inG.ntimesteps; %vector of timesteps at which to evaluate gaussian
+
+  %not using an untruncated basis function for normalization since that was a feature to scale height to 1.0, whereas here we want AUC=1.0 (PDF)
+  %refspread = sum(gaussmf(min(tvec)-range(tvec):max(tvec)+range(tvec), [spread, median(tvec)])); %AUC of Gaussian in middle of interval
+
+  %put predicted RT onto timestep grid
+  gxrnd = round(gx*inG.ntimesteps/inG.range_RT);
+  if gxrnd < 0, gxrnd=1; end %handle 0 timestep problem
+  if gxrnd > inG.ntimesteps, gxrnd=inG.ntimesteps; end %handle overprediction problem
+  
+  %compute gaussian spread function around gxrnd (predicted RT timebin)
+  elig = gaussmf(tvec, [spread, gxrnd]);
+
+  %compute sum of area under the curve of the gaussian function
+  auc=sum(elig);
+
+  %divide gaussian update function by its sum so that AUC=1.0 (PDF)
+  p_choice = elig/auc;
+  
+  %no softmax at the moment
+  %p_choice = (exp((v_func-max(v_func))/beta)) / (sum(exp((v_func-max(v_func))/beta))); %Divide by temperature
+  
+  %return the normalized Gaussian as probabilities of each timestep (since they sum to 1)
+  gx = p_choice;
 end

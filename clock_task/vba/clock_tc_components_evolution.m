@@ -76,11 +76,12 @@ end
 %Go and NoGo terms only depend on reward and expected value.. seems like there should be a way to avoid their being hidden states..
 Go_new = Go; %carry forward prior estimate unless updated by PPE
 NoGo_new = NoGo;
+
 if reward > V
-    Go_new = Go - alphaG*(V - reward);
+    Go_new = Go - alphaG*(V - reward); %in original Frank code, it was + alphaG*(reward-V), which is identical
 elseif reward <= V
     NoGo_new = NoGo + alphaN*(V - reward);
-end
+end       
 
 %process updates to beta distributions (for rho and epsilon models)
 if ~isempty(regexp(inF.tcvariant, '_Epsilon|_Rho', 'once'))    
