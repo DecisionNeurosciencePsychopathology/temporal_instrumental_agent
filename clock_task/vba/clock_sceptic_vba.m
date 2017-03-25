@@ -1,4 +1,4 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir,data_file)
+function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir,data_file,cstruct)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
@@ -23,6 +23,7 @@ if nargin < 11, saveresults = 1; end
 if nargin < 12, graphics = 0; end
 if nargin < 13, results_dir = pwd; end
 if nargin < 14, data_file =''; end
+if nargin < 15, cstruct=[]; end
 
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
@@ -30,8 +31,11 @@ rew_rng_seed = 99;
 %Default task name
 task_name = 'hallquist_clock';
 
-
-
+usecstruct=0;
+if isstruct(cstruct)
+    cond = cstruct.name;
+    usecstruct=1;
+end
 
 if ~graphics
     options.DisplayWin = 0;
@@ -165,13 +169,21 @@ options.inG.sig_spread = options.inF.sig_spread;
 %Set up sigma noise for every point in u or hidden state?
 rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
 rew_rng_state=rng;
-[~,idx] = unique(data.run);
-conditions=data.rewFunc(idx);
 sigma_noise = [];
-run_length = n_t/n_runs;
-for i = 1:length(conditions)
-    sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*100, conditions(i), 0), options.inF.tvec))^2, 1, run_length)];
+if usecstruct
+    %taking std over all timesteps and possible draws here. This is in contrast to approach below where you get one
+    %sample from the contingency as drawn by RewFunction. This is much faster than arrayfun below.
+    sigma_noise = repmat(std(cstruct.lookup(:))^2, 1, n_basis);
+else
+    [~,idx] = unique(data.run);
+    conditions=data.rewFunc(idx);
+    
+    run_length = n_t/n_runs;
+    for i = 1:length(conditions)
+        sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*100, conditions(i), 0), options.inF.tvec))^2, 1, run_length)];
+    end
 end
+
 sigma_noise = mean(sigma_noise);
 options.inF.sigma_noise = sigma_noise;
 options.inF.gaussmat = options.inG.gaussmat;

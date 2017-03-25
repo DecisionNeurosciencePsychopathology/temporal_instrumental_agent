@@ -22,9 +22,9 @@ function [cost,v_it,rts,ret] = clock_sceptic_agent(params, agent, rngseeds, cond
 %  11) kalman_kl_softmax:       kalman learning rule; KL discounting of value curve by PEs
 %  12) kalman_processnoise_kl:  kalman learning rule; PEs enhance gain through process noise Q; KL discounting of value curve by PEs; softmax
 %  13) kalman_uv_sum_kl;        kalman learning rule; V and U are mixed by tau; KL discounting of value curve by PEs; softmax choice over U+V
-%  14) kalman_uv_sum_negtau: same as kalman_uv_sum, but use V + tau*U parameterization where tau can be free (positive or negative). Permits ambiguity aversion
-%  15) kalman_uv_sum_discount: use the V + tau*U parameterization, but store uncertainty-discounted value into the V vector (discounted).
-%  16) fixedLR_decay: current winning model for empirical data (fixedLR plus decay outside of temporal generalization function)
+%  14) kalman_uv_sum_negtau:    same as kalman_uv_sum, but use V + tau*U parameterization where tau can be free (positive or negative). Permits ambiguity aversion
+%  15) kalman_uv_sum_discount:  use the V + tau*U parameterization, but store uncertainty-discounted value into the V vector (discounted).
+%  16) fixedLR_decay:           current winning model for empirical data (fixedLR plus decay outside of temporal generalization function)
 %  17) kalman_sigmavolatility_local: Track volatility for each basis separately.
 %  18) kalman_sigmavolatility_precision: Use precision-weighted prediction errors to scale perceived volatility.
 %  19) fixedLR_decay_random: simple test of decay model where eligibility function is placed randomly, rather than at RT (random decay)
