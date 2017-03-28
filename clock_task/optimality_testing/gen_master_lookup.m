@@ -132,3 +132,70 @@ for k = 1:length(keep)
 end
 
 save('sinusoid_optmat.mat', 'optmat');
+
+
+%Double parabola with a fluctuating base
+%move the parabola positions randomly, but don't overlap
+rng(456);
+nreps=100;
+bumpsd = 15;
+ntimesteps=500;
+bump1mag = 100;
+bump2mag = bump1mag/2;
+cliffpullback = 2*bumpsd;
+bumpset = NaN(nreps, ntimesteps);
+prew=0.7; %always 70/30 for bumps
+
+%normalize the noisefloor to have exactly the same AUC so that its influence on AUC of contingency is fixed (for equal run optimization)
+noiseref=NaN;
+allbumps=NaN(nreps, ntimesteps, 3);
+for i = 1:nreps
+    bumpokay = false;
+    while ~bumpokay
+        bump1 = randi([cliffpullback, ntimesteps-cliffpullback]);
+        bump2 = randi([cliffpullback, ntimesteps-cliffpullback]);
+        if abs(bump1 - bump2) > 5*bumpsd %bumps 5 SDs apart to enforce essential non-overlap
+            bumpokay = true;
+        end
+    end
+    
+    bump1func = gaussmf(1:ntimesteps, [bumpsd bump1]).*bump1mag;
+    bump2func = gaussmf(1:ntimesteps, [bumpsd bump2]).*bump2mag;
+    
+    noisefloor = smooth(exprnd(bump1mag/10, 1, ntimesteps), 20, 'lowess')';
+    noisefloor(bump1func > quantile(noisefloor, .25) | bump2func > quantile(noisefloor, .25)) = 0;
+    if i == 1, noiseref = sum(noisefloor); end
+    noisefloor = noisefloor./sum(noisefloor).*noiseref; %this nearly perfectly normalizes the AUC, except when bumps are near the edge
+    
+    func = noisefloor + bump1func + bump2func;
+    bumpset(i, :) = func;
+    if i == 1, pause; end
+    plot(func);
+    pause(0.3);
+    allbumps(i,:,1) = func;
+    allbumps(i,:,2) = repmat(prew, 1, ntimesteps);
+    allbumps(i,:,3) = allbumps(i,:,1).*allbumps(i,:,2);
+end
+
+keep = randsample(1:nreps, 60);
+ntrials = 500; %maximum number of trials that could be used for testing this contingency
+
+optmat=cell(1,1);
+for k = 1:length(keep)
+    thisCont=[];
+    thisCont.name = ['doublebump' num2str(keep(k))];
+    thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
+    thisCont.lookup = zeros(ntimesteps, ntrials); %lookup table of timesteps and outcomes
+    thisCont.ev = allbumps(keep(k),:,1);
+    thisCont.prb = allbumps(keep(k),:,2);
+    thisCont.mag = allbumps(keep(k),:,3);
+    
+    rvec = rand(ntimesteps, ntrials);
+    for t = 1:ntrials
+        thisCont.lookup(:,t) = (allbumps(keep(k),:,2) > rvec(:,t)') .* allbumps(keep(k),:,3);
+    end
+    
+    optmat{1}(k) = thisCont;
+end
+
+save('doublebump_optmat.mat', 'optmat');
