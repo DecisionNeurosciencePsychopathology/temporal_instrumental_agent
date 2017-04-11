@@ -16,8 +16,8 @@ optfiles = glob([basedir, '/clock_task/optimality_testing/output/optimize_output
 
 optfiles=optfiles([1 4 5 9 11]);
 
-nreps = 50;
-nbest = 2; %number of parameter sets to test
+nreps = 40;
+nbest = 3; %number of parameter sets to test
 %nbest=1; %just for decay tests
 ntimesteps=500;
 %runlengths = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
@@ -125,6 +125,11 @@ priors.NoGo = 0;
 %storage structure for output
 oresults=struct();
 
+%prop_spread const
+prop_spread_const = .05;
+beta_const = 1.5;
+
+
 for o = 1:(length(optfiles) + 1)
     if o <= length(optfiles);
         opt = load(optfiles{o});
@@ -142,21 +147,38 @@ for o = 1:(length(optfiles) + 1)
         %candidates = horzcat(candidates, bestcosts);
         %candidates = sortrows(candidates, size(candidates, 2));
         %candidates = candidates(ind, :); %sort in terms of low to high (good to bad) costs)
+        
+        
         if strcmpi(a.name, 'fixedLR_decay')
-            candidates = [ 0.035305       1.6889     0.064386      -1.6371; ... %prop_spread, beta, alpha, gamma
-                0.062697       1.9736     0.052754      -1.1632];
+            candidates = [ prop_spread_const beta_const 0.064386 -1.6371; ... %prop_spread, beta, alpha, gamma
+                prop_spread_const beta_const 0.052754 -1.1632; ... 
+                prop_spread_const beta_const 0.06 -0.5];            
+            %candidates = [ 0.035305       1.6889     0.064386      -1.6371; ... %prop_spread, beta, alpha, gamma
+            %    0.062697       1.9736     0.052754      -1.1632];
         elseif strcmpi(a.name, 'fixedLR_softmax')
-            candidates = [      0.04174       1.6862     0.043147; ... %prop_spread, beta, alpha
-                0.037578      1.9964     0.051624];
+            candidates = [ prop_spread_const beta_const 0.04; ... %prop_spread, beta, alpha
+                prop_spread_const beta_const 0.06; ...
+                prop_spread_const beta_const 0.08 ];
+            %candidates = [      0.04174       1.6862     0.043147; ... %prop_spread, beta, alpha
+            %    0.037578      1.9964     0.051624];
         elseif strcmpi(a.name, 'fixed_uv')
-            candidates = [ 0.06872       1.4279     0.095586     0.019568; ... %prop_spread, beta, alpha, tau
-                0.033588      1.1007     0.099512     0.015764];
+            candidates = [ prop_spread_const beta_const .1 .1; ... %prop_spread, beta, alpha, tau
+                prop_spread_const beta_const .1 .2; ...
+                prop_spread_const beta_const .1 .3 ];            
+            %candidates = [ 0.06872       1.4279     0.095586     0.019568; ... %prop_spread, beta, alpha, tau
+            %    0.033588      1.1007     0.099512     0.015764];
         elseif strcmpi(a.name, 'kalman_softmax')
-            candidates = [     0.19576       1.7564; ... %prop_spread, beta
-                0.22062       1.7318 ];
+            candidates = [ prop_spread_const beta_const; ... %prop_spread, beta
+                prop_spread_const beta_const;
+                prop_spread_const beta_const ];
+            %candidates = [     0.19576       1.7564; ... 
+            %    0.22062       1.7318 ];
         elseif strcmpi(a.name, 'kalman_uv_sum_negtau')
-            candidates = [ 0.18117      0.17702     0.057835; ... %prop_spread, beta, tau
-                0.1541      0.13649     0.062604];
+            candidates = [ prop_spread_const beta_const .1; ... %prop_spread, beta, tau
+                prop_spread_const beta_const .2; ...
+                prop_spread_const beta_const .3 ];
+            %candidates = [ 0.18117      0.17702     0.057835; ... 
+            %    0.1541      0.13649     0.062604];
         end
     else
         a.name = 'null';
