@@ -6,11 +6,13 @@
 %cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output';
 %cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
 %addpath('../');
-basedir='/Users/michael/Data_Analysis/temporal_instrumental_agent';
+%basedir='/Users/michael/Data_Analysis/temporal_instrumental_agent';
+basedir='/storage/group/mnh5174_collab/temporal_instrumental_agent';
 addpath([basedir, '/clock_task']);
 addpath([basedir, '/clock_task/optimality_testing']);
 addpath([basedir, '/clock_task/vba']);
-optfiles = glob([basedir, '/clock_task/optimality_testing/output/optimize_output_sinusoid*.mat']);
+addpath(genpath('/storage/group/mnh5174_collab/lab_resources/VBA-toolbox'));
+optfiles = glob([basedir, '/clock_task/optimality_testing/output_frommac/optimize_output_sinusoid*.mat']);
 %optfiles = glob('output/optimize_output_allequate*.mat');
 %optfiles = glob('output/optimize_output_sinusoid_fixedLR_decay*.mat');
 
@@ -244,6 +246,7 @@ id = NaN(nreps,1);
 L = NaN(nsimmodels,nfitmodels,nbest,nreps);
 poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 grp = struct([]);
+%pctRunOnAll addpath([basedir, '/clock_task/vba']);
 
 for i=1:nsimmodels
     simmodel = simmodelnames{i};
@@ -259,8 +262,8 @@ for i=1:nsimmodels
             
             parfor sub=1:nsubjects
                 %write out relevant data to disk
-                cname=[];
-                [cname{1:runlengths}] = deal(optmat(sub).name);
+                cname=cell(1, runlengths);
+                cname(:) = {optmat(sub).name};
                 df = table(ones(runlengths, 1), (1:runlengths)', cname', (oresults.(simmodel).rts{1, sub, k}.*10)', ... %multiply by 10 to go from 500 -- 5000 scaling
                     oresults.(simmodel).rewards{1, sub, k}', 'VariableNames', {'run', 'trial', 'rewFunc', 'rt', 'score'});
                 datafile = sprintf('simdf_scratch/simdf_%s_%d.csv', simmodel,sub);
@@ -276,6 +279,8 @@ for i=1:nsimmodels
                 %             parsave(sprintf('output_%d',id(sub)),posterior,out);
                 L(i,j,k,sub) = out.F;
             end
+            
+            fprintf('finish');
         end
     end
 end
