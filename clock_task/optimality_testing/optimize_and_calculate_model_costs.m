@@ -174,6 +174,20 @@ elseif strcmpi(whichopt, 'sinusoid')
         optmat{1}(i).ev = optmat{1}(i).ev(1:ntimesteps);
         optmat{1}(i).sample = optmat{1}(i).sample(1:ntimesteps);
     end
+
+elseif strcmpi(whichopt, 'doublebump')
+    fprintf('Optimizing parameters using a set of two-bump contingencies (low and high)\n');
+    
+    %load optmat that contains a one-element cell array with 60 varying double bumps
+    load('doublebump_optmat.mat');
+    ncond=1; %optmat only has one element
+    
+    %truncate to the number of trials for optimization
+    for i = 1:length(optmat{1})
+        optmat{1}(i).lookup = optmat{1}(i).lookup(1:ntimesteps,1:ntrials);
+        optmat{1}(i).ev = optmat{1}(i).ev(1:ntimesteps);
+        optmat{1}(i).sample = optmat{1}(i).sample(1:ntimesteps);
+    end    
 elseif strcmpi(whichopt, 'sinusoidsingle')
     %test whether a single permuted sinusoid duplicated many times is stable in optimization
     ncond=1; %optmat has only one element
