@@ -71,7 +71,7 @@ H = calc_shannon_H( (x_t(1:nbasis)/sum(x_t(1:nbasis))) ); %Entropy
 
 
 %1) compute prediction error, scaled by eligibility trace
-if inF.total_pe %Niv version
+if (exist('inF.total_pe') && inF.total_pe==1 )  %Niv version
     rnd_rt = round(rt);
     
     if rnd_rt==0
@@ -91,26 +91,32 @@ decay = -gamma.*(1-e).*x_t(1:nbasis);
 fx = x_t(1:nbasis) + alpha.*delta + decay;
 
 %track pe as a hidden state
-if inF.track_pe
-    fx(hidden_state_index(:,end))=delta;
+try
+    if inF.track_pe
+        fx(hidden_state_index(:,end))=delta;
+    end
+end
+
+%Track entropy
+try
+    if inF.entropy
+        H = is_nan_or_inf(H);
+        %max_value = is_nan_or_inf(max_value);
+        max_value = find_max_value_in_time(v_func);
+        fx(hidden_state_index(end)+1) = H;
+        fx(hidden_state_index(end)+2) = max_value;
+    end
 end
 
 
-if inF.entropy
-    H = is_nan_or_inf(H);
-    %max_value = is_nan_or_inf(max_value);
-    max_value = find_max_value_in_time(v_func);
-    fx(hidden_state_index(end)+1) = H; 
-    fx(hidden_state_index(end)+2) = max_value;
+%If using autocorreltaion
+try
+    if strcmp(inF.autocorrelation,'choice_tbf')
+        choice_decay = 1./(1+exp(-theta(end)));
+        fx = x_t(1:nbasis) + alpha.*delta + decay;
+        fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
+    end
 end
-
-
-if strcmp(inF.autocorrelation,'choice_tbf')
-    choice_decay = 1./(1+exp(-theta(end)));
-    fx = x_t(1:nbasis) + alpha.*delta + decay;
-    fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
-end
-
 
 function out = is_nan_or_inf(var)
 if isnan(var) || isinf(var)

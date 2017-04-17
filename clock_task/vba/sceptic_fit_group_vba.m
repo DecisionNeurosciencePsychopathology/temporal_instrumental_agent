@@ -50,7 +50,7 @@ end
 
 %% chose models to fit
 %modelnames = {'kalman_processnoise'};
-modelnames = {'fixed' 'fixed_uv' 'fixed_decay' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
+modelnames = {'fixed_decay'};
 %modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
 %modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
 % modelnames = {'kalman_logistic'};
@@ -63,7 +63,7 @@ fit_propspread = 0;
 n_steps = 50;
 
 u_aversion = 1; % allow for uncertainty aversion in UV_sum
-saveresults = 1; %don't save to prevent script from freezing on Thorndike
+saveresults = 0; %don't save to prevent script from freezing on Thorndike
 
 % get ID list
 id = NaN(length(behavfiles),1);
@@ -73,15 +73,15 @@ id = NaN(length(behavfiles),1);
 % parpool
 grp = struct([]);
 
-fit_single_model = 0;
+fit_single_model = 1;
 if fit_single_model
     model = 'fixed_decay'; % will run to get value and prediction errors.
     %     p = ProgressBar(length(behavefiles));
-    parfor sub = 1:length(behavfiles)
+    for sub = 1:length(behavfiles)
         str = behavfiles{sub};
         id(sub) = str2double(str(isstrprop(str,'digit')));
         fprintf('Fitting subject %d id: %d \r',sub, id(sub))
-        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion);
+        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion,0,saveresults,0,results_dir);
         L(sub) = out.F;
         %gamma_decay(sub) = posterior.muTheta(2);
         tau(sub) = posterior.muTheta(1); %For fixed_uv
@@ -98,7 +98,7 @@ else
     for m=1:length(modelnames)
         model = char(modelnames(m));
         %         p = ProgressBar(length(behavfiles));
-        parfor sub=1:length(behavfiles)
+        for sub=1:length(behavfiles)
             str = behavfiles{sub};
             
             %Really should just use regex here...
