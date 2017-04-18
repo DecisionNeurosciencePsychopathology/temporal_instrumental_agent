@@ -25,7 +25,7 @@ s.group_dir='';
 %5) kalman_uv_sum
 %model names must be wrapped in qoutes (i.e. 'fixed' 'fixed_decay' ect)
 
-s.modelnames = {'fixed_decay'};
+s.modelnames = {'fixed' 'fixed_decay' 'fixed_uv' 'kalman_softmax' 'kalman_uv_sum'};
 
 %MODEL PARAMETERS
 %nbasis                   = Number of basis functions                                                                               | Default = 24
