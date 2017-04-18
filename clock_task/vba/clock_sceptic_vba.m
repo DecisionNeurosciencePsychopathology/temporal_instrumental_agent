@@ -1,35 +1,59 @@
-function [posterior,out] = clock_sceptic_vba(id,model,n_basis, multinomial,multisession,fixed_params_across_runs,fit_propspread,n_steps,u_aversion,data_str, saveresults, graphics,results_dir,data_file,cstruct)
+function [posterior,out] = clock_sceptic_vba(s,id,model, data_file)
 
 %% fits SCEPTIC model to Clock Task subject data using VBA toolbox
 % example call:
-% [posterior,out]=clock_sceptic_vba(10638,'modelname',nbasis,multinomial,multisession,fixed_params_across_runs,fit_propsrpead)
+% [posterior,out] = clock_sceptic_vba(s,10637,'fixed, 'subjects/fMRIEmoClock_10637_tc_tcExport.csv')
+% s:            Configuration struct (see create_scecptic_configuration_struct)
 % id:           5-digit subject id in Michael Hallquist's BPD study
-% only works with 'fixed' (fixed learning rate SCEPTIC) so far
-% n_basis:      8 works well, 4 also OK
+% model:        Current model to be fit
+% data_file:    String of subject's path to processed data
+% n_basis:      Number of basis functions
 % multinomial:  if 1 fits p_chosen from the softmax; continuous RT (multinomial=0) works less well
 % multisession: treats runs/conditions as separate, helps fit (do not allow X0 to vary though)
-% fixed_params_across_runs -- self-explanatory
-% fit_propspread -- makes temporal generalization within the eligibility trace a free parameter
+% fixed_params_across_runs: self-explanatory
+% fit_propspread: makes temporal generalization within the eligibility trace a free parameter
 % n_steps:      number of time bins
 % u_aversion:   allow for uncertainty (ambiguity) aversion for UV_sum
-%%
+% saveresults:  self-explanatory
+% graphics:     Plot VBA graphics or  not
+% results_dir:  Where to store saved results
+% cstruct:      Condition struct
+% task_name:    Which version of clock task is being used
+% range_RT:     Range of maximum RT subject could have
+
+%% Set up
+%Close all existing figures
 close all
 
-%% uncertainty aversion for UV_sum
-if nargin < 7, fit_propspread = 0; end
-if nargin < 9, u_aversion = 0; end
-if nargin < 10, data_str=0; end
-if nargin < 11, saveresults = 1; end
-if nargin < 12, graphics = 0; end
-if nargin < 13, results_dir = pwd; end
-if nargin < 14, data_file =''; end
-if nargin < 15, cstruct=[]; end
+%Must have the config structure, id, and model to run.
+try
+    s; %Config struct
+    id; %Subj id
+    model; %Current model
+    data_file; %Subj data file path
+catch
+    error('Main function arguments not found! Exiting...')
+end
 
+%Set all parameters into local variables from input struct
+try n_basis=s.n_basis; catch, n_basis = 24; end
+try multinomial=s.multinomial; catch, multinomial = 1; end
+try multisession=s.multisession; catch, s.multisession = 0; end
+try fixed_params_across_runs=s.fixed_params_across_runs; catch, fixed_params_across_runs = 0; end
+try fit_propspread=s.fit_propspread; catch, fit_propspread = 0; end
+try n_steps=s.n_steps; catch, n_steps = 50; end
+try u_aversion=s.u_aversion; catch, u_aversion = 1; end
+try saveresults=s.saveresults; catch, saveresults = 0; end
+try graphics=s.graphics; catch, graphics = 0; end
+try results_dir=s.results_dir; catch, results_dir = pwd; end
+try cstruct=s.cstruct; catch, cstruct = []; end
+try task_name=s.task_name; catch, task_name = 'hallquist_clock'; end
+try range_RT=s.range_RT; catch, range_RT = 400; end
+
+
+%Set reward seeds
 global rew_rng_state no_gamma
 rew_rng_seed = 99;
-
-%Default task name
-task_name = 'hallquist_clock';
 
 usecstruct=0;
 if isstruct(cstruct)
@@ -37,17 +61,27 @@ if isstruct(cstruct)
     usecstruct=1;
 end
 
+%Graphics handle
 if ~graphics
     options.DisplayWin = 0;
     options.GnFigs = 0;
 end
+
 %% set up dim defaults
 n_theta = 1;
 n_phi = 1;
 
 %% no choice autocorrelation by default
-% options.inG.autocorrelation = 'none';
-options.inG.autocorrelation = 'none'; %% implements AR(1) choice autocorrelation with exponential temporal generalization
+%Autocorrelation choices
+%1) 'none'                      No autocorrelation
+%2) 'softmax_multitrial'        Implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
+%3) 'softmax_multitrial_smooth' Implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
+%4) 'exponential'
+%5) 'choice_tbf'
+options.inG.autocorrelation = 'none';
+options.inF.autocorrelation = options.inG.autocorrelation;
+
+%Entropy
 options.inF.entropy = 0; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
 options.inF.H_threshold = 0.01;
@@ -58,115 +92,38 @@ options.inF.total_pe=0;
 %If we want to track delta for regressors
 options.inF.track_pe = 1;
 
-% options.inG.autocorrelation = 'softmax_multitrial'; % implements choice autocorrelation as in Schoenberg et al. 2007 without temporal generalization
-% options.inG.autocorrelation = 'softmax_multitrial_smooth'; %% implements choice autocorrelation as in Schoenberg et al. 2007 with temporal generalization controlled by an additional temporal smoothing parameter iota
-options.inF.autocorrelation = options.inG.autocorrelation;
+%% FILE I/O
 
-%% fit as multiple runs
-% multisession = 1;
-% fix parameters across runs
-% fixed_params_across_runs = 1;
-
-%% u is 2 x ntrials where first row is rt and second row is reward
-% If we can't find the path have the user select it.
-%Have the data file be an input now since we will be working with multiple
-%clock data
-if data_str==0
-    os = computer;
-    if strcmp(os(1:end-2),'PCWIN')
-        data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
-        %vbadir = 'c:/kod/temporal_instrumental_agent/clock_task/vba';
-        %results_dir = 'E:/data/sceptic/vba_out/new_lambda_results/';
-    else
-        [~, me] = system('whoami');
-        me = strtrim(me);
-        if strcmp(me,'Alex')==1
-            data = readtable(sprintf('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-            %vbadir = '/Users/localadmin/code/clock_smoothoperator/clock_task/vba';
-            %results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-            
-        elseif strcmp(me(1:6),'dombax')==1
-            data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-            %vbadir = '/Volumes/bek/vba_results/uv_sum';
-            %results_dir = '/Volumes/bek/vba_results/';
-            
-        elseif strcmpi(me(1:(min(length(me), 14))),'alexdombrovski')
-            data = readtable(sprintf('/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-            %vbadir = '/Users/alexdombrovski/code/temporal_instrumental_agent/clock_task/vba';
-            %results_dir = '/Users/alexdombrovski/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-            
-        else
-            data = readtable(sprintf('subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
-            %results_dir = '/Volumes/bek/vba_results/';
-        end
-    end
-else
-    data = readtable(data_str,'Delimiter',',','ReadVariableNames',true);
-end
-options.inF.fit_nbasis = 0;
-
-%Set rt range
-range_RT = 400;
-
-%If we are calling this function from a different task dir, update the rt
-%range acordingly and designate the proper task name
-stack_call=dbstack;
-for i = 1:length(stack_call)
-    if strfind(stack_call(i).name,'explore')
-        range_RT = 500;
-        task_name = 'explore_clock';
-        break
-    elseif strfind(stack_call(i).name,'bpd')
-        range_RT = 500;
-        task_name = 'bpd_clock';
-        break
-    end
-end
-
-% n_steps = 4000;
-n_t = size(data,1);
-n_runs = n_t/50;
+% Import the subject's data
+data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
+n_t = size(data,1); %Number of trials
+n_runs = n_t/50; %Number of runs
 trialsToFit = 1:n_t;
-% fit_propspread = 1;
-options.inF.fit_propspread = fit_propspread;
-
 
 %% set up models within evolution/observation Fx
-%Note: we might need to add option.inF.model to make the kalman models
-%easier to deal with...
+options.inF.fit_nbasis = 0;
+options.inF.fit_propspread = fit_propspread;
 options.inF.nbasis = n_basis;
 options.inF.ntimesteps = n_steps;
 options.inG.ntimesteps = n_steps;
 options.inG.multinomial = multinomial;
 options.inG.nbasis = n_basis;
 options.inG.maxRT = range_RT;
-%%
+
 options.TolFun = 1e-6;
 options.GnTolFun = 1e-6;
 options.verbose=1;
-% options.DisplayWin=1;
 
 %% set up kalman defaults
-options.inF.kalman.kalman_processnoise = 0;
-options.inF.kalman.kalman_sigmavolatility  = 0;
 options.inF.kalman.kalman_softmax = 0;
-options.inF.kalman.kalman_logistic = 0;
-options.inF.kalman.kalman_uv_logistic = 0;
 options.inF.kalman.kalman_uv_sum = 0;
-options.inF.kalman.kalman_uv_sum_sig_vol = 0;
 options.inF.kalman.fixed_uv = 0;
-options.inF.kalman.kalman_sigmavolatility_local =0;
-options.inF.kalman.kalman_sigmavolatility_precision=0;
-
 
 %% set up basis
 fixed_prop_spread = .0125;
-
 [~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, fixed_prop_spread);
-
 options.inG.sig_spread = options.inF.sig_spread;
 
-%Set up sigma noise for every point in u or hidden state?
 rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
 rew_rng_state=rng;
 sigma_noise = [];
@@ -191,37 +148,32 @@ options.inF.gaussmat = options.inG.gaussmat;
 %% split into conditions/runs
 if multisession %improves fits moderately
     options.multisession.split = repmat(n_t/n_runs,1,n_runs); % two sessions of 120 datapoints each
-    %% fix parameters
+    %fix parameters
     if fixed_params_across_runs
         options.multisession.fixed.theta = 'all';
         options.multisession.fixed.phi = 'all';
-        %
-        % allow unique initial values for each run?x
         options.multisession.fixed.X0 = 'all';
     end
-    
 end
 
-
-
-%Determine which evolution funciton to use
+%% Determine which evolution funciton to use
 options.inF.kalman.(model)=1; %Declare which model to use if kalman
 
 switch model
-    %fixed learning rate (alpha) for PE+ and PE-; softmax choice rule
     case 'fixed'
         h_name = @h_sceptic_fixed;
         hidden_variables = 1; %tracks only value
         priors.muX0 = zeros(hidden_variables*n_basis,1);
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        %         priors.SigmaX0 = 10*ones(hidden_variables*n_basis);
-
-    case 'fixed_lambda'
-        h_name = @h_sceptic_fixed;
-        hidden_variables = 1; %tracks only value
-        priors.muX0 = zeros(hidden_variables*n_basis,1);
+    
+    case 'fixed_uv'
+        h_name = @h_sceptic_kalman;
+        hidden_variables = 2; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        %n_phi = 2;  %% add an observation parameter for choice autocorrelation lambda
+        n_theta = 2; %tau alpha
+        options.inF.u_aversion = u_aversion;
+        options.inG.u_aversion = u_aversion;
         
     case 'fixed_decay'
         h_name = @h_sceptic_fixed_decay;
@@ -230,146 +182,31 @@ switch model
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
         n_theta = 2; %learning rate and decay outside of the eligibility trace
         
-    case 'fixed_decay_lambda'
-        h_name = @h_sceptic_fixed_decay;
-        hidden_variables = 1; %tracks only value
-        priors.muX0 = zeros(hidden_variables*n_basis,1);
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        n_theta = 2; %learning rate and decay outside of the eligibility trace
-        %n_phi = 2;  %% add an observation parameter for choice autocorrelation lambda
-        options.inG.lambda = 1;
-        
-        %kalman learning rule (no free parameter); softmax choice over value curve
     case 'kalman_softmax'
+        h_name = @h_sceptic_kalman;
+        hidden_variables = 2; %tracks value and uncertainty
+        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
+        priors.SigmaX0 = zeros(hidden_variables*n_basis);
         %Prop_spread is the only variable in this model
         if fit_propspread
             n_theta = 0;
         end
-        hidden_variables = 2; %tracks value and uncertainty
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman;
-        
-        %kalman learning rule (no free parameter); PEs enhance gain through process noise Q according to parameter omega
-    case 'kalman_processnoise'
-        hidden_variables = 2; %tracks value and uncertainty
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman;
-        
-        %old kalman with explore/exploit hardmax selection according to logistic function
-    case 'kalman_logistic'
-        %Prop_spread is the only variable currently in this model
-        if fit_propspread
-            n_theta = 0;
-        end
-        n_phi  = 2;  %Beta and discrim
-        %Different observation function than other kalman models
-        %         g_name = @g_sceptic_logistic;
-        hidden_variables = 2; %tracks value and uncertainty
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis); %This is Discrim not Beta for this model
-        h_name = @h_sceptic_kalman;
-        %Define indifference point between explore and exploit (p = 0.5) as proportion reduction in variance from initial value
-        tradeoff = 0.1209529; %From what was the optimized overall
-        options.inG.u_threshold = (1 - tradeoff * sigma_noise);
-        %Predetermined random trials
-        %options.inG.choice_rand=rand(n_steps,1);
-        
-        %kalman learning rule (no free parameter); PEs inflate posterior variance (sigma) according to phi and gamma
-    case 'kalman_sigmavolatility'
-        n_theta = 2;
-        hidden_variables = 3; %tracks value and uncertainty and volatility
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = 0; %If 1 gamma will be 1-phi
-        h_name = @h_sceptic_kalman;
-        
-        %kalman learning rule and uncertainty update; V and U are mixed by tau; softmax choice over U+V
+
     case 'kalman_uv_sum'
+        h_name = @h_sceptic_kalman;
         hidden_variables = 2; %tracks value and uncertainty
         priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
         priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman;
         options.inF.u_aversion = u_aversion;
         options.inG.u_aversion = u_aversion;
         
-    case 'kalman_uv_sum_sig_vol'
-        %n_phi  = 2;  %Beta and Tau
-        n_theta = 3; %sigma gamma tau
-        hidden_variables = 3; %tracks value and uncertainty and volatility
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman;
-        options.inF.u_aversion = u_aversion;
-        options.inG.u_aversion = u_aversion;
-        
-    case 'fixed_uv'
-        n_theta = 2; %tau alpha
-        hidden_variables = 2; %tracks value and uncertainty
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1)];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman;
-        options.inF.u_aversion = u_aversion;
-        options.inG.u_aversion = u_aversion;
-        
-    case 'kalman_sigmavolatility_local'
-        %n_theta = 2;
-        hidden_variables = 3; %tracks value and uncertainty and volatility
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
-        if options.inF.no_gamma
-            n_theta = 1;
-        else
-            n_theta = 2;
-        end
-        h_name = @h_sceptic_kalman;
-        
-    case 'kalman_sigmavolatility_precision'
-        %n_theta = 2;
-        hidden_variables = 3; %tracks value and uncertainty and volatility
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
-        options.inF.priors = priors;
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inF.no_gamma = no_gamma; %If 1 gamma will be 1-phi
-        if options.inF.no_gamma
-            n_theta = 1;
-        else
-            n_theta = 2;
-        end
-        h_name = @h_sceptic_kalman;
-    case 'win_stay_lose_switch'
-        n_phi  = 2;  %Beta and precision
-        n_theta = 0;
-        h_name = @h_dummy;
-        hidden_variables = 0; %tracks only value
-        priors.muX0 = zeros(hidden_variables*n_basis,1);
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inG.stay = 0;
-    case 'stay'
-        n_phi  = 2;  %Beta and precision
-        n_theta = 0;
-        h_name = @h_dummy;
-        hidden_variables = 0; %tracks only value
-        priors.muX0 = zeros(hidden_variables*n_basis,1);
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        options.inG.stay = 1;
-    case 'kalman_monster'
-        hidden_variables = 3; %value, uncertainty, and local volatility
-        n_phi = 2; %beta and tau
-        n_theta = 4; %gamma, phi, alpha, kappa
-        priors.muX0 = [zeros(n_basis,1); sigma_noise*ones(n_basis,1); zeros(n_basis,1);];
-        options.inF.priors = priors;
-        priors.SigmaX0 = zeros(hidden_variables*n_basis);
-        h_name = @h_sceptic_kalman_monster;
     otherwise
         disp('The model you have entered does not match any of the default names, check spelling!');
         return
         
 end
 
-%Adjust initial arrays is tracking pe
+%Adjust initial arrays if tracking pe
 if options.inF.track_pe == 1
     track_pe = 1;
     hidden_variables = hidden_variables + 1;
@@ -379,8 +216,7 @@ else
     track_pe = 0;
 end
 
-
-%Add in the lambda parameter
+%Add in the lambda parameter if using autocorrelation
 if strcmp(options.inG.autocorrelation,'exponential') || strcmp(options.inG.autocorrelation,'softmax_multitrial')
     n_phi = n_phi + 2;
 elseif strcmp(options.inG.autocorrelation,'softmax_multitrial_smooth')
@@ -397,16 +233,12 @@ elseif options.inF.entropy == 1
     priors.SigmaX0 = zeros(hidden_variables*n_basis+track_entropy);
 end
 
+%Finalize hidden variables
 options.inF.hidden_state = hidden_variables;
 
 %Map the necessary options from F to G
 options.inG.hidden_state = options.inF.hidden_state;
 options.inG.kalman = options.inF.kalman;
-
-
-
-    
-
 
 if multinomial
     rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
@@ -431,18 +263,8 @@ if multinomial
     u = [zeros(size(u,1),1) u(:,1:end-1)];
     options.inG.rts = round(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)';
     % Observation function
-    switch model
-        case 'kalman_logistic'
-            g_name = @g_sceptic_logistic;
-        case 'win_stay_lose_switch'
-            g_name = @g_WSLS;
-        case 'stay'
-            g_name = @g_WSLS;
-        case 'kalman_monster'
-            g_name = @g_sceptic_monster;
-        otherwise
-            g_name = @g_sceptic;
-    end
+    g_name = @g_sceptic;
+
 else
     n_phi = 2; % [autocorrelation lambda and response bias/meanRT K] instead of temperature
     dim = struct('n',hidden_variables*n_basis,'n_theta',n_theta+fit_propspread,'n_phi',n_phi, 'n_t', n_t);
@@ -452,7 +274,7 @@ else
     priors.a_sigma = 1;     % Jeffrey's prior
     priors.b_sigma = 1;     % Jeffrey's prior
     priors.muPhi = [0, 0];  % K, lambda
-    %     priors.SigmaPhi = diag([0,1]); % get rid of the K
+    %priors.SigmaPhi = diag([0,1]); % get rid of the K
     priors.SigmaPhi = diag([1,1]);
     options.binomial = 0;
     options.sources(1) = struct('out',1,'type',0);
@@ -465,26 +287,7 @@ else
     g_name = @g_sceptic_continuous;
     
 end
-%
-% if options.inF.fit_nbasis
-%     dim = struct('n',n_basis,'n_theta',2,'n_phi',1,'p',n_steps);
-% priors.muTheta = [0 8];
-% priors.muPhi = zeros(dim.n_phi,1); % exp tranform
-% priors.muX0 = zeros(dim.n,1);
-% priors.SigmaPhi = 1e1*eye(dim.n_phi);
-% priors.SigmaTheta = 1e1*eye(dim.n_theta);
-% options.inF.priordist_theta2 = makedist('Normal',priors.muTheta(2), unique(max(priors.SigmaTheta)));
-% options.inF.maxbasis = 24;
-% options.inF.muTheta2 = priors.muTheta(2);
-% options.inF.SigmaTheta2 = unique(max(priors.SigmaTheta));
-% else
-% priors.muTheta = zeros(dim.n_theta,1);
-% priors.muPhi = zeros(dim.n_phi,1); % exp tranform
-% priors.muX0 = zeros(dim.n,1);
-% priors.SigmaPhi = 1e1*eye(dim.n_phi);
-% priors.SigmaTheta = 1e1*eye(dim.n_theta);
 
-% end
 %% skip first trial
 options.skipf = zeros(1,n_t);
 options.skipf(1) = 1;
@@ -502,16 +305,10 @@ for mm=1:size(y,2)
     onsets(mm) = pos;
 end
 
-
+%% Run VBA State Space Model
 [posterior,out] = VBA_NLStateSpaceModel(y,u,h_name,g_name,dim,options);
 
+%% save output
 if saveresults
-    %% save output figure
-    % h = figure(1);
-    % savefig(h,sprintf('results/%d_%s_multinomial%d_multisession%d_fixedParams%d',id,model,multinomial,multisession,fixed_params_across_runs))
-    save([results_dir sprintf('/SHIFTED_U_CORRECT%d_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d_sceptic_vba_fit_fixed_prop_spread_%s_%s', id, model, multinomial,multisession,fixed_params_across_runs, u_aversion,options.inG.autocorrelation,task_name)], 'posterior', 'out', '-v7.3');
-    
-    %You need to think of a way to name these results something so Mike's
-    %data, exp and bpd data are all seperate!
-    
+    save([results_dir sprintf(s.results_str, s.results_str_values, id, model)], 'posterior', 'out', '-v7.3');
 end

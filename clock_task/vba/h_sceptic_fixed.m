@@ -1,17 +1,17 @@
 function  [fx] = h_sceptic_fixed(x_t, theta, u, inF)
-% evolution function of q-values of a RL agent (2-armed bandit problem)
-% [fx,dfdx,dfdP] = f_Qlearn2(x,P,u,in)
-% Here, there are only two q-values to evolve, i.e. there are only two
-% actions to reinforce (2-armed bandit problem).
+% evolution function of 'fixed' flavor of SCEPTIC
 % IN:
 %   - x_t : basis values/heights (nbasis x 1)
-%   - theta : theta(1) = prop_spread; theta(2) = alpha;
+%   - theta : theta(1) = alpha;
+%             NOTE: if fit propspread should always be the last parameter of theta
 %   - u : u(1) = rt; u(2) = reward
 %   - inF : struct of input options (has nbasis and ntimesteps)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
+%Learning rate
 alpha = 1./(1+exp(-theta(1)));
+
 if inF.fit_propspread
     prop_spread = 1./(1+exp(-theta(2))); %0..1 SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
@@ -22,10 +22,12 @@ else
     sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
     refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
 end
+
 rt = u(1);
 reward = u(2);
+
 if inF.fit_nbasis
-    %% convert normally distributed theta(2) to discrete uniform number of bases
+    % convert normally distributed theta(2) to discrete uniform number of bases
     nbasis_cdf = cdf('Normal',theta(2),inF.muTheta2, inF.SigmaTheta2);
     nbasis = unidinv(nbasis_cdf,inF.maxbasis);
 else
@@ -41,10 +43,7 @@ v_func = sum(v);
 hidden_state_index=1:inF.hidden_state*nbasis;
 hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
 
-%refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
-
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
-% elig = gaussmf(inF.tvec, [inF.sig_spread, rt]);
 elig = gaussmf(inF.tvec, [sig_spread, rt]);
 
 %compute sum of area under the curve of the gaussian function
@@ -64,11 +63,7 @@ e = sum(repmat(elig,nbasis,1).*inF.gaussmat_trunc, 2);
 % %If we want the entropy run the function here
 % threshold = inF.H_threshold;
 % active_elements = x_t(1:nbasis)>threshold;
-% %H = wentropy(x_t(active_elements),'log energy'); %Entropy
-% H = wentropy(x_t(active_elements),'shannon'); %Entropy
-%max_value = max(x_t(1:nbasis)); %Max value pre update
 H = calc_shannon_H( (x_t(1:nbasis)/sum(x_t(1:nbasis))) ); %Entropy
-
 
 
 %1) compute prediction error, scaled by eligibility trace
@@ -86,39 +81,53 @@ end
 
 fx = x_t(1:nbasis) + alpha.*delta;
 
-%track pe as a hidden state
-if inF.track_pe
-    fx(hidden_state_index(:,end))=delta;
+% The try catches are in place for refitting purposes of older datasets
+% that never had the following options
+
+%track pe as a hidden state (if applicable)
+try
+    if inF.track_pe
+        fx(hidden_state_index(:,end))=delta;
+    end
+catch
 end
 
-
-if inF.entropy
-    H = is_nan_or_inf(H);
-    %max_value = is_nan_or_inf(max_value);
-    max_value = find_max_value_in_time(v_func);
-    fx(hidden_state_index(end)+1) = H; 
-    fx(hidden_state_index(end)+2) = max_value;
+%Track entropy (if applicable)
+try
+    if inF.entropy
+        H = is_nan_or_inf(H);
+        %max_value = is_nan_or_inf(max_value);
+        max_value = find_max_value_in_time(v_func);
+        fx(hidden_state_index(end)+1) = H;
+        fx(hidden_state_index(end)+2) = max_value;
+    end
+catch
 end
 
-if strcmp(inF.autocorrelation,'choice_tbf')
-    choice_decay = 1./(1+exp(-theta(end)));
-    fx(1:nbasis) = x_t(1:nbasis) + alpha.*delta;
-    fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
+%Track choice decay (if applicable)
+try
+    if strcmp(inF.autocorrelation,'choice_tbf')
+        choice_decay = 1./(1+exp(-theta(end)));
+        fx(1:nbasis) = x_t(1:nbasis) + alpha.*delta;
+        fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
+    end
+catch
 end
 
 function out = is_nan_or_inf(var)
-    if isnan(var) || isinf(var)
-        out=0;
-    else 
-        out=var;
-    end
-    
+%function is just to make sure there are no nans or infs in entropy
+if isnan(var) || isinf(var)
+    out=0;
+else
+    out=var;
+end
+
 function time_point = find_max_value_in_time(val)
-    max_val  = max(val); %Get the max value
-    time_point = find(max_val==val); %Find the max
-    if length(time_point)>1 %If there are duplicates randomly select one
-        time_point = randsample(time_point,1);
-    end
-    
+max_val  = max(val); %Get the max value
+time_point = find(max_val==val); %Find the max
+if length(time_point)>1 %If there are duplicates randomly select one
+    time_point = randsample(time_point,1);
+end
+
 
 

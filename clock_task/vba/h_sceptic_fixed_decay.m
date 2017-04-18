@@ -1,11 +1,9 @@
 function  [fx] = h_sceptic_fixed_decay(x_t, theta, u, inF)
-% evolution function of q-values of a RL agent (2-armed bandit problem)
-% [fx,dfdx,dfdP] = f_Qlearn2(x,P,u,in)
-% Here, there are only two q-values to evolve, i.e. there are only two
-% actions to reinforce (2-armed bandit problem).
+% evolution function of 'fixed_decay' flavor of SCEPTIC
 % IN:
 %   - x_t : basis values/heights (nbasis x 1)
-%   - theta : theta(1) = prop_spread; theta(2) = alpha;
+%   - theta : theta(1) = alpha;
+%             NOTE: if fit propspread should always be the last parameter of theta
 %   - u : u(1) = rt; u(2) = reward
 %   - inF : struct of input options (has nbasis and ntimesteps)
 % OUT:
@@ -13,6 +11,7 @@ function  [fx] = h_sceptic_fixed_decay(x_t, theta, u, inF)
 
 alpha = 1./(1+exp(-theta(1))); %LR: 0..1
 gamma = 1./(1+exp(-theta(2))); %Decay: 0..1
+
 if inF.fit_propspread
     prop_spread = 1./(1+exp(-theta(3))); %0..1 SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
@@ -26,8 +25,9 @@ end
 
 rt = u(1);
 reward = u(2);
+
 if inF.fit_nbasis
-    %% convert normally distributed theta(2) to discrete uniform number of bases
+    % convert normally distributed theta(2) to discrete uniform number of bases
     nbasis_cdf = cdf('Normal',theta(2),inF.muTheta2, inF.SigmaTheta2);
     nbasis = unidinv(nbasis_cdf,inF.maxbasis);
 else
@@ -90,14 +90,18 @@ decay = -gamma.*(1-e).*x_t(1:nbasis);
 
 fx = x_t(1:nbasis) + alpha.*delta + decay;
 
-%track pe as a hidden state
+% The try catches are in place for refitting purposes of older datasets
+% that never had the following options
+
+%track pe as a hidden state (if applicable)
 try
     if inF.track_pe
         fx(hidden_state_index(:,end))=delta;
     end
+catch
 end
 
-%Track entropy
+%Track entropy (if applicable)
 try
     if inF.entropy
         H = is_nan_or_inf(H);
@@ -106,16 +110,18 @@ try
         fx(hidden_state_index(end)+1) = H;
         fx(hidden_state_index(end)+2) = max_value;
     end
+catch
 end
 
 
-%If using autocorreltaion
+%Track choice decay (if applicable)
 try
     if strcmp(inF.autocorrelation,'choice_tbf')
         choice_decay = 1./(1+exp(-theta(end)));
         fx = x_t(1:nbasis) + alpha.*delta + decay;
         fx(length(x_t)-nbasis+1:length(x_t)) = choice_decay.*x_t(length(x_t)-nbasis+1:end) + e;
     end
+catch
 end
 
 function out = is_nan_or_inf(var)

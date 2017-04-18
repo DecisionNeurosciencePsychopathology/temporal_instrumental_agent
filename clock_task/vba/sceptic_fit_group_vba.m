@@ -1,125 +1,66 @@
-%loads in subjects' data and fits SCEPTIC models using VBA;
+function sceptic_fit_group_vba(sceptic_config_file)
+%Parent script for VBA inversion of SCEPTIC models for group level analysis and processing
+%Requirements:
+%Must have VBA toolbox (J. Daunizeau, V. Adam, L. Rigoux) downloaded and installed 
+%see here for more help: https://mbb-team.github.io/VBA-toolbox/
+%
+%Must create configuration file with "create_scecptic_configuration_struct" script
 
-% close all;
-clear;
+clearvars -except sceptic_config_file
 %curpath = fileparts(mfilename('fullpath'));
 
-%Do we want to use M Frank data?
-use_frank_data = 1;
-
-%behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
-%%
-%Quick username check, and path setting, this may have to change depending
-%on the machine you are currently working on!
-os = computer;
-[~, me] = system('whoami');
-me = strtrim(me);
-if strcmp(os(1:end-2),'PCWIN')
-    behavfiles = glob('C:\kod\temporal_instrumental_agent\clock_task\subjects\*.csv');
-else
-    if strcmp(me,'Alex')==1
-        behavfiles = glob('/Users/localadmin/code/clock_smoothoperator/clock_task/subjects/*.csv');
-        results_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results';
-        group_dir = '/Users/localadmin/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
-    elseif strcmp(me(1:6),'dombax')==1
-        behavfiles = glob('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/*.csv');
-        results_dir = '/Volumes/bek/vba_results/';
-        group_dir = '/Users/dombax/Google Drive/skinner/SCEPTIC/subject_fitting/vba_results/group_bmc';
-        addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
-        addpath(genpath('/Users/dombax/code/'));
-    elseif strcmp(me, 'wilsonj3')==1
-        addpath(genpath('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/'));
-        behavfiles = glob('/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/subjects/*.csv');
-        results_dir = '/Volumes/bek/vba_results/autocorrelation/';
-        group_dir = '/Users/wilsonj3/matlab/temporal_instrumental_agent/clock_task/vba_results/autocorrelation';
-
-    else
-        behavfiles = glob('/Users/michael/Data_Analysis/clock_analysis/fmri/behavior_files/*.csv');
-        addpath(genpath('/Users/dombax/temporal_instrumental_agent/clock_task/'));
-        addpath(genpath('/Users/dombax/code/'));
-    end
+%Load in configuration file
+try
+    s=load(sceptic_config_file);
+    tmp=fieldnames(s);
+    s = s.(tmp{:});
+catch
+    error('Configuration file was not able to be loaded')
 end
 
-%If we want to use M Frank's data
-if use_frank_data
-    behavfiles = glob('C:\kod\temporal_instrumental_agent\clock_task\frank_subjects\*.csv');
-    results_dir = 'E:\data\sceptic\vba_out\frank_data';
-else
-    results_dir = 'E:\data\sceptic\vba_out\new_lambda_results';
-end
+%Is VBA toolbox on path and/or downloaded
+try which VBA_NLStateSpaceModel; catch, error('VBA toolbox is not on path and/or... downloaded, see script description for more info.'); end
+
+%% Set up file paths
+behavfiles = glob(s.behavfiles); %Path of subjects data
+group_dir = s.group_dir; %Path to save group posterior results 
 
 %% chose models to fit
-%modelnames = {'kalman_processnoise'};
-modelnames = {'fixed_decay'};
-%modelnames = {'fixed' 'kalman_softmax' 'kalman_processnoise' 'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'};
-%modelnames = {'kalman_uv_sum' 'kalman_sigmavolatility' 'kalman_logistic'}; %Rerun uncertainty models using corrected sigma update
-% modelnames = {'kalman_logistic'};
-%% set parameters
-nbasis = 24;
-multinomial = 1;
-multisession = 0;
-fixed_params_across_runs = 1;
-fit_propspread = 0;
-n_steps = 50;
-
-u_aversion = 1; % allow for uncertainty aversion in UV_sum
-saveresults = 0; %don't save to prevent script from freezing on Thorndike
+%Models to choose from are:
+%1) fixed
+%2) fixed_decay
+%3) fixed_uv
+%4) kalman_softmax
+%5) kalman_uv_sum
+modelnames = s.modelnames;
 
 % get ID list
-id = NaN(length(behavfiles),1);
+id_list = NaN(length(behavfiles),1);
 
 %% main loop
-% L = NaN(length(modelnames),length(behavfiles));
-% parpool
-grp = struct([]);
+%Initialize posterior log evidence array
+L = NaN(length(modelnames),length(behavfiles));
 
-fit_single_model = 1;
-if fit_single_model
-    model = 'fixed_decay'; % will run to get value and prediction errors.
-    %     p = ProgressBar(length(behavefiles));
-    for sub = 1:length(behavfiles)
-        str = behavfiles{sub};
-        id(sub) = str2double(str(isstrprop(str,'digit')));
-        fprintf('Fitting subject %d id: %d \r',sub, id(sub))
-        [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps,u_aversion,0,saveresults,0,results_dir);
-        L(sub) = out.F;
-        %gamma_decay(sub) = posterior.muTheta(2);
-        tau(sub) = posterior.muTheta(1); %For fixed_uv
-%         value(:,:,sub) = out.suffStat.muX;
-        %         p.progress;
-    end
-    %     p.stop;
-    cd(group_dir);
-    filename = sprintf('nonMULTI_SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps, u_aversion);
-    save(filename);
-else
-    %     %% continue where I left off earlie_r
-    %     load L_n=64
-    for m=1:length(modelnames)
-        model = char(modelnames(m));
-        %         p = ProgressBar(length(behavfiles));
-        for sub=1:length(behavfiles)
-            str = behavfiles{sub};
-            
-            %Really should just use regex here...
-            if strcmp(me, 'wilsonj3')==1
-                tmp_id = str(isstrprop(str,'digit'));
-                id(sub) = str2double(tmp_id(2:end));
-            else
-                id(sub) = str2double(str(isstrprop(str,'digit')));
-            end
-
-            fprintf('Fitting %s subject %d \r',model,sub)
-            %             p.progress;
-            [posterior,out] = clock_sceptic_vba(id(sub),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread,n_steps,u_aversion,0,saveresults,0,results_dir);
-%             cd(results_dir);
-%             parsave(sprintf('output_%d',id(sub)),posterior,out);
-            L(m,sub) = out.F;
-        end
-        %         p.stop;
+%Start main model loop
+for m=1:length(modelnames)
+    model = char(modelnames(m));
+    parfor sub=1:length(behavfiles)
         
+        %Pull subject's data file path
+        data_file = behavfiles{sub};
+        
+        %Pull subject id from file name
+        id=regexp(data_file,'\d{5,6}','match');
+        id=str2double(id{:});
+        fprintf('Fitting %s subject %d \r',model,id)
+        
+        %Run model through VBA toolbox
+        [posterior,out] = clock_sceptic_vba(s,id,model,data_file);
+        L(m,sub) = out.F;
+        id_list(sub) = id;
     end
-    cd(group_dir);
-    filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_frank_all_subjs',nbasis,n_steps, u_aversion);
-    save(filename);
 end
+cd(group_dir);
+filename = sprintf('SHIFTED_U_grp_L_%d_nbasis%d_nsteps%d_uaversion_not_allModels_fixed_prop_spread_frank_all_subjs',s.nbasis,s.n_steps,s.u_aversion);
+save(filename, 'L', 'id_list');
+
