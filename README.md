@@ -1,11 +1,11 @@
 # ![sceptic]()
 
-#SCEPTIC
+# StrategiC Exploration/Exploitation of a Temporal Instrumental Contingency
 
-Description
+This repository contains code realted to `SCEPTIC`, which was developed to model how humans explore and learn a complex reinforcement-based timing task. For more information see Dombrovski Hallquist [PAPER Selective Maintenance and Entropy-Driven Exploration Facilitate Human Learning of Temporal Instrumental Contingencies]().
 
 ## Requirements
-These scripts run in Matlab
+Please note Matlab is required to run SCEPTIC 
 
 You must have the VBA tool box downloaded and installed, for instructions see [here](https://mbb-team.github.io/VBA-toolbox/download/) for more information see [here](https://mbb-team.github.io/VBA-toolbox/wiki/)
 
@@ -17,17 +17,17 @@ Clone or download this repo
 
 1.) Create a config file by running:
 
-```matlab
+```
 s=create_scecptic_configuration_struct
 ```
 
-2a.) Execute the parent function to run model(s) on all data
-```matlab
+2a.) Execute the parent function to run model(s) on all subjects
+```
 sceptic_fit_group_vba(sceptic_config_file)
 ```
 
-2b.) Conversely run model(s) on a single data point
-```matlab
+2b.) Conversely run model(s) on a single subject
+```
 [posterior,out] = clock_sceptic_vba(s,id,model,data_file)
 ``` 
 
@@ -41,23 +41,23 @@ sceptic_grp_BMC
 
 ##### fixed
 
-Description
+Fixed learning rate, value-based choice
 
 ##### fixed decay
 
-Description
+selective maintenance, fixed learning rate, value-based choice, action values decay
 
 ##### fixed uv
 
-Description
+fixed learning rate, choice controlled by weighted sum of value and uncertainty
 
 ##### kalman softmax
 
-Description
+ Kalam filter (KF) learning rule, value-based choice
 
 ##### kalman uv sum
 
-Description
+KF learning rule, choice controlled by weighted sum of value and uncertainty
 
 ## Team
 
