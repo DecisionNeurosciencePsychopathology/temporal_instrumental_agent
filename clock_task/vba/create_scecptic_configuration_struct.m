@@ -40,7 +40,7 @@ s.modelnames = {'fixed_decay'};
 %cstruct                  = Take std over all timesteps and possible draws per condition for sigma_noise parameter                  | Default = []
 %range_RT                 = Maximum time point of reaction time range (on bin scale (ex 4000ms in 10's time bin scale is 400))      | Default = 400
 
-s.nbasis=16;
+s.nbasis=24;
 s.multinomial=1;
 s.multisession=0;
 s.fixed_params_across_runs=0;
@@ -48,7 +48,7 @@ s.fit_propspread=0;
 s.n_steps=50;
 s.u_aversion=1;
 s.saveresults=1;
-s.range_RT=500;
+s.range_RT=400;
 
 %SAVING
 s.results_str = 'clock_task_%s_%d_%s'; %Args are is task_name, id, model
