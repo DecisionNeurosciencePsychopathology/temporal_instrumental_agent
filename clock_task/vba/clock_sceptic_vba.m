@@ -20,6 +20,7 @@ function [posterior,out] = clock_sceptic_vba(s,id,model, data_file)
 % cstruct:      Condition struct
 % task_name:    Which version of clock task is being used
 % range_RT:     Range of maximum RT subject could have
+% trials_per_run: Number of trials expected per run
 
 %% Set up
 %Close all existing figures
@@ -49,6 +50,7 @@ try results_dir=s.results_dir; catch, results_dir = pwd; end
 try cstruct=s.cstruct; catch, cstruct = []; end
 try task_name=s.task_name; catch, task_name = 'hallquist_clock'; end
 try range_RT=s.range_RT; catch, range_RT = 400; end
+try trials_per_run=s.trials_per_run; catch, trials_per_run=50; end
 
 
 %Set reward seeds
@@ -82,7 +84,7 @@ options.inG.autocorrelation = 'none';
 options.inF.autocorrelation = options.inG.autocorrelation;
 
 %Entropy
-options.inF.entropy = 0; %If we want to track entropy per trial
+options.inF.entropy = 1; %If we want to track entropy per trial
 track_entropy=options.inF.entropy;
 options.inF.H_threshold = 0.01;
 
@@ -93,11 +95,12 @@ options.inF.total_pe=0;
 options.inF.track_pe = 1;
 
 %% FILE I/O
+%TODO: add in number of trials, and datalocation to cfg script
 
 % Import the subject's data
 data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
 n_t = size(data,1); %Number of trials
-n_runs = n_t/50; %Number of runs
+n_runs = n_t/trials_per_run; %Number of runs
 trialsToFit = 1:n_t;
 
 %% set up models within evolution/observation Fx
