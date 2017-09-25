@@ -155,7 +155,7 @@ dev.off()
 df$performanceIQ <- 100 + (df$PerformanceTScore - 50)/10*15 #rescale T -> IQ
 pdf("PerformanceIQ_Gamma_Corr_Update.pdf", width=5, height=3)
 ggplot(df, aes(x=performanceIQ, y=fmri_gamma_t)) + geom_point() + stat_smooth(method="lm", se=FALSE) +
-    theme_bw(base_size=15) + ylab(expression(paste("Decay parameter (",gamma, ")"))) + xlab("RIST Nonverbal Intelligence") +
+    theme_bw(base_size=15) + ylab(expression(paste("Sel. maint. parameter (",gamma, ")"))) + xlab("RIST Nonverbal Intelligence") +
     theme(axis.title.y=element_text(margin=margin(0,10,0,0))) +
     theme(axis.title.x=element_text(margin=margin(10,0,0,0)))
 dev.off()

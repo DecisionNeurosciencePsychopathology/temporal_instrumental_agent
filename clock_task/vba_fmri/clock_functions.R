@@ -37,10 +37,10 @@ getClockGroupData <- function(path, pattern=".*tcExport.csv", idpattern="^.*/fMR
   ##rearrange column headers for readability
   allData <- do.call(rbind, allData)
   row.names(allData) <- NULL
-  allData <- allData[,c("Subject", "run", "trial", "rewFunc", "emotion", "magnitude", "probability", "score", "ev", "rt", "bestRewRT", "bestEVRT", "image")]
-  allData <- plyr::rename(allData, c(Subject="LunaID"))
-  #allData$trialRel <- #unlist(lapply(split(allData, f=list(allData$LunaID, allData$rewFunc, allData$emotion)), function(l) { return(1:nrow(l)) } ))
-  allData <- ddply(allData, .(LunaID, rewFunc, emotion), function(subdf) {
+  allData <- allData[,c("Subject", "run", "trial", "rewFunc", "emotion", "magnitude", "probability", "score", "ev", "rt", "bestRewRT", "bestEVRT", "image", "clock_onset", "feedback_onset")]
+  allData <- plyr::rename(allData, c(Subject="ID"))
+  #allData$trialRel <- #unlist(lapply(split(allData, f=list(allData$ID, allData$rewFunc, allData$emotion)), function(l) { return(1:nrow(l)) } ))
+  allData <- ddply(allData, .(ID, rewFunc, emotion), function(subdf) {
         subdf$trial_abs <- subdf$trial
         subdf$trial <- 1:nrow(subdf)
         return(subdf)
@@ -71,9 +71,9 @@ get_fit_array <- function(fitobjs, objname="f_poseps") {
         rewhappy=rewhappy, rewfear=rewfear, rewscram=rewscram,
         evhappy=evhappy, evfear=evfear, evscram=evscram)
     
-    lunaid <- as.integer(sub("[^\\d]*(\\d+)_fitinfo.RData$", "\\1", fitobjs[i], perl=TRUE))
-    bpdsub <- lunaid < 10000
-    allfits <- rbind(allfits, c(lunaid=lunaid, bpd=bpdsub, pars))
+    ID <- as.integer(sub("[^\\d]*(\\d+)_fitinfo.RData$", "\\1", fitobjs[i], perl=TRUE))
+    bpdsub <- ID < 10000
+    allfits <- rbind(allfits, c(ID=ID, bpd=bpdsub, pars))
   }
   
   allfits <- data.frame(allfits)

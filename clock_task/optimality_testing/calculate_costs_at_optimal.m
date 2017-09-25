@@ -1,20 +1,23 @@
-%cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing/output';
-cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
-addpath('../');
+%cd '/Users/michael/ics/temporal_instrumental_agent/clock_task/optimality_testing';
+%cd '/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/optimality_testing';
+addpath('~/Data_Analysis/temporal_instrumental_agent/clock_task'); % has glob.m
+%addpath('../');
 %optfiles = glob('output/optimize_output*.mat');
 %optfiles = glob('output/optimize_output_allequate*.mat');
-optfiles = glob('output/optimize_output_sinusoid_fixedLR_decay*.mat');
+%optfiles = glob('output/optimize_output_sinusoid_fixedLR_decay*.mat');
+optfiles = glob('/Users/mnh5174/ics/temporal_instrumental_agent/clock_task/optimality_testing/output/optimize_output_doublebump*.mat');
 
 nreps = 100;
-%nbest = 5; %number of parameter sets to test
-nbest=1; %just for decay tests
+nbest = 5; %number of parameter sets to test
+%nbest=1; %just for decay tests
 ntimesteps=500;
 %ntrials = [30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120];
-ntrials = [30 40 60 110];
+ntrials = [30 40 60 110 150 200];
 cliffpullback=20;
-plots=false;
+plots=true;
 %target='allequate';
-target='sinusoid';
+%target='sinusoid';
+target='doublebump';
 
 if strcmpi(target, 'sinusoid')
     %draw a random sample from the phase-shifted sinusoids for each replication
@@ -25,7 +28,7 @@ if strcmpi(target, 'sinusoid')
     prb_min=0.3;
     prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
     
-    allshift = NaN(ntimesteps, ntimesteps, 3);
+    allshift = NaN(nreps, ntimesteps, 3);
     conds = 1:ntimesteps;
     for i = 1:ntimesteps
         shift=[i:ntimesteps 1:(i-1)];
@@ -38,7 +41,7 @@ if strcmpi(target, 'sinusoid')
     end
     
     %randomly sample with replacement the desired number of contingencies
-    keep = randsample(1:ntimesteps, nreps, true);
+    keep = randsample(1:ntimesteps, nreps, true); %NB: this is actually weird because there are 500 timesteps, but this has nothing to do with model... need to circle back conceptually. For now it's a 1/5 probability of selection
 
     rng(625); %fix seed for pulling reward probabilities
     
@@ -55,6 +58,64 @@ if strcmpi(target, 'sinusoid')
         rvec = rand(ntimesteps, max(ntrials));
         for t = 1:max(ntrials)
             thisCont.lookup(:,t) = (allshift(keep(k),:,2) > rvec(:,t)') .* allshift(keep(k),:,3);
+        end
+        
+        optmat(k) = thisCont;
+    end
+
+elseif strcmpi(target, 'doublebump')
+    rng(998); %different seed than in generaiton
+    bumpsd = 15;
+    bump1mag = 100;
+    bump2mag = bump1mag/2;
+    cliffpullback = 2*bumpsd;
+    bumpset = NaN(nreps, ntimesteps);
+    prew=0.7; %always 70/30 for bumps
+    
+    %normalize the noisefloor to have exactly the same AUC so that its influence on AUC of contingency is fixed (for equal run optimization)
+    noiseref=NaN;
+    allbumps=NaN(nreps, ntimesteps, 3);
+    for i = 1:nreps
+        bumpokay = false;
+        while ~bumpokay
+            bump1 = randi([cliffpullback, ntimesteps-cliffpullback]);
+            bump2 = randi([cliffpullback, ntimesteps-cliffpullback]);
+            if abs(bump1 - bump2) > 5*bumpsd %bumps 5 SDs apart to enforce essential non-overlap
+                bumpokay = true;
+            end
+        end
+        
+        bump1func = gaussmf(1:ntimesteps, [bumpsd bump1]).*bump1mag;
+        bump2func = gaussmf(1:ntimesteps, [bumpsd bump2]).*bump2mag;
+        
+        noisefloor = smooth(exprnd(bump1mag/10, 1, ntimesteps), 20, 'lowess')';
+        noisefloor(bump1func > quantile(noisefloor, .25) | bump2func > quantile(noisefloor, .25)) = 0;
+        if i == 1, noiseref = sum(noisefloor); end
+        noisefloor = noisefloor./sum(noisefloor).*noiseref; %this nearly perfectly normalizes the AUC, except when bumps are near the edge
+        
+        func = noisefloor + bump1func + bump2func;
+        bumpset(i, :) = func;
+        allbumps(i,:,1) = func;
+        allbumps(i,:,2) = repmat(prew, 1, ntimesteps);
+        allbumps(i,:,3) = allbumps(i,:,1).*allbumps(i,:,2);
+    end
+    
+    %for double bump, we randomly simulate 100 contingencies that satisfy the properties above, so we "keep" all of these 
+    keep = 1:nreps;
+    
+    clear optmat;
+    for k = 1:length(keep)
+        thisCont=[];
+        thisCont.name = ['doublebump' num2str(keep(k))];
+        thisCont.sample = zeros(1, ntimesteps); %keeps track of how many times a timestep has been sampled by agent
+        thisCont.lookup = zeros(ntimesteps, max(ntrials)); %lookup table of timesteps and outcomes
+        thisCont.ev = allbumps(keep(k),:,1);
+        thisCont.prb = allbumps(keep(k),:,2);
+        thisCont.mag = allbumps(keep(k),:,3);
+        
+        rvec = rand(ntimesteps, max(ntrials));
+        for t = 1:max(ntrials)
+            thisCont.lookup(:,t) = (allbumps(keep(k),:,2) > rvec(:,t)') .* allbumps(keep(k),:,3);
         end
         
         optmat(k) = thisCont;
@@ -176,7 +237,9 @@ for o = 1:(length(optfiles) + 1)
         a.ntimesteps = 500;
         a.prop_spread=0; %need this to avoid problem with parameter loading
         a.fixps=1; a.fixbeta=0; %hack: fix prop spread to have the parameter lookup work
+        a.parnames={'null'};
         parsq=[];
+        candidates = zeros(nbest, 2);
     end
         
     rng(1040); %consistent starting point for randomization of contingency
@@ -201,8 +264,8 @@ for o = 1:(length(optfiles) + 1)
             seeds = randi([1 500], 1, 5);
             optmat(p).firstrt = randi([1 500], 1, 1);
             for q = 1:nbest
-                %parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
-                parsq=[0.0627    1.9736    0.0528   -1.1632]; %just a hack for now as this is an optimal set that looks reasonable (24% decay)
+                parsq = candidates(q, 1:(size(candidates,2)-1)); %trim last column, which contains cost
+                %parsq=[0.0627    1.9736    0.0528   -1.1632]; %just a hack for now as this is an optimal set that looks reasonable (24% decay)
                 oresults.(a.name).pars{t,p,q} = parsq;
                 if strcmpi(a.name, 'franktc')
                     %[costs(o,p), rts(o,p,:), ret{o,p}] = TC_Alg_forward(bestpars, priors, optmat(p), seeds, a.ntrials, [0 5000]);
@@ -218,14 +281,14 @@ for o = 1:(length(optfiles) + 1)
                     
                     for kk=1:size(ret.v_it,1)
                         vcorr(kk) = corr(ret.v_it(kk,:)', optmat(p).ev');
-                        if plots
-                            plot(ret.v_it(kk,:)');
-                            hold on
-                            plot(optmat(p).ev', 'r');
-                            title(sprintf('model: %s, i:%d, rt_i: %d', a.name, kk, ret.rts(kk)));
-                            pause(0.1);
-                            hold off
-                        end
+%                         if plots
+%                             plot(ret.v_it(kk,:)');
+%                             hold on
+%                             plot(optmat(p).ev', 'r');
+%                             title(sprintf('model: %s, i:%d, rt_i: %d', a.name, kk, ret.rts(kk)));
+%                             pause(0.1);
+%                             hold off
+%                         end
                     end
                     oresults.(a.name).vcorr{t,p,q} = vcorr;
                 end
@@ -234,7 +297,7 @@ for o = 1:(length(optfiles) + 1)
     end
 end
 
-save('/Users/michael/TresorSync/performance_at_optimal_decaytest.mat', 'oresults', 'optmat', 'optfiles'); %'-v7.3'
+save('~/TresorSync/performance_at_optimal_doublebump.mat', 'oresults', 'optmat', 'optfiles'); %'-v7.3'
 %this makes the file about 8GB!  'ret' 'v_it', 
 %save('/Users/michael/bootstrap_costs_at_best10.mat', 'costs', 'rts', 'optmat', 'optfiles'); %'-v7.3'
 
