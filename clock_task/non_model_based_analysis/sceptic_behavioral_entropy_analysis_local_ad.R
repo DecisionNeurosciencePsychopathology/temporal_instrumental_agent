@@ -1,7 +1,9 @@
-setwd("/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba_fmri")
+setwd("~/Box Sync/skinner/projects_analyses/SCEPTIC/")
+# setwd("/Users/michael/Data_Analysis/temporal_instrumental_agent/clock_task/vba_fmri")
 #load(file="dataframe_for_entropy_analysis_Oct2016.RData")
 #this contains data with 24 basis functions and post-Niv learning rule
-load(file="dataframe_for_entropy_analysis_Nov2016.RData")
+load(file="dataframe_for_entropy_analysis_Mar2017.RData")
+
 library(lme4)
 library(ggplot2)
 library(dplyr)
@@ -12,10 +14,14 @@ source(file.path(getMainDir(), "Miscellaneous", "Global_Functions.R"))
 library(R.matlab)
 
 #bring in Luna IDs
-idlist <- read.xls(file.path(GoogleDriveDir(), "skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx"), header=FALSE, col.names="lunaid")
-idlist$subject <- 1:nrow(idlist) #numeric ID
+# idlist <- read.xls(file.path(GoogleDriveDir(), "skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx"), header=FALSE, col.names="lunaid")
 
-bdf <- left_join(bdf, idlist, by="subject")
+# idlist <- read.xls("~/Box Sync/skinner/projects_analyses/SCEPTIC/subject_fitting/id list.xlsx", header=FALSE, col.names="lunaid")
+# idlist$subject <- 1:nrow(idlist) #numeric ID
+bdf$LunaID <- bdf$ID
+
+# bdf <- left_join(bdf, idlist, by="subject")
+
 
 #plot average entropy for fixed and decay models
 edescriptives <- bdf %>% 
@@ -1336,3 +1342,22 @@ pdf("m2abschange_entropy_scatter.pdf", width=15, height=6)
 ggplot(bdf, aes(x=entropy, y=wizabstschange, group=LunaID)) + geom_point(size=1.0, alpha=0.5) + theme_bw(base_size=24) + stat_smooth(aes(group=NULL), se=TRUE) + 
     ylab("z abs trialwise RT change") + xlab("within-run relative entropy") + geom_vline(xintercept=0) + geom_hline(yintercept=0)
 dev.off()
+
+# in response to Daw comment about uncertainty/value confound
+# look at initial sampling densities, start with just 5 trials
+# OMG, they start very fast
+df1 <- bdf[bdf$trial<2,]
+ggplot(df1, aes(x = rt, color = rewFunc)) + geom_density(adjust = 1) 
+df5 <- bdf[bdf$trial<6,]
+ggplot(df5, aes(x = rt, color = rewFunc)) + geom_density(adjust = 1) 
+df10 <- bdf[bdf$trial<11,]
+ggplot(df10, aes(x = rt, color = rewFunc)) + geom_density(adjust = 1) 
+
+# what about the very first?
+df1_1 <- bdf[bdf$trial<2 & bdf$run<2,]
+ggplot(df1_1, aes(x = rt, color = rewFunc)) + geom_density(adjust = 1) 
+
+# and in general?
+ggplot(bdf, aes(x = rt, color = rewFunc)) + geom_density(adjust = 1) + facet_wrap(~ID)
+
+
