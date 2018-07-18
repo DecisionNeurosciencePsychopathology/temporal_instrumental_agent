@@ -9,7 +9,8 @@ u = vba_df.u;
 %dim = options{1}.dim;
 
 %models = {'kalman_logistic', 'kalman_uv_sum', 'kalman_softmax'};
-models = {'fixed', 'fixed_decay', 'fixed_uv', 'kalman_softmax', 'kalman_logistic', 'kalman_uv_sum'};
+% models = {'fixed', 'fixed_decay', 'fixed_uv', 'kalman_softmax', 'kalman_logistic', 'kalman_uv_sum'};
+models = {'fixed_decay'};
 
 
 %VBA mfx does not like unequal trials, bring this up to Alex
@@ -30,8 +31,8 @@ for model = models
     
     %Load in the options 
     %options = load([unix_str('E:\data\sceptic\vba_out\specc_clock\vba_mfx_input\') sprintf('vba_mfx_input_%s_specc',model{:})]);
-    options = load([unix_str('E:\data\sceptic\vba_out\explore_clock\vba_mfx_input\') sprintf('vba_mfx_input_%s_explore',model{:})]);
-    options = options.vba_df.options;
+%     options = load([unix_str('E:\data\sceptic\vba_out\explore_clock\vba_mfx_input\') sprintf('vba_mfx_input_%s_explore',model{:})]);
+    options = vba_df.options;
     dim = options{1}.dim;
     
     options(missing_data_index) = [];
@@ -54,9 +55,14 @@ for model = models
 %     %Try to save as one data frame but break it up just in case - make sure
 %     %path is right!
 %     save(sprintf('E:/data/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_vba_mfx_df_%s',model{:}),'vba_mfx_df', '-v7.3')
-    save(sprintf('E:/data/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_p_sub_%s',model{:}),'p_sub', '-v7.3')
-    save(sprintf('E:/data/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_o_sub_%s',model{:}),'o_sub', '-v7.3')
-    save(sprintf('E:/data/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_p_group_%s',model{:}),'p_group', '-v7.3')
-    save(sprintf('E:/data/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_o_group_%s',model{:}),'o_group', '-v7.3')
+    save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/n76/vba_mfx_input/vba_mfx_output_p_sub_%s',model{:}),'p_sub', '-v7.3')
+    save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/n76/vba_mfx_input/vba_mfx_output_o_sub_%s',model{:}),'o_sub', '-v7.3')
+    save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/n76/vba_mfx_input/vba_mfx_output_p_group_%s',model{:}),'p_group', '-v7.3')
+    save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/n76/vba_mfx_input/vba_mfx_output_o_group_%s',model{:}),'o_group', '-v7.3')
     
+%     save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_p_sub_%s',model{:}),'p_sub', '-v7.3')
+%     save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_o_sub_%s',model{:}),'o_sub', '-v7.3')
+%     save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_p_group_%s',model{:}),'p_group', '-v7.3')
+%     save(sprintf('/Volumes/bek/datafolderfromjonEdrive/sceptic/vba_out/explore_clock/vba_mfx_input/vba_mfx_output_o_group_%s',model{:}),'o_group', '-v7.3')
+%     
 end
