@@ -4,7 +4,7 @@ function subj_data=subject_rts_distribution_sub_proc(id,graphics)
 %id = 10637; %make this an input later
 close all;
 %% Grab data
-data = readtable(sprintf('/Users/dombax/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
+data = readtable(sprintf('~/code/temporal_instrumental_agent/clock_task/subjects/fMRIEmoClock_%d_tc_tcExport.csv', id),'Delimiter',',','ReadVariableNames',true);
 
 %% Determine which runs are IEV or DEV and grab the RTs
 runs=unique(data.run);
@@ -43,11 +43,11 @@ for i = 1:length(subj_rts)
     %Determine if subejct meets criteria for this run (i.e has 4 RTs in
     %target window)
     if strcmp('IEV',current_cond)
-        target_window = 3000:4000; %Data should always be in ms
+        target_window = 3500:4000; %Data should always be in ms
         subj_data.rtsIEV(i,:)=...
             subj_rts{i};
     else
-        target_window = 250:1250; %Should this be 0 -> 1000?
+        target_window = 250:750; %Should this be 0 -> 1000?
         subj_data.rtsDEV(i,:)=...
             subj_rts{i};
     end
