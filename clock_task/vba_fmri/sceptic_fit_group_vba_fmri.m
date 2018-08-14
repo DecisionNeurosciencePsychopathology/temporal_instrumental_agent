@@ -35,21 +35,23 @@ else
     ncpus=str2double(ncpus);
 end
 
-%poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
+poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 
 model = 'fixed_decay'; % will run to get value and prediction errors.
 %     p = ProgressBar(length(behavefiles));
-%parfor sub = 1:length(behavfiles)
-for sub = 1:length(behavfiles)
+
+parfor sub = 1:length(behavfiles)
+%for sub = 1:length(behavfiles)
     [~, str] = fileparts(behavfiles{sub});
     id{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
     %id(sub) = str2double(str(isstrprop(str,'digit')));
     fprintf('Fitting subject %d id: %s \r',sub, char(id{sub}));
-    [posterior,out] = clock_sceptic_vba_fmri(char(id{sub}),model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
+    [posterior,out] = clock_sceptic_vba_fmri(behavfiles{sub},model,nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps);
     L(sub) = out.F;
     %gamma_decay(sub) = posterior.muTheta(2);
     %tau(sub) = posterior.muTheta(1); %For fixed_uv
 end
+
 %     p.stop;
 %cd(group_dir);
 %filename = sprintf('nonMULTI_SHIFTED_U_check_grp_only_%s%d_nbasis%d_nsteps%d_uaversion%d',model,nbasis,n_steps,L);
