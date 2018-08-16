@@ -11,6 +11,8 @@ function  [fx] = h_sceptic_fixed_decay_fmri(x_t, theta, u, inF)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
+factorize = 1;
+
 alpha = 1./(1+exp(-theta(1))); %learning rate (transformed from Gaussian to 0..1)
 gamma = 1./(1+exp(-theta(2))); %decay rate (transformed from Gaussian to 0..1)
 
@@ -78,8 +80,11 @@ else
 end
 
 % introduce decay
-decay = -gamma.*(1-e).*w;
-
+if factorize
+    decay = -gamma.*alpha.*(1-e).*w;
+else
+    decay = -gamma.*(1-e).*w;
+end
 w_new = w + alpha.*delta + decay;
 
 fx=[w_new; delta; decay];

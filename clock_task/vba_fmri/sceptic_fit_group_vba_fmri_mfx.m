@@ -5,12 +5,46 @@ clear;
 %curpath = fileparts(mfilename('fullpath'));
 
 %addpath(genpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'));
-addpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
-addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
+% addpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
+% addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
+
+ncpus=getenv('matlab_cpus');
+
+
+os = computer;
+[~, me] = system('whoami');
+me = strtrim(me);
+
+if strcmp(me,'Alex')==1
+    addpath('~/code/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
+    addpath(genpath('~/code/VBA-toolbox'));
+    cd('~/code/temporal_instrumental_agent/clock_task/subjects')
+    behavfiles = glob('*.csv');
+    ncpus=4;
+    fprintf('defaulting to 4 cpus on old iMac \n');
+
+else
+    behavfiles = glob('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects/*.csv');
+    addpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
+    addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
+    if strcmpi(ncpus, '')
+        ncpus=40;
+        fprintf('defaulting to 40 cpus because matlab_cpus not set\n');        
+    else
+        ncpus=str2double(ncpus);
+    end
+    
+end
+
 
 %behavfiles = glob('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects/SPECC/*.csv');
-behavfiles = glob('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects/*.csv');
-group_dir = '/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects';
+% behavfiles = glob('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects/*.csv');
+% group_dir = '/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects';
+
+
+
+group_dir = '~/code/temporal_instrumental_agent/clock_task/subjects';
+
 
 %% set parameters
 nbasis = 24;
@@ -28,17 +62,12 @@ id = cell(length(behavfiles),1);
 %% main loop
 L = NaN(1,length(behavfiles));
 
-ncpus=getenv('matlab_cpus');
-if strcmpi(ncpus, '')
-    ncpus=40;
-    fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
-else
-    ncpus=str2double(ncpus);
+poolobj = gcp('nocreate');
+if isempty(poolobj)
+    poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 end
 
-poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
-
-model = 'fixed_decay'; % will run to get value and prediction errors.
+model = 'fixed'; % will run to get value and prediction errors.
 
 y_all = cell(length(behavfiles), 1);
 u_all = cell(length(behavfiles), 1);
@@ -47,16 +76,16 @@ options_all = cell(length(behavfiles), 1);
 for sub = 1:length(behavfiles)
     [~, str] = fileparts(behavfiles{sub});
     id{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
-
+    
     fprintf('Loading subject %d id: %s \r',sub, char(id{sub}));
     [data, y, u] = sceptic_get_data(behavfiles{sub}, n_steps);
     [options, dim] = sceptic_get_options(data, nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics);
-
+    
     % populate data structures for VBA_MFX
     y_all{sub} = y;
     u_all{sub} = u;
-    options_all{sub} = options;   
-      
+    options_all{sub} = options;
+    
 end
 
 %options for MFX
@@ -76,6 +105,21 @@ priors_group.SigmaTheta =  1e1*eye(10); %variance of 10 on alpha and gamma
 %too huge!
 %save('vba_mfx_results.mat', 'p_sub', 'o_sub', 'p_group', 'o_group');
 
+if strcmp(me,'Alex')==1
+    cd ../subjects
+    behavfiles = glob('*.csv');
+else
+    behavfiles = glob('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects/*.csv');
+end
+
+
+if strcmp(me,'Alex')==1
+    cd ~/'Box Sync'/skinner/projects_analyses/SCEPTIC/mfx_analyses/
+    if 7~=exist(model,'dir')
+        mkdir(model)
+        cd(model)
+    end
+end
 save('vba_mfx_results_psub.mat', 'p_sub', '-v7.3');
 save('vba_mfx_results_pgroup.mat', 'p_group', '-v7.3');
 save('vba_mfx_results_ogroup.mat', 'o_group', '-v7.3');
