@@ -23,11 +23,9 @@ u_aversion=0; %not used in fmri code at present
 graphics = 0; %don't display interactive fitting
 
 % get ID list
-id = cell(length(behavfiles),1);
+ids = cell(length(behavfiles),1);
 
 %% main loop
-L = NaN(1,length(behavfiles));
-
 ncpus=getenv('matlab_cpus');
 if strcmpi(ncpus, '')
     ncpus=40;
@@ -46,9 +44,9 @@ options_all = cell(length(behavfiles), 1);
 
 for sub = 1:length(behavfiles)
     [~, str] = fileparts(behavfiles{sub});
-    id{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+    ids{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
 
-    fprintf('Loading subject %d id: %s \r',sub, char(id{sub}));
+    fprintf('Loading subject %d id: %s \r',sub, char(ids{sub}));
     [data, y, u] = sceptic_get_data(behavfiles{sub}, n_steps);
     [options, dim] = sceptic_get_options(data, nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics);
 
@@ -69,13 +67,17 @@ priors_group.muPhi = 0; %temperature -- exp(phi(1))
 priors_group.SigmaPhi = 10; %variance on temperature (before exponential transform)
 priors_group.muTheta = [0; 0]; %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
 priors_group.SigmaTheta =  1e1*eye(10); %variance of 10 on alpha and gamma
+priors_group.muX0 = zeros(nbasis*3,1); %have PE and decay as tag-along states
+priors_group.SigmaX0 = zeros(nbasis*3,nbasis*3); %have PE and decay as tag-along states
+priors_group.a_vX0 = repmat(Inf, [1, nbasis*3]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
+priors_group.b_vX0 = repmat(0, [1, nbasis*3]);
 
 [p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
 
-%too huge!
-%save('vba_mfx_results.mat', 'p_sub', 'o_sub', 'p_group', 'o_group');
+%too huge to save as one object
 
+save('vba_mfx_results_settings.mat', 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
 save('vba_mfx_results_psub.mat', 'p_sub', '-v7.3');
 save('vba_mfx_results_pgroup.mat', 'p_group', '-v7.3');
 save('vba_mfx_results_ogroup.mat', 'o_group', '-v7.3');
