@@ -1,4 +1,4 @@
-function  [fx] = h_sceptic_fixed_decay_fmri(x_t, theta, u, inF)
+function  [fx] = h_sceptic_fixed_fmri(x_t, theta, u, inF)
 % evolution function of SCEPTIC model with fixed learning rate and decay
 %
 % The basis weights are the hidden states that evolve with learning.
@@ -11,7 +11,7 @@ function  [fx] = h_sceptic_fixed_decay_fmri(x_t, theta, u, inF)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
-factorize = 1;
+factorize = 0;
 
 alpha = 1./(1+exp(-theta(1))); %learning rate (transformed from Gaussian to 0..1)
 gamma = 1./(1+exp(-theta(2))); %decay rate (transformed from Gaussian to 0..1)
@@ -79,13 +79,13 @@ else
   delta = e.*(reward - w);
 end
 
-% introduce decay
-if factorize
-    decay = -gamma.*alpha.*(1-e).*w;
-else
-    decay = -gamma.*(1-e).*w;
-end
-w_new = w + alpha.*delta + decay;
+% % introduce decay
+% if factorize
+%     decay = -gamma.*alpha.*(1-e).*w;
+% else
+%     decay = -gamma.*(1-e).*w;
+% end
+w_new = w + alpha.*delta;
 
 fx=[w_new; delta; decay];
 
