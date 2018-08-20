@@ -73,8 +73,8 @@ if multisession
   end
 end
 
-priors.muX0 = zeros(hidden_variables*n_basis,1);
-priors.SigmaX0 = zeros(hidden_variables*n_basis);
+% setup number of hidden variables
+hidden_variables = 3; %value, PE, decay
 
 options.inF.hidden_state = hidden_variables; %used to index hidden state vector inside evolution and observation functions
 
