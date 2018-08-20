@@ -69,6 +69,12 @@ end
 
 model = 'fixed'; % will run to get value and prediction errors.
 
+if strcmp(model,'fixed')
+    f_fname = @h_sceptic_fixed_fmri;
+elseif strcmp(model,'decay')
+    f_fname = @h_sceptic_fixed_decay_fmri;
+end
+
 y_all = cell(length(behavfiles), 1);
 u_all = cell(length(behavfiles), 1);
 options_all = cell(length(behavfiles), 1);
@@ -99,7 +105,7 @@ priors_group.SigmaPhi = 10; %variance on temperature (before exponential transfo
 priors_group.muTheta = [0; 0]; %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
 priors_group.SigmaTheta =  1e1*eye(10); %variance of 10 on alpha and gamma
 
-[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
+[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, f_fname, @g_sceptic, dim, options_all, priors_group, options_group);
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
 
 %too huge!

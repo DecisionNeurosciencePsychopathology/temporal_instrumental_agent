@@ -1,4 +1,4 @@
-function [options, dim] = sceptic_get_options(data, n_basis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics)
+function [options, dim] = sceptic_get_options(data, n_basis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics,model)
 
 if nargin < 2, n_basis=24; end
   if nargin < 3, multinomial=1; end
@@ -14,7 +14,15 @@ priors=[];
 
 %% set up dim defaults
 n_phi = 1; %temperature
+if strcmpi(model,'decay')
 n_theta = 2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+% setup number of hidden variables
+hidden_variables = 3; %value, PE, decay
+elseif strcmpi(model,'fixed')
+n_theta = 1; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+% setup number of hidden variables
+hidden_variables = 2; %value, PE
+end
 
 if ~graphics
     options.DisplayWin = 0;
@@ -65,8 +73,6 @@ if multisession
   end
 end
 
-% setup number of hidden variables
-hidden_variables = 3; %value, PE, decay
 priors.muX0 = zeros(hidden_variables*n_basis,1);
 priors.SigmaX0 = zeros(hidden_variables*n_basis);
 

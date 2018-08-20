@@ -1,6 +1,7 @@
 % plot SCEPTIC-SM parameters from VBA_MFX
+load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_psub.mat');
 
-load('/Volumes/bek/vba_results/vba_fmri/fixed_vba_mfx_results_psub.mat');
+% load('/Volumes/bek/vba_results/vba_fmri/fixed_vba_mfx_results_psub.mat');
 
 for ct = 1:length(id)
 group_alpha(ct) = (p_sub{ct,1}.muTheta(1));
@@ -26,3 +27,15 @@ hist(sig(group_alpha),40); xlabel('alphaNative')
 subplot(3,2,6)
 hist(sig(group_decay),40); xlabel('decayNative')
 
+% BMC
+
+decay = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_ogroup.mat');
+% fixed = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/fixed/vba_mfx_results_ogroup.mat');
+
+Ldecay = decay.o_group.within_fit.F;
+% outmat is an object form Michael
+
+Ldecay_unfactorized = outmat(:,1)';
+Lfixed = fixed.o_group.within_fit.F;
+
+[p,o] = VBA_groupBMC([Ldecay_unfactorized;Ldecay]);
