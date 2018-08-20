@@ -85,7 +85,7 @@ for sub = 1:length(behavfiles)
     
     fprintf('Loading subject %d id: %s \r',sub, char(id{sub}));
     [data, y, u] = sceptic_get_data(behavfiles{sub}, n_steps);
-    [options, dim] = sceptic_get_options(data, nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics);
+    [options, dim] = sceptic_get_options(data, nbasis, multinomial, multisession, fixed_params_across_runs, fit_propspread, n_steps, u_aversion, graphics,model);
     
     % populate data structures for VBA_MFX
     y_all{sub} = y;
@@ -102,8 +102,8 @@ options_group.verbose=1;
 
 priors_group.muPhi = 0; %temperature -- exp(phi(1))
 priors_group.SigmaPhi = 10; %variance on temperature (before exponential transform)
-priors_group.muTheta = [0; 0]; %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
-priors_group.SigmaTheta =  1e1*eye(10); %variance of 10 on alpha and gamma
+priors_group.muTheta = zeros(dim.n_theta,1); %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
+priors_group.SigmaTheta =  1e1*eye(dim.n_theta); %variance of 10 on alpha and gamma
 
 [p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, f_fname, @g_sceptic, dim, options_all, priors_group, options_group);
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
