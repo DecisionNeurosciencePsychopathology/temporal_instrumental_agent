@@ -54,15 +54,14 @@ else
     ncpus=str2double(ncpus);
 end
 
-ncpus=2;
 poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 
 % p = ProgressBar(length(behavfiles));
 
-parfor sub = length(behavfiles)
+parfor sub = 1:length(behavfiles)
   fprintf('Fitting subject %d id: %s \r', sub, ids{sub});
   
-  [posterior,out] = clock_sceptic_vba_fmri(behavfiles{sub}, so);
+  [posterior, out] = clock_sceptic_vba_fmri(behavfiles{sub}, so);
   
   L(sub) = out.F;
 

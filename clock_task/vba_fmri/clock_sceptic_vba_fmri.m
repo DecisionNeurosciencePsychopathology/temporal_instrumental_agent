@@ -29,10 +29,7 @@ end
 sigma_noise = mean(sigma_noise);
 vba_options.inF.sigma_noise = sigma_noise;
 
-% Observation function
-g_name = @g_sceptic;
-
-[posterior,out] = VBA_NLStateSpaceModel(y, u, so.evo_fname, g_name, dim, vba_options);
+[posterior,out] = VBA_NLStateSpaceModel(y, u, so.evo_fname, so.obs_fname, dim, vba_options);
 
 %scepticrefit(posterior, out);
 

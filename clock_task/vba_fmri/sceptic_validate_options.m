@@ -9,6 +9,26 @@ function [so] = sceptic_validate_options(so)
 
   if nargin < 1, so=[]; end
 
+  %if user specifies a dataset upstream, don't check environment variable
+  if isfield(so, 'sceptic_dataset')
+    fprintf('Using user-specified dataset: %s.\n   Will not check sceptic_dataset environment variable', so.sceptic_dataset);
+  else
+    so.dataset=getenv('sceptic_dataset');
+    if strcmpi(so.dataset, '')
+      so.dataset='mmclock_meg'; %or mmclock_fmri or specc_fmri
+    end
+  end
+  
+  %same principle for model variant
+  if isfield(so, 'sceptic_model')
+    fprintf('Using user-specified model: %s.\n   Will not check sceptic_model environment variable', so.sceptic_model);
+  else
+    so.model=getenv('sceptic_model');
+    if strcmpi(so.model, '')
+      so.model = 'decay'; % will run to get value and prediction errors.
+    end
+  end
+  
   if ~isfield(so, 'nbasis'), so.nbasis=24; end
   if ~isfield(so, 'multinomial'), so.multinomial=1; end
   if ~isfield(so, 'multisession'), so.multisession=0; end
@@ -33,15 +53,7 @@ function [so] = sceptic_validate_options(so)
     so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
   end
   
-  so.dataset=getenv('sceptic_dataset');
-  if strcmpi(so.dataset, '')
-    so.dataset='mmclock_meg'; %or mmclock_fmri or specc_fmri
-  end
-  
-  so.model=getenv('sceptic_model');
-  if strcmpi(so.model, '')
-    so.model = 'decay'; % will run to get value and prediction errors.
-  end
+  so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
   
   if strcmpi(so.dataset, 'mmclock_meg')
     so.trials_per_run=63; %63 for MEG, 50 for fMRI
