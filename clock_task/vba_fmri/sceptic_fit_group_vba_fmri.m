@@ -40,12 +40,13 @@ ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','m
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
 
-so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset];
+so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/ffx/', so.model];
 if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 
-%% main loop
+%% Log evidence matrix
 L = NaN(1,length(behavfiles));
 
+%% setup parallel parameters
 ncpus=getenv('matlab_cpus');
 if strcmpi(ncpus, '')
     ncpus=40;
@@ -59,7 +60,7 @@ poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not
 % p = ProgressBar(length(behavfiles));
 
 parfor sub = 1:length(behavfiles)
-  fprintf('Fitting subject %d id: %s \r', sub, ids{sub});
+  fprintf('Fitting subject %d id: %s \n', sub, ids{sub});
   
   [posterior, out] = clock_sceptic_vba_fmri(behavfiles{sub}, so);
   
@@ -68,12 +69,12 @@ parfor sub = 1:length(behavfiles)
   subj_id=ids{sub};
 
   %parsave doesn't work in recent MATLAB versions...
-  m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d', ...
+  m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
 		  so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
 		  so.fixed_params_across_runs, so.u_aversion), 'writable',true);
   m.posterior=posterior; m.out=out; m.subj_id=ids{sub};
   
-  %parsave(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d', ...
+  %parsave(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
   %		  so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
   %    so.fixed_params_across_runs, so.u_aversion), posterior, out);%, subj_id);
   

@@ -4,12 +4,6 @@ close all;
 clear;
 %curpath = fileparts(mfilename('fullpath'));
 
-%addpath(genpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'));
-% addpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'); %has glob.m and setup_rbf.m
-% addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox'));
-
-ncpus=getenv('matlab_cpus');
-
 os = computer;
 [~, me] = system('whoami');
 me = strtrim(me);
@@ -22,7 +16,7 @@ so = sceptic_validate_options(); %initialize and validate sceptic fitting settin
 %% set environment and define file locations
 if is_alex
   sceptic_repo='~/code/temporal_instrumental_agent/clock_task';
-  addpath(genpath('~/code/VBA-toolbox')); #setup VBA
+  addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 else
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
   addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
@@ -39,8 +33,15 @@ elseif strcmpit(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/clock_task/subjects/SPECC/*.csv']);
 end
 
-% get ID list
-ids = cell(length(behavfiles),1);
+%extract IDs for record keeping
+[~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
+
+%puts a nested cell in each element
+%ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+
+so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/mfx/', so.model];
+if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 
 %% setup parallel parameters
 if is_alex
@@ -71,7 +72,7 @@ for sub = 1:length(behavfiles)
     [~, str] = fileparts(behavfiles{sub});
     ids{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
 
-    fprintf('Loading subject %d id: %s \r', sub, char(ids{sub}));
+    fprintf('Loading subject %d id: %s \n', sub, char(ids{sub}));
     [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     
@@ -93,26 +94,31 @@ priors_group.muTheta = zeros(dim.n_theta,1); %learning rate (alpha), selective m
 priors_group.SigmaTheta =  1e1*eye(dim.n_theta); %variance of 10 on alpha and gamma
 priors_group.muX0 = zeros(so.nbasis*so.hidden_states,1); %have PE and decay as tag-along states
 priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_states); %have PE and decay as tag-along states
-priors_group.a_vX0 = repmat(Inf, [1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
-priors_group.b_vX0 = repmat(0, [1, so.nbasis*so.hidden_states]);
+priors_group.a_vX0 = Inf([1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
+priors_group.b_vX0 = zeros([1, so.nbasis*so.hidden_states]);
 
-[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, f_fname, @g_sceptic, dim, options_all, priors_group, options_group);
+[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, so.evo_fname, so.obs_fname, dim, options_all, priors_group, options_group);
 
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
 
+delete(poolobj);
+
+%output MFX results
 if is_alex
-    cd ~/'Box Sync'/skinner/projects_analyses/SCEPTIC/mfx_analyses/
-    if ~=exist(so.model,'dir')
-        mkdir(so.model)
-        cd(so.model)
-    end
+  cd ~/'Box Sync'/skinner/projects_analyses/SCEPTIC/mfx_analyses/
+  if ~exist(so.model,'dir')
+    mkdir(so.model)
+    cd(so.model)
+  end
+else
+  cd(so.output_dir)
 end
 
 %too huge to save into one .mat file
-save('vba_mfx_results_psub.mat', 'p_sub', '-v7.3');
-save('vba_mfx_results_pgroup.mat', 'p_group', '-v7.3');
-save('vba_mfx_results_ogroup.mat', 'o_group', '-v7.3');
-save('vba_mfx_results_osub.mat', 'o_sub', '-v7.3');
-save('vba_mfx_results_settings.mat', 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.dataset, '_', so.model, '_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
+save([so.dataset, '_', so.model, '_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
+save([so.dataset, '_', so.model, '_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
+save([so.dataset, '_', so.model, '_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
+save([so.dataset, '_', so.model, '_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
 
-delete(poolobj);
+
