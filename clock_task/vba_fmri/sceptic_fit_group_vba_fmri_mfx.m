@@ -89,8 +89,8 @@ options_group.verbose=1;
 
 priors_group.muPhi = 0; %temperature -- exp(phi(1))
 priors_group.SigmaPhi = 10; %variance on temperature (before exponential transform)
-priors_group.muTheta = [0; 0]; %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
-priors_group.SigmaTheta =  1e1*eye(10); %variance of 10 on alpha and gamma
+priors_group.muTheta = zeros(dim.n_theta,1); %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
+priors_group.SigmaTheta =  1e1*eye(dim.n_theta); %variance of 10 on alpha and gamma
 priors_group.muX0 = zeros(so.nbasis*so.hidden_states,1); %have PE and decay as tag-along states
 priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_states); %have PE and decay as tag-along states
 priors_group.a_vX0 = repmat(Inf, [1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)

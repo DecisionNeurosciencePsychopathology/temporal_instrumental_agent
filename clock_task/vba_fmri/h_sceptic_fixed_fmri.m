@@ -11,10 +11,10 @@ function  [fx] = h_sceptic_fixed_fmri(x_t, theta, u, inF)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
-factorize = 0;
+% factorize = 0;
 
 alpha = 1./(1+exp(-theta(1))); %learning rate (transformed from Gaussian to 0..1)
-gamma = 1./(1+exp(-theta(2))); %decay rate (transformed from Gaussian to 0..1)
+% gamma = 1./(1+exp(-theta(2))); %decay rate (transformed from Gaussian to 0..1)
 
 hidden_state_index=1:inF.hidden_states*inF.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
 hidden_state_index = reshape(hidden_state_index, inF.nbasis, inF.hidden_states); %3 x nbasis here
@@ -87,6 +87,6 @@ end
 % end
 w_new = w + alpha.*delta;
 
-fx=[w_new; delta; decay];
+fx=[w_new; delta];
 
 end
