@@ -1,22 +1,22 @@
-function [data, y, u] = sceptic_get_data(data_file, n_steps)
+function [data, y, u] = sceptic_get_data(data_file, so)
   data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
-  range_RT = 400; %10ms representation
   
   n_t = size(data,1); %number of rows
-  trialsToFit = 1:n_t; %fit all by default
-  n_runs = n_t/50; %50 trials per run
-  
-  rtrnd = round(data{trialsToFit,'rt'}*0.1*n_steps/range_RT)';
+  trials_to_fit = 1:n_t; %fit all trials by default
+  n_runs = n_t/so.trials_per_run; %usually 50 trials per run
+
+  %% discretize RTs down to time bins
+  rtrnd = round(data{trials_to_fit,'rt'} / so.trial_length * so.ntimesteps)';
   rtrnd(rtrnd==0)=1;
 
   %% compute multinomial response
-  y = zeros(n_steps, length(trialsToFit));
-  for i = 1:length(trialsToFit)
+  y = zeros(so.ntimesteps, length(trials_to_fit));
+  for i = 1:length(trials_to_fit)
     y(rtrnd(i), i) = 1;
   end
   
   %% Inputs
-  u = [(data{trialsToFit, 'rt'}*0.1*n_steps/range_RT)'; data{trialsToFit, 'score'}'];
+  u = [(data{trials_to_fit, 'rt'} / so.trial_length * so.ntimesteps)'; data{trials_to_fit, 'score'}'];
   u = [zeros(size(u,1),1) u(:,1:end-1)]; %right shift inputs to get t versus t+1 correct in inputs versus predictions
   
 end
