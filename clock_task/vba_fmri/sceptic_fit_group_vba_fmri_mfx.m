@@ -29,7 +29,7 @@ if strcmpi(so.dataset,'mmclock_meg')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_meg/*.csv']);
 elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
-elseif strcmpit(so.dataset,'specc')
+elseif strcmpi(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/clock_task/subjects/SPECC/*.csv']);
 end
 
@@ -64,23 +64,27 @@ else
   poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 end
 
-y_all = cell(length(behavfiles), 1);
-u_all = cell(length(behavfiles), 1);
-options_all = cell(length(behavfiles), 1);
+ns = length(behavfiles);
+y_all = cell(ns, 1);
+u_all = cell(ns, 1);
+options_all = cell(ns, 1);
 
-for sub = 1:length(behavfiles)
-    [~, str] = fileparts(behavfiles{sub});
-    ids{sub} = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+n_t=NaN(1,ns);
 
-    fprintf('Loading subject %d id: %s \n', sub, char(ids{sub}));
-    [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
-    [options, dim] = sceptic_get_vba_options(data, so);
-    
-    % populate data structures for VBA_MFX
-    y_all{sub} = y;
-    u_all{sub} = u;
-    options_all{sub} = options;
+for sub = 1:ns
+  fprintf('Loading subject %d id: %s \n', sub, ids{sub});
+  [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
+  [options, dim] = sceptic_get_vba_options(data, so);
+  n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
+  
+  % populate data structures for VBA_MFX
+  y_all{sub} = y;
+  u_all{sub} = u;
+  options_all{sub} = options;
 end
+
+% add the n_t vector to dim before passing to MFX
+dim.n_t=n_t;
 
 %options for MFX
 options_group.TolFun=1e-2;
@@ -120,5 +124,3 @@ save([so.dataset, '_', so.model, '_vba_mfx_results_pgroup.mat'], 'p_group', '-v7
 save([so.dataset, '_', so.model, '_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
 save([so.dataset, '_', so.model, '_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
 save([so.dataset, '_', so.model, '_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
-
-

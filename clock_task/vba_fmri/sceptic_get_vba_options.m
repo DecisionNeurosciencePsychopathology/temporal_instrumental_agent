@@ -14,8 +14,7 @@ if ~so.graphics
   options.GnFigs = 0;
 end
 
-%% u is 2 x ntrials where first row is rt and second row is reward
-% If we can't find the path have the user select it.
+% u is 2 x ntrials where first row is rt and second row is reward
 
 options.inF.fit_nbasis = 0; %do not try different numbers of basis functions in fitting
 options.inF.fit_propspread = so.fit_propspread;
@@ -27,9 +26,7 @@ options.inG.ntimesteps = so.ntimesteps;
 options.inG.multinomial = so.multinomial;
 options.inG.nbasis = so.nbasis;
 
-%options.inG.maxRT = range_RT; %not used at present
-
-%%convergence settings
+% convergence settings
 options.TolFun = 1e-6;
 options.GnTolFun = 1e-6;
 options.verbose=0; %don't show single subject fitting process

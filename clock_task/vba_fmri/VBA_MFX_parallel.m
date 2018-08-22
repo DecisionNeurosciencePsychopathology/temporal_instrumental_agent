@@ -170,7 +170,7 @@ if opt.verbose
 end
 kernelSize0 = 0; % max lag of volterra kernel
 
-% save here to acces subject specific trial numbers later
+% save here to access subject specific trial numbers later
 if numel(dim.n_t) == 1
     n_t = repmat(dim.n_t,1,ns);
 else
