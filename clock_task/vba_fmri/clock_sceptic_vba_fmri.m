@@ -9,7 +9,8 @@ global rew_rng_state
 rew_rng_seed = 99;
 
 [~, str] = fileparts(data_file);
-id = regexp(str,'(?<=fMRIEmoClock_)[\d_]+(?=_tc)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+id = regexp(str,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
+so.id = id; %propagate into inF and inG for later extraction in group summaries
 
 %load data from CSV file
 [data, y, u] = sceptic_get_data(data_file, so);
@@ -31,7 +32,9 @@ vba_options.inF.sigma_noise = sigma_noise;
 
 [posterior,out] = VBA_NLStateSpaceModel(y, u, so.evo_fname, so.obs_fname, dim, vba_options);
 
-%scepticrefit(posterior, out);
+posterior=add_transformed_params(posterior, so); %add transformed phi and mu into output objects
+
+out.diagnostics = VBA_getDiagnostics(posterior, out); %pre-compute diagnostics in batch mode (gives Volterra outputs, param correlations, etc.)
 
 if so.saveresults
   % save output figure

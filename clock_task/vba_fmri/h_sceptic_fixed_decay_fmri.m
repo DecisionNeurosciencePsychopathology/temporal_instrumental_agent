@@ -11,10 +11,11 @@ function  [fx] = h_sceptic_fixed_decay_fmri(x_t, theta, u, inF)
 % OUT:
 %   - fx: evolved basis values/heights (nbasis x 1)
 
-factorize = 1;
+%transform from Gaussian posterior to relevant parameter distributions
+theta=transform_theta(theta, inF);
 
-alpha = 1./(1+exp(-theta(1))); %learning rate (transformed from Gaussian to 0..1)
-gamma = 1./(1+exp(-theta(2))); %decay rate (transformed from Gaussian to 0..1)
+alpha = theta(1); %learning rate (transformed from Gaussian to 0..1)
+gamma = theta(2); %decay rate (transformed from Gaussian to 0..1)
 
 hidden_state_index=1:inF.hidden_states*inF.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
 hidden_state_index = reshape(hidden_state_index, inF.nbasis, inF.hidden_states); %3 x nbasis here
@@ -29,14 +30,14 @@ v=w*ones(1,ntimesteps) .* inF.gaussmat;
 v_func = sum(v);
 
 if inF.fit_propspread
-    prop_spread = inF.max_prop_spread ./ (1+exp(-theta(3))); %0..max SD of Gaussian eligibility as proportion of interval
+    prop_spread = inF.max_prop_spread ./ theta(3); %0..max SD of Gaussian eligibility as proportion of interval
     sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
     
     %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
     refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
     
     %temporarily re-break the code to check replicability
-    %sig_spread = 1./(1+exp(-theta(3)));
+    %sig_spread = 1 ./ theta(3);
     %refspread = inF.refspread;
 else 
     sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
@@ -64,8 +65,7 @@ elig=elig/auc*refspread;
 e = sum(repmat(elig,inF.nbasis,1).*inF.gaussmat_trunc, 2);
 
 %compute prediction error, scaled by eligibility trace
-nivpe=0; %using basis-wise V for now
-if nivpe
+if inF.function_wise_pe
   %%clunky to put this inside observation function
   rtrnd=round(rt);
   if rtrnd < 1
@@ -80,7 +80,7 @@ else
 end
 
 % introduce decay
-if factorize
+if inF.factorize_decay
     decay = -gamma.*alpha.*(1-e).*w;
 else
     decay = -gamma.*(1-e).*w;
