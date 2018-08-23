@@ -14,7 +14,7 @@ if length(unique(n_theta)) ~= 1
 end
 
 %validate phi parameters
-n_phi = cellfun(@(x) (length(x.muPhi)), s_array);
+n_phi = cellfun(@(x) length(x.muPhi), s_array);
 if length(unique(n_phi)) ~= 1
   error('muPhi has inconsistent size across subjects in s_array');
 end
@@ -31,6 +31,12 @@ par_names_transformed=strcat(par_names, '_transformed');
 
 params = cellfun(@(x) num2cell([x.muTheta', x.muPhi]), s_array, 'UniformOutput', false);
 params_transformed = cellfun(@(x) num2cell([x.transformed.muTheta', x.transformed.muPhi]), s_array, 'UniformOutput', false);
+
+has_ffx = all(cellfun(@(x) isfield(x, 'muTheta_ffx')));
+if has_ffx
+  params_ffx = cellfun(@(x) num2cell([x.muTheta_ffx', x.muPhi_ffx]), s_array, 'UniformOutput', false);
+  params_transformed_ffx = cellfun(@(x) num2cell([x.transformed.muTheta_ffx', x.transformed.muPhi_ffx]), s_array, 'UniformOutput', false);
+end
 
 %validate elements of fit structure
 fit_names = cellfun(@(x) fieldnames(x.fit)', s_array, 'UniformOutput', false);
@@ -62,6 +68,12 @@ model_info = cellfun(@(x) {x.sceptic_settings.id, x.sceptic_settings.dataset, x.
 cell_combined=horzcat(vertcat(model_info{:}), vertcat(fit_stats{:}), vertcat(params{:}), vertcat(params_transformed{:}));
 
 output_cols={model_cols{:}, fit_names{:}, par_names{:}, par_names_transformed{:}};
+
+if has_ffx
+  output_cols={output_cols{:}, strcat(par_names, '_ffx'), strcat(par_names, '_transformed_ffx')};
+  cell_combined=horzcat(cell_combined, vertcat(params_ffx{:}), vertcat(params_transformed_ffx{:}));
+end
+
 overall = cell2table(cell_combined, 'VariableNames', output_cols);
 writetable(overall, overall_fname)
 

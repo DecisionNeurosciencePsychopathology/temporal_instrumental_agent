@@ -76,7 +76,7 @@ parfor sub = 1:length(behavfiles)
   m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
     so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
     so.fixed_params_across_runs, so.u_aversion), 'writable',true);
-  m.posterior=posterior; m.out=out; m.subj_id=ids{sub};
+  m.posterior=posterior; m.out=out; m.subj_id=ids{sub}; m.subj_stats=s_all{sub};
   
   %parsave(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
   %		  so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
@@ -88,11 +88,11 @@ end
 
 delete(poolobj);
 
-[group_global, group_trial_level] = extract_group_statistics(s_all);
+[group_global, group_trial_level] = extract_group_statistics(s_all, ...
+  sprintf('%s/%s_%s_ffx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
+  sprintf('%s/%s_%s_ffx_sceptic_trial_statistics.csv', so.output_dir, so.dataset, so.model));
 
 %save group outputs for now
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'L', 'so', 's_all', 'group_global', 'group_trial_level');
 
 % p.stop;
-
-
