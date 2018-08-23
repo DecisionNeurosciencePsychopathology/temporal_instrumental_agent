@@ -2,6 +2,9 @@
 
 close all;
 clear;
+
+sceptic_dataset = 'mmclock_fmri';
+so.model = 'fixed_UV';
 %curpath = fileparts(mfilename('fullpath'));
 
 %addpath(genpath('/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task'));
@@ -21,8 +24,8 @@ so = sceptic_validate_options(); %initialize and validate sceptic fitting settin
 
 %% set environment and define file locations
 if is_alex
-  sceptic_repo='~/code/temporal_instrumental_agent/clock_task';
-  addpath(genpath('~/code/VBA-toolbox')); #setup VBA
+  sceptic_repo='/Users/localadmin/code/temporal_instrumental_agent/clock_task';
+  addpath(genpath('/Users/localadmin/code/VBA-toolbox')); %setup VBA
 else
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
   addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
@@ -96,13 +99,13 @@ priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_sta
 priors_group.a_vX0 = repmat(Inf, [1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
 priors_group.b_vX0 = repmat(0, [1, so.nbasis*so.hidden_states]);
 
-[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, f_fname, @g_sceptic, dim, options_all, priors_group, options_group);
+[p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, so.evo_fname, @g_sceptic, dim, options_all, priors_group, options_group);
 
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);
 
 if is_alex
     cd ~/'Box Sync'/skinner/projects_analyses/SCEPTIC/mfx_analyses/
-    if ~=exist(so.model,'dir')
+    if ~exist(so.model,'dir')
         mkdir(so.model)
         cd(so.model)
     end
