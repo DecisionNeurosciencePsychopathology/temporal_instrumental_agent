@@ -384,13 +384,27 @@ fprintf([' done.','\n'])
 o_group.date = clock;
 o_group.dt = toc(o_group.tStart);
 o_group.options.binomial = o_sub{1}.options.binomial;
-for i=1:ns
-    o_group.within_fit.F(i) = o_sub{i}.F(end);
-    o_group.within_fit.R2(i) = o_sub{i}.fit.R2;
-    o_group.within_fit.LLH0(i) = VBA_LMEH0(o_sub{i}.y,o_sub{i}.options);
-    o_sub{i}.options.kernelSize = kernelSize0;
-    [tmp,o_sub{i}] = VBA_getDiagnostics(p_sub{i},o_sub{i});
+
+fprintf('adding diagnostics and h0 fits\n');
+F_all = NaN(1, ns);
+R2_all = NaN(1, ns);
+LLH0_all = NaN(1, ns);
+
+parfor i=1:ns
+  F_all(i) = o_sub{i}.F(end);
+  R2_all(i) = o_sub{i}.fit.R2;
+  LLH0_all(i) = VBA_LMEH0(o_sub{i}.y,o_sub{i}.options);
+  
+  o_sub{i}.options.kernelSize = kernelSize0;
+  [~,o_sub{i}] = VBA_getDiagnostics(p_sub{i},o_sub{i});
 end
+
+o_group.within_fit.F = F_all;
+o_group.within_fit.R2 = R2_all;
+o_group.within_fit.LLH0 = LLH0_all;
+
+fprintf(' done.\n');
+
 [o_group.options] = VBA_displayMFX(p_sub,o_sub,p_group,o_group);
 try
     if floor(o_group.dt./60) == 0

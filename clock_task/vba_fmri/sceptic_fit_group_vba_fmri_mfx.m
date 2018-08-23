@@ -87,7 +87,7 @@ end
 dim.n_t=n_t;
 
 %options for MFX
-options_group.TolFun=3e-2;
+options_group.TolFun=1e-2;
 options_group.MaxIter=50;
 options_group.DisplayWin=0;
 options_group.verbose=1;
@@ -124,18 +124,22 @@ if is_alex
   so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
 end
 
-cd(so.output_dir);
-  
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
   sprintf('%s/%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
   sprintf('%s/%s_%s_mfx_sceptic_trial_statistics.csv', so.output_dir, so.dataset, so.model));
 
-%save group outputs for now
+%save the basis as a csv file
+vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
+basis_mat = array2table(o_sub{1}.options.inF.gaussmat, 'VariableNames', vnames);
+
+writetable(basis_mat, sprintf('%s/%s_%s_mfx_sceptic_basis.csv', so.output_dir, so.dataset, so.model));
+
+%save group outputs
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
 
 %too huge to save into one .mat file
-save([so.dataset, '_', so.model, '_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
-save([so.dataset, '_', so.model, '_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
-save([so.dataset, '_', so.model, '_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
-save([so.dataset, '_', so.model, '_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
-save([so.dataset, '_', so.model, '_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
