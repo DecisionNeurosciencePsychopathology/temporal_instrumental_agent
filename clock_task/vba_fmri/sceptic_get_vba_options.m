@@ -1,4 +1,4 @@
-function [options, dim] = sceptic_get_vba_options(data, so)
+function [options, dim, so] = sceptic_get_vba_options(data, so)
 %% this function sets up the options and dim structures for VBA
 
 so=sceptic_validate_options(so); %should be handled upstream, but just in case
@@ -32,6 +32,18 @@ options.verbose=0; %don't show single subject fitting process
 
 options.inF.gaussmat = options.inG.gaussmat; %copy (non-truncated) gaussmat into inF
 
+sigma_noise = [];
+    [~,idx] = unique(data.run);
+    conditions=data.rewFunc(idx);
+    
+    for i = 1:length(conditions)
+        sigma_noise = [sigma_noise repmat(std(arrayfun(@(x) RewFunction(x*100, conditions(i), 0), options.inF.tvec))^2, 1, so.trials_per_run)];
+    end
+
+sigma_noise = mean(sigma_noise);
+options.inF.sigma_noise = sigma_noise;
+options.inG.sigma_noise = sigma_noise;
+so.sigma_noise = sigma_noise;
 n_t = size(data,1); %number of rows
 n_runs = n_t/so.trials_per_run; %determine number of runs
 options.inF.n_runs = n_runs; %used downstream

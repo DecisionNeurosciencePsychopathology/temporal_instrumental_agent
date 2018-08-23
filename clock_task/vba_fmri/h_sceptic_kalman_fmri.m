@@ -14,8 +14,8 @@ function  [fx] = h_sceptic_kalman(x_t, theta, u, inF)
 
 
 nbasis = inF.nbasis; %Grab basis numbers
-hidden_state_index=1:inF.hidden_state*nbasis;
-hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_state);
+hidden_state_index=1:inF.hidden_states*nbasis;
+hidden_state_index = reshape(hidden_state_index,nbasis,inF.hidden_states);
 
 %Find length of theta. Depending on the autocorrelation and fitting
 %prop_spread we'll need to know this.
@@ -61,7 +61,7 @@ else
 end
 rt = u(1);
 reward = u(2);
-sigma_noise = inF.sigma_noise;
+sigma_noise = inF.sigma_noise; %%?????!?!?!?!?!?!?!?!!?!?!?!?!?
 fx = zeros(size(x_t));
 
 %compute gaussian spread function with w = rts(i) and sigma based on free param prop_spread
