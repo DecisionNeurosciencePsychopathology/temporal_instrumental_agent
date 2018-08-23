@@ -17,7 +17,7 @@ so = sceptic_validate_options(); %initialize and validate sceptic fitting settin
 
 %% set environment and define file locations
 if is_alex
-  sceptic_repo='~/code/temporal_instrumental_agent/clock_task';
+  sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task',me);
   addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 else
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';

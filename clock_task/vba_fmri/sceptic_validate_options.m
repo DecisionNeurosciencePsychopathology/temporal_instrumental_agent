@@ -25,7 +25,7 @@ function [so] = sceptic_validate_options(so)
   else
     so.model=getenv('sceptic_model');
     if strcmpi(so.model, '')
-      so.model = 'decay'; % will run to get value and prediction errors.
+      so.model = 'fixed_UV'; % will run to get value and prediction errors.
     end
   end
   
