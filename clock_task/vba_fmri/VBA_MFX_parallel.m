@@ -243,7 +243,7 @@ stop = 0;
 it = 1;
 fprintf(1,['Main VB inversion...'])
 while ~stop
-  fprintf("On VB MFX iteration %d\n", it);
+  fprintf('On VB MFX iteration %d\n', it);
   
     % perform within-subject model inversions
     parfor i=1:ns

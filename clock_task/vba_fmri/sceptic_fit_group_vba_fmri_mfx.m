@@ -7,15 +7,17 @@ clear;
 os = computer;
 [~, me] = system('whoami');
 me = strtrim(me);
-is_alex=strcmp(me,'Alex')==1;
+is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
+
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
 so = sceptic_validate_options(); %initialize and validate sceptic fitting settings
 
+
 %% set environment and define file locations
 if is_alex
-  sceptic_repo='~/code/temporal_instrumental_agent/clock_task';
+  sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task',me);
   addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 else
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
@@ -45,9 +47,13 @@ if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 
 %% setup parallel parameters
 if is_alex
+  if strcmp(me,'dombax')==1
+      ncpus = 10;
+  fprintf('defaulting to 10 cpus on Thorndike \n');
+  else
   ncpus=4;
   fprintf('defaulting to 4 cpus on old iMac \n');
-
+  end
   poolobj = gcp('nocreate');
   if isempty(poolobj)
     poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
