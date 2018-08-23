@@ -15,7 +15,7 @@ function [so] = sceptic_validate_options(so)
   else
     so.dataset=getenv('sceptic_dataset');
     if strcmpi(so.dataset, '')
-      so.dataset='mmclock_meg'; %or mmclock_fmri or specc_fmri
+      so.dataset='mmclock_fmri'; %or mmclock_fmri or specc_fmri
     end
   end
   
@@ -36,7 +36,7 @@ function [so] = sceptic_validate_options(so)
   if ~isfield(so, 'fit_propspread'), so.fit_propspread=0; end
   if ~isfield(so, 'max_prop_spread'), so.max_prop_spread = .0125; end %used for fixed propspread case
   if ~isfield(so, 'ntimesteps'), so.ntimesteps=40; end
-  if ~isfield(so, 'u_aversion'), so.u_aversion=0; end
+  if ~isfield(so, 'u_aversion'), so.u_aversion=1; end  % default based on Cognition analyses
   if ~isfield(so, 'graphics'), so.graphics=0; end
   if ~isfield(so, 'model'), so.model='fixed'; end
   if ~isfield(so, 'trials_per_run'), so.trials_per_run=50; end
@@ -56,6 +56,11 @@ function [so] = sceptic_validate_options(so)
     so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
     so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
     so.theta_names={'alpha', 'gamma'};
+  elseif strcmpi(so.model,'fixed_UV')
+    so.evo_fname = @h_sceptic_kalman_fmri;
+    so.hidden_states=3; %track basis weights (value), as well as PE and uncertainty
+    so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
+    so.theta_names={'tau', 'alpha'};
   end
   
   so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
