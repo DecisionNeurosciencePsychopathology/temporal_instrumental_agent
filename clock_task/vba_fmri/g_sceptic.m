@@ -7,7 +7,8 @@ function  [ gx ] = g_sceptic(x_t, phi, u, inG)
 % OUTPUT
 % - gx : p(chosen|x_t)
 
-beta = exp(phi); %force temperature to be positive
+phi = transform_phi(phi, inG);
+beta = phi(1); %force temperature to be positive through exponential
 
 gaussmat=inG.gaussmat;
 ntimesteps = inG.ntimesteps;
