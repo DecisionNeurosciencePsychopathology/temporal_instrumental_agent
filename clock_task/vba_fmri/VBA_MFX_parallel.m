@@ -380,6 +380,7 @@ while ~stop
     it = it +1;
     
 end
+
 fprintf([' done.','\n'])
 o_group.date = clock;
 o_group.dt = toc(o_group.tStart);

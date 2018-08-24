@@ -32,7 +32,7 @@ if strcmpi(so.dataset,'mmclock_meg')
 elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
 elseif strcmpi(so.dataset,'specc')
-  behavfiles = glob([sceptic_repo, '/clock_task/subjects/SPECC/*.csv']);
+  behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
 end
 
 %extract IDs for record keeping
