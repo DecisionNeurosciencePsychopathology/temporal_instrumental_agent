@@ -8,7 +8,9 @@ os = computer;
 [~, me] = system('whoami');
 me = strtrim(me);
 is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
-
+if strcmp(me,'Alex')==1
+    me = 'localadmin'; % I know, but it is a crazy machine
+end
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing

@@ -25,7 +25,7 @@ if isfield(so, 'sceptic_model')
 else
     so.model=getenv('sceptic_model');
     if strcmpi(so.model, '')
-        so.model = 'fixed'; % will run to get value and prediction errors.
+        so.model = 'fixed_UV'; % will run to get value and prediction errors.
         %so.model = 'fixed';
     end
 end
