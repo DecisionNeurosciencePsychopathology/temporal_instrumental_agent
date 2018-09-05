@@ -4,7 +4,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   sceptic_files <- list.files(path=outdir, pattern=".*sceptic.*\\.csv", full.names=TRUE)
   basis_file <- grep("basis.csv", sceptic_files, fixed=TRUE, value=TRUE)
   global_file <- grep("global_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
-  trial_file <- grep("trial_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
+  trial_file <- grep("trial_outputs_by_timestep.csv", sceptic_files, fixed=TRUE, value=TRUE)
   stopifnot(all(lengths(list(basis_file, global_file, trial_file)) == 1)) #only support one match per folder per now
 
   basis <- readr::read_csv(basis_file)
@@ -107,16 +107,15 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #merge with original data
   subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=FALSE)
   subj_data <- bind_rows(lapply(subj_files, function(ff) {
-    df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score)
+    df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score) %>% mutate(asc_trial=1:n()) #asc_trial used to match with vba outputs
     df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
     df <- df %>% select(id, run, trial, rewFunc, emotion, everything())
     return(df)
   }))
 
   trial_stats <- trial_stats %>% left_join(subj_data, by=c("id", "trial")) %>%
-    select(dataset, model, id, run, trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
+    select(dataset, model, id, run, trial, asc_trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
     arrange(dataset, model, id, trial)
-  #readr::write_csv(trial_stats, "trial_stats_mfx_mmclock_fmri.csv")
   
   return(trial_stats)
 }

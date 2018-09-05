@@ -4,9 +4,9 @@ library(readr)
 
 trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
 
-#datasets <- c("mmclock_meg", "mmclock_fmri")
-datasets <- c("mmclock_fmri")
-models <- c("decay", "fixed")
+datasets <- c("mmclock_meg", "mmclock_fmri")
+#datasets <- c("mmclock_fmri")
+models <- c("decay", "fixed", "decay_factorize")
 fitting <- c("ffx", "mfx")
 
 for (d in datasets) {
@@ -16,7 +16,7 @@ for (d in datasets) {
       subj_dir <- file.path("/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects", d)
 
       sceptic_stats <- parse_sceptic_outputs(outdir, subj_dir)
-      write_csv(sceptic_stats, path=file.path(trial_out_dir, paste(d, m, f, "trial_stats.csv.gz", sep="_")))
+      write_csv(sceptic_stats, path=file.path(trial_out_dir, paste(d, m, f, "trial_statistics.csv.gz", sep="_")))
     }
   }
 }
