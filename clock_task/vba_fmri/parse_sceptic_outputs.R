@@ -1,6 +1,7 @@
 parse_sceptic_outputs <- function(outdir, subjects_dir) {
-  library(readr)
-  library(dplyr)
+  require(readr)
+  require(dplyr)
+  require(entropy)
   sceptic_files <- list.files(path=outdir, pattern=".*sceptic.*\\.csv", full.names=TRUE)
   basis_file <- grep("basis.csv", sceptic_files, fixed=TRUE, value=TRUE)
   global_file <- grep("global_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
@@ -22,7 +23,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Expected value statistics
   
-  v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix()
+  v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
   #put value back onto time grid
   v_func <- v_mat %*% basis
@@ -47,6 +48,25 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     v_func[r, y_chosen[r]]
   }))
 
+  #calculate entropy of the basis weights (as in the Cognition paper)
+  v_entropy <- apply(v_mat, 1, function(basis_weights) {
+    w_norm <- basis_weights/sum(basis_weights)
+    nz <- w_norm[w_norm > 0]
+    entropy <- -sum(nz * log10(nz))
+    return(entropy)
+  })
+  
+  #calculate entropy on the full value function, discretizing into 20 bins
+  v_entropy_func <- apply(v_func, 1, function(r) {
+    if (all(is.na(r)) || sd(r) < .01) { #essentially no variability, so hard to say there's a max 
+      return(NA) 
+    } else {
+      #normalize entropy by discretizing into 20 bins
+      dd <- discretize(r, numBins=20)
+      entropy.empirical(dd)/log(20) #ML-based Shannon entropy, normalized to 0--1
+    }
+  })
+  
   #####
   # Prediction error statistics
 
@@ -92,7 +112,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #compile trial statistics
   trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
-      v_sd=v_sd, pe_max=pe_max, d_auc=d_auc) %>%
+      v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, d_auc=d_auc) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
