@@ -28,7 +28,6 @@ if nargin < 6, plot_rbf=0; end
 
 %Initialize time step vector and allocate for memory
 tvec=1:ntimesteps;
-sig_spread=prop_spread*range(tvec); %determine SD of spread function
 
 margin_offset = (max(tvec) - min(tvec)).*margin_offset; % convert margin_offset into time scale of tvec
 
@@ -36,7 +35,13 @@ margin_offset = (max(tvec) - min(tvec)).*margin_offset; % convert margin_offset 
 tmin = min(tvec) - margin_offset; tmax=max(tvec) + margin_offset;
 c=tmin:(tmax-tmin)/(nbasis-1):tmax;
 
-sig = (c(2) - c(1))/basis_overlap;
+sig = (c(2) - c(1))/basis_overlap; %SD of the basis functions themselves
+
+if prop_spread == -1
+    sig_spread=sig; %use the same SD for eligibility as basis
+else
+    sig_spread=prop_spread*range(tvec); %determine SD of spread function
+end
 
 %construct radial basis matrix using Gaussians
 gaussmat = zeros(nbasis, length(tvec));
