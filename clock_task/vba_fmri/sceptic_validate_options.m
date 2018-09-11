@@ -44,6 +44,7 @@ function [so] = sceptic_validate_options(so)
   if ~isfield(so, 'saveresults'), so.saveresults=0; end %used in some places to denote whether to save fitted outputs
   if ~isfield(so, 'factorize_decay'), so.factorize_decay=0; end %whether to reparameterize decay model with alpha multiplying entire update
   if ~isfield(so, 'function_wise_pe'), so.function_wise_pe=0; end %whether PE is computed compared to the evaluated value function (1) or the individual basis weight (0)
+  if ~isfield(so, 'uniform'), so.uniform=0; end %whether decay is uniform (1) or whether values are maintained within eligibility trace
   
   %hidden states field used to index hidden state vector inside evolution and observation functions
   if strcmpi(so.model,'fixed')

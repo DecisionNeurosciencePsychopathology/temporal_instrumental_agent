@@ -79,11 +79,18 @@ else
   delta = e.*(reward - w);
 end
 
+% control whether last-RT region is selectively maintained vs. uniform decay
+if inF.uniform
+    E = zeros(size(e)); % all weights decay uniformly
+else
+    E = e; % weights inside eligibility trace are maintained
+end
+
 % introduce decay
 if inF.factorize_decay
-    decay = -gamma.*alpha.*(1-e).*w;
+    decay = -gamma.*alpha.*(1-E).*w;
 else
-    decay = -gamma.*(1-e).*w;
+    decay = -gamma.*(1-E).*w;
 end
 w_new = w + alpha.*delta + decay;
 
