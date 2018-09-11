@@ -22,6 +22,14 @@ s.muTheta = posterior.muTheta;
 s.SigmaTheta = posterior.SigmaTheta;
 s.transformed = posterior.transformed;
 
+%populate ffx params from VBA MFX, if available
+if isfield(posterior, 'ffx')
+  s.muPhi_ffx = posterior.ffx.muPhi;
+  s.SigmaPhi_ffx = posterior.ffx.SigmaPhi;
+  s.muTheta_ffx = posterior.ffx.muTheta;
+  s.SigmaTheta_ffx = posterior.ffx.SigmaTheta;
+end
+
 % compute missing statistics if needed (this is slow...)
 if ~isfield(out,'diagnostics')
     out.diagnostics = VBA_getDiagnostics(posterior,out);

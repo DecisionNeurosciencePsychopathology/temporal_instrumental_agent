@@ -29,8 +29,8 @@ if strcmpi(so.dataset,'mmclock_meg')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_meg/*.csv']);
 elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
-elseif strcmpit(so.dataset,'specc')
-  behavfiles = glob([sceptic_repo, '/clock_task/subjects/SPECC/*.csv']);
+elseif strcmpi(so.dataset,'specc')
+  behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
 end
 
 %extract IDs for record keeping
@@ -71,28 +71,35 @@ parfor sub = 1:length(behavfiles)
   L(sub) = out.F;
   
   subj_id=ids{sub};
+
+  %write out the basis as a csv file (for postprocessing) in one subject
+  if sub == 1
+    %save the basis as a csv file
+    vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
+    basis_mat = array2table(out.options.inF.gaussmat, 'VariableNames', vnames);
+
+    writetable(basis_mat, sprintf('%s/%s_%s_ffx_sceptic_basis.csv', so.output_dir, so.dataset, so.model));    
+  end
   
   %parsave doesn't work in recent MATLAB versions...
   m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
     so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
     so.fixed_params_across_runs, so.u_aversion), 'writable',true);
-  m.posterior=posterior; m.out=out; m.subj_id=ids{sub};
+  
+  m.posterior=posterior; m.out=out; m.subj_id=ids{sub}; m.subj_stats=s_all{sub};
   
   %parsave(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
   %		  so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...
   %    so.fixed_params_across_runs, so.u_aversion), posterior, out);%, subj_id);
   
-  % gamma_decay(sub) = posterior.muTheta(2);
-  % tau(sub) = posterior.muTheta(1); %For fixed_uv
 end
 
+% p.stop;
 delete(poolobj);
 
-[group_global, group_trial_level] = extract_group_statistics(s_all);
+[group_global, group_trial_level] = extract_group_statistics(s_all, ...
+  sprintf('%s/%s_%s_ffx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
+  sprintf('%s/%s_%s_ffx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model));
 
 %save group outputs for now
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'L', 'so', 's_all', 'group_global', 'group_trial_level');
-
-% p.stop;
-
-

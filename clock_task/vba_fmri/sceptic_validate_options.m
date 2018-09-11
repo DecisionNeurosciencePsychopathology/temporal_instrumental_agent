@@ -25,7 +25,11 @@ function [so] = sceptic_validate_options(so)
   else
     so.model=getenv('sceptic_model');
     if strcmpi(so.model, '')
+<<<<<<< HEAD
       so.model = 'fixed'; % will run to get value and prediction errors.
+=======
+      so.model = 'decay'; % will run to get value and prediction errors.
+>>>>>>> fdb6195a96941c0a3595fba90aa51651a92a4e6d
     end
   end
   
@@ -61,6 +65,12 @@ function [so] = sceptic_validate_options(so)
     so.hidden_states=3; %track basis weights (value), as well as PE and uncertainty
     so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
     so.theta_names={'tau', 'alpha'};
+  elseif strcmpi(so.model, 'decay_factorize')
+    so.evo_fname = @h_sceptic_fixed_decay_fmri;
+    so.hidden_states=3; %track basis weights (value), as well as PE as tag-along state
+    so.n_theta=2; %learning rate and selective maintenance
+    so.theta_names={'alpha', 'gamma'};
+    so.factorize_decay=1; %turn on factorized parameterization
   end
   
   so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
