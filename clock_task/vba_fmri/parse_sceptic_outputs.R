@@ -1,20 +1,21 @@
 parse_sceptic_outputs <- function(outdir, subjects_dir) {
-  library(readr)
-  library(dplyr)
+  require(readr)
+  require(dplyr)
+  require(entropy)
   sceptic_files <- list.files(path=outdir, pattern=".*sceptic.*\\.csv", full.names=TRUE)
   basis_file <- grep("basis.csv", sceptic_files, fixed=TRUE, value=TRUE)
   global_file <- grep("global_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
-  trial_file <- grep("trial_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
+  trial_file <- grep("trial_outputs_by_timestep.csv", sceptic_files, fixed=TRUE, value=TRUE)
   stopifnot(all(lengths(list(basis_file, global_file, trial_file)) == 1)) #only support one match per folder per now
 
   basis <- readr::read_csv(basis_file)
   global <- readr::read_csv(global_file)
-  trial <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
+  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
 
   basis <- as.matrix(basis) #24 x 40 (nbasis x ntimesteps)
 
   #response vector (y1-y40)
-  y_mat <- trial %>% dplyr::select(matches("y_\\d+")) %>% as.matrix()
+  y_mat <- trial_df %>% dplyr::select(matches("y_\\d+")) %>% as.matrix()
 
   #identify the chosen time bin
   y_chosen <- apply(y_mat, 1, function(r) { which(r==1) })
@@ -22,7 +23,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Expected value statistics
   
-  v_mat <- trial %>% dplyr::select(matches("V_\\d+")) %>% as.matrix()
+  v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
   #put value back onto time grid
   v_func <- v_mat %*% basis
@@ -47,10 +48,29 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     v_func[r, y_chosen[r]]
   }))
 
+  #calculate entropy of the basis weights (as in the Cognition paper)
+  v_entropy <- apply(v_mat, 1, function(basis_weights) {
+    w_norm <- basis_weights/sum(basis_weights)
+    nz <- w_norm[w_norm > 0]
+    entropy <- -sum(nz * log10(nz))
+    return(entropy)
+  })
+  
+  #calculate entropy on the full value function, discretizing into 20 bins
+  v_entropy_func <- apply(v_func, 1, function(r) {
+    if (all(is.na(r)) || sd(r) < .01) { #essentially no variability, so hard to say there's a max 
+      return(NA) 
+    } else {
+      #normalize entropy by discretizing into 20 bins
+      dd <- discretize(r, numBins=20)
+      entropy.empirical(dd)/log(20) #ML-based Shannon entropy, normalized to 0--1
+    }
+  })
+  
   #####
   # Prediction error statistics
 
-  pe_mat <- trial %>% dplyr::select(matches("PE_\\d+")) %>% as.matrix()
+  pe_mat <- trial_df %>% dplyr::select(matches("PE_\\d+")) %>% as.matrix()
   pe_func <- pe_mat %*% basis
 
   pe_max <- apply(pe_func, 1, function(r) {
@@ -69,7 +89,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   #####
   # Decay statistics
-  d_mat <- trial %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
+  d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
   if (ncol(d_mat) > 0) { #will be absent for non-decay models
     d_func <- d_mat %*% basis
     d_auc <- apply(d_mat, 1, function(r) {
@@ -90,15 +110,15 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #Thus, flip the first trial (value of 0) to the end (currently unspecified/not estimated)
 
   #compile trial statistics
-  trial_stats <- trial %>% select(id, dataset, model, trial, rt_next, score_next) %>%
+  trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
-      v_sd=v_sd, pe_max=pe_max, d_auc=d_auc) %>%
+      v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, d_auc=d_auc) %>%
     group_by(id) %>%
     mutate(
-      rt=lead(rt_next, 1, order_by=trial), #shift rt back onto original time grid
-      score=lead(score_next, 1, order_by=trial), #same for score
-      pe_max=lead(pe_max, 1, order_by=trial), #same for PE
-      d_auc=lead(d_auc, 1, order_by=trial) #same for DAUC
+      rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
+      score=lead(score_next, 1, order_by=asc_trial), #same for score
+      pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE
+      d_auc=lead(d_auc, 1, order_by=asc_trial) #same for DAUC
     ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score)
 
   #remove readr detritus
@@ -107,16 +127,15 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #merge with original data
   subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=FALSE)
   subj_data <- bind_rows(lapply(subj_files, function(ff) {
-    df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score)
+    df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score) %>% mutate(asc_trial=1:n()) #asc_trial used to match with vba outputs
     df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
-    df <- df %>% select(id, run, trial, rewFunc, emotion, everything())
+    df <- df %>% select(id, run, asc_trial, rewFunc, emotion, everything())
     return(df)
   }))
 
-  trial_stats <- trial_stats %>% left_join(subj_data, by=c("id", "trial")) %>%
-    select(dataset, model, id, run, trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
+  trial_stats <- trial_stats %>% left_join(subj_data, by=c("id", "asc_trial")) %>%
+    select(dataset, model, id, run, trial, asc_trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
     arrange(dataset, model, id, trial)
-  #readr::write_csv(trial_stats, "trial_stats_mfx_mmclock_fmri.csv")
   
   return(trial_stats)
 }

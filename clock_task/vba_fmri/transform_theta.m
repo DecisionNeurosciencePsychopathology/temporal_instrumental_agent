@@ -1,9 +1,9 @@
 function [theta_trans] = transform_theta(theta, inF)
 
-if strcmpi(inF.model, 'fixed')
+if any(strcmpi(inF.model, {'fixed', 'decay', 'fixed_UV', 'decay_factorize'}))
   theta_trans = sigmoid(theta); %sigmoid transform alpha, which is theta(1)
-elseif strcmpi(inF.model, 'decay')
-  theta_trans = sigmoid(theta); %sigmoid transform alpha and gamma
+else
+  error(['unrecognized model in transform_theta: ', inF.model]);
 end
 
 %handle other models at some point...

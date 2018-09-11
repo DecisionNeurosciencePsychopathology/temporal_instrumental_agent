@@ -99,7 +99,7 @@ delete(poolobj);
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
   sprintf('%s/%s_%s_ffx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
-  sprintf('%s/%s_%s_ffx_sceptic_trial_statistics.csv', so.output_dir, so.dataset, so.model));
+  sprintf('%s/%s_%s_ffx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model));
 
 %save group outputs for now
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'L', 'so', 's_all', 'group_global', 'group_trial_level');

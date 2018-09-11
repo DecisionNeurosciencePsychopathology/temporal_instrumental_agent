@@ -132,7 +132,7 @@ end
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
   sprintf('%s/%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
-  sprintf('%s/%s_%s_mfx_sceptic_trial_statistics.csv', so.output_dir, so.dataset, so.model));
+  sprintf('%s/%s_%s_mfx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model));
 
 %save the basis as a csv file
 vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
