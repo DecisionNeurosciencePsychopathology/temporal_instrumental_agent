@@ -12,8 +12,9 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
-so.uniform = 1;
-so = sceptic_validate_options(); %initialize and validate sceptic fitting settings
+so.uniform = 0;
+so.max_prop_spread = -1;
+so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 
 
 %% set environment and define file locations
@@ -49,7 +50,7 @@ if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 %% setup parallel parameters
 if is_alex
   if strcmp(me,'dombax')==1
-      ncpus = 10;
+      ncpus = 12;
   fprintf('defaulting to 10 cpus on Thorndike \n');
   else
   ncpus=4;
@@ -128,7 +129,11 @@ s_all = cellfun(@(p, o) extract_subject_statistics(p, o), p_sub, o_sub, 'Uniform
 
 %output MFX results
 if is_alex
+    if strcmp(me,'dombax')
+        so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+    else
   so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+    end
 end
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
@@ -145,8 +150,8 @@ writetable(basis_mat, sprintf('%s/%s_%s_mfx_sceptic_basis.csv', so.output_dir, s
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
 
 %too huge to save into one .mat file
-save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
