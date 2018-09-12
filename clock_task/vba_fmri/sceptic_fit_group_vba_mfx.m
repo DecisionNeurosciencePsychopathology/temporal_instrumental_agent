@@ -14,6 +14,7 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 %as environment variables so that this script can be scaled easily for batch processing
 so.uniform = 0;
 so.max_prop_spread = -1;
+so.factorize_decay=0;
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 
 
@@ -51,7 +52,7 @@ if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 if is_alex
   if strcmp(me,'dombax')==1
       ncpus = 12;
-  fprintf('defaulting to 10 cpus on Thorndike \n');
+  fprintf('defaulting to 12 cpus on Thorndike \n');
   else
   ncpus=4;
   fprintf('defaulting to 4 cpus on old iMac \n');
@@ -150,8 +151,8 @@ writetable(basis_mat, sprintf('%s/%s_%s_mfx_sceptic_basis.csv', so.output_dir, s
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
 
 %too huge to save into one .mat file
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
