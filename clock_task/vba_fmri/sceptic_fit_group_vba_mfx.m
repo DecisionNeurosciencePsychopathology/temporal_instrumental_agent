@@ -12,30 +12,41 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
+
+% uniform (0) or selective (1)
 so.uniform = 0;
-so.max_prop_spread = -1;
-so.factorize_decay=0;
-so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
+
+% wide = -1, narrow = comment line below out
+% so.max_prop_spread = -1; 
+
+% factorize decay/learning rate
+so.factorize_decay=1;
+
+so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings02
 
 
 %% set environment and define file locations
 if is_alex
-  sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task',me);
-  addpath(genpath('~/code/VBA-toolbox')); %setup VBA
+    if  strcmp(me,'Alex')
+        sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
+    else
+        sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task',me);
+    end
+    addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 else
-  sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
-  addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
+    sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
+    addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
 end
 
 addpath(sceptic_repo); %has glob.m and setup_rbf.m
 
 group_dir=[sceptic_repo, '/subjects']; %not used for anything at the moment...
 if strcmpi(so.dataset,'mmclock_meg')
-  behavfiles = glob([sceptic_repo, '/subjects/mmclock_meg/*.csv']);
+    behavfiles = glob([sceptic_repo, '/subjects/mmclock_meg/*.csv']);
 elseif strcmpi(so.dataset,'mmclock_fmri')
-  behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
+    behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
 elseif strcmpi(so.dataset,'specc')
-  behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
+    behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
 end
 
 %extract IDs for record keeping
@@ -50,27 +61,27 @@ if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 
 %% setup parallel parameters
 if is_alex
-  if strcmp(me,'dombax')==1
-      ncpus = 12;
-  fprintf('defaulting to 12 cpus on Thorndike \n');
-  else
-  ncpus=4;
-  fprintf('defaulting to 4 cpus on old iMac \n');
-  end
-  poolobj = gcp('nocreate');
-  if isempty(poolobj)
-    poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
-  end
+    if strcmp(me,'dombax')==1
+        ncpus = 12;
+        fprintf('defaulting to 12 cpus on Thorndike \n');
+    else
+        ncpus=10;
+        fprintf('defaulting to 10 cpus on iMac Pro \n');
+    end
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
+        poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
+    end
 else
-  ncpus=getenv('matlab_cpus');
-  if strcmpi(ncpus, '')
-    ncpus=40;
-    fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
-  else
-    ncpus=str2double(ncpus);
-  end
-
-  poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
+    ncpus=getenv('matlab_cpus');
+    if strcmpi(ncpus, '')
+        ncpus=40;
+        fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
+    else
+        ncpus=str2double(ncpus);
+    end
+    
+    poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 end
 
 ns = length(behavfiles);
@@ -81,15 +92,15 @@ options_all = cell(ns, 1);
 n_t=NaN(1,ns);
 
 for sub = 1:ns
-  fprintf('Loading subject %d id: %s \n', sub, ids{sub});
-  [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
-  [options, dim] = sceptic_get_vba_options(data, so);
-  n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
-  
-  % populate data structures for VBA_MFX
-  y_all{sub} = y;
-  u_all{sub} = u;
-  options_all{sub} = options;
+    fprintf('Loading subject %d id: %s \n', sub, ids{sub});
+    [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
+    [options, dim] = sceptic_get_vba_options(data, so);
+    n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
+    
+    % populate data structures for VBA_MFX
+    y_all{sub} = y;
+    u_all{sub} = u;
+    options_all{sub} = options;
 end
 
 % add the n_t vector to dim before passing to MFX
@@ -117,12 +128,12 @@ delete(poolobj);
 
 %populate subject ids into output.options.inF structure since these are added to subject statistics below
 for s=1:length(o_sub)
-  o_sub{s}.options.inF.id = ids{s};
-  o_sub{s}.options.inG.id = ids{s};
-
-  %populate ffx parameters from o_group structure to p_sub structure for extraction
-  p_sub{s}.ffx = o_group.initVBA.p_sub{s};
-  p_sub{s}.ffx = rmfield(p_sub{s}.ffx, {'SigmaX', 'iQx', 'iQy'}); %large matrices not needed for anything (they use lots of disk space)
+    o_sub{s}.options.inF.id = ids{s};
+    o_sub{s}.options.inG.id = ids{s};
+    
+    %populate ffx parameters from o_group structure to p_sub structure for extraction
+    p_sub{s}.ffx = o_group.initVBA.p_sub{s};
+    p_sub{s}.ffx = rmfield(p_sub{s}.ffx, {'SigmaX', 'iQx', 'iQy'}); %large matrices not needed for anything (they use lots of disk space)
 end
 
 %create a structure with just the barebones useful parameters from subjects
@@ -133,13 +144,13 @@ if is_alex
     if strcmp(me,'dombax')
         so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
     else
-  so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+        so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
     end
 end
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
-  sprintf('%s/%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
-  sprintf('%s/%s_%s_mfx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model));
+    sprintf('%s/%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...
+    sprintf('%s/%s_%s_mfx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model));
 
 %save the basis as a csv file
 vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
@@ -151,8 +162,13 @@ writetable(basis_mat, sprintf('%s/%s_%s_mfx_sceptic_basis.csv', so.output_dir, s
 save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
 
 %too huge to save into one .mat file
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, '_wide_factorized_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_psub.mat'], 'p_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_pgroup.mat'], 'p_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+
+F = o_group.within_fit.F;
+% just the L
+save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_L.mat'], 'F', '-v7.3');
+

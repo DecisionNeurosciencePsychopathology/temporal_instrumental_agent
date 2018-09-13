@@ -34,19 +34,38 @@ hist(sig(gamma),40); xlabel('decayNative')
 % decay = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_ogroup.mat');
 % fixed = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/fixed/vba_mfx_results_ogroup.mat');
 
-% decay = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_ogroup.mat');
-fixed = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/fixed/vba_mfx_results_ogroup.mat');
-uniform = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/mmclock_fmri_decay_uniform_vba_mfx_results_ogroup.mat');
-wide.o_group = o_group;
-% % in this case uniform was just run
-% uni.o_group = o_group;
+%% test the matrix
 
-% Ldecay = decay.o_group.within_fit.F;
-% outmat is an object form Michael
+%sELECTIVE wIDE fACTORIZED
+swf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_wide_factorized_vba_mfx_results_ogroup.mat');
+swu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_wide_unfactorized_vba_mfx_results_ogroup.mat');
+% uniform
+uwf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_factorized_vba_mfx_results_ogroup.mat');
+uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_unfactorized_vba_mfx_results_ogroup.mat');
+% uNIFORM nARROW fACTORIZED
+unf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_narrow_factorized_vba_mfx_results_ogroup.mat');
+unu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uniform_narrow_unfactorized_vba_mfx_results_ogroup.mat');
 
-% Ldecay_unfactorized = outmat(:,1)';
-Lfixed = fixed.o_group.within_fit.F;
-Luni = uniform.o_group.within_fit.F;
-Lwide = wide.o_group.within_fit.F;
+Lswf = swf.o_group.within_fit.F;
+Lswu = swu.o_group.within_fit.F;
+Luwf = uwf.o_group.within_fit.F;
+Luwu = uwu.o_group.within_fit.F;
+Lunf = unf.o_group.within_fit.F;
+Lunu = unu.o_group.within_fit.F;
 
-[p,o] = VBA_groupBMC([Lfixed;Luni;Lwide]);
+% % decay = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_ogroup.mat');
+% fixed = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/fixed/vba_mfx_results_ogroup.mat');
+% uniform = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/mmclock_fmri_decay_uniform_vba_mfx_results_ogroup.mat');
+% wide.o_group = o_group;
+% % % in this case uniform was just run
+% % uni.o_group = o_group;
+% 
+% % Ldecay = decay.o_group.within_fit.F;
+% % outmat is an object form Michael
+% 
+% % Ldecay_unfactorized = outmat(:,1)';
+% Lfixed = fixed.o_group.within_fit.F;
+% Luni = uniform.o_group.within_fit.F;
+% Lwide = wide.o_group.within_fit.F;
+
+[p,o] = VBA_groupBMC([Lswf;Lswu;Luwf;Luwu;Lunf;Lunu]);
