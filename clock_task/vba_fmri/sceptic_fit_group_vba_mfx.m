@@ -13,15 +13,19 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
 
-% uniform (0) or selective (1)
+%% model features for comparo
+% INFORMATION MAINTENANCE: uniform (1) or selective (0)
 so.uniform = 0;
 
-% wide = -1, narrow = comment line below out
+% TEMPORAL GENERALIZATION: wide = -1, narrow = comment line below out
 % so.max_prop_spread = -1; 
 
-% factorize decay/learning rate
+% PARAMETERIZATION; factorize decay/learning rate (1), don't (0)
 so.factorize_decay=1;
 
+save_all = 0;
+
+%%
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings02
 
 
@@ -156,6 +160,7 @@ end
 vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
 basis_mat = array2table(o_sub{1}.options.inF.gaussmat, 'VariableNames', vnames);
 
+if save_all
 writetable(basis_mat, sprintf('%s/%s_%s_mfx_sceptic_basis.csv', so.output_dir, so.dataset, so.model));
 
 %save group outputs
@@ -167,7 +172,7 @@ save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx
 save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_ogroup.mat'], 'o_group', '-v7.3');
 save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_osub.mat'], 'o_sub', '-v7.3');
 save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_results_settings.mat'], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
-
+end
 F = o_group.within_fit.F;
 % just the L
 save([so.output_dir, '/', so.dataset, '_', so.model, '_narrow_factorized_vba_mfx_L.mat'], 'F', '-v7.3');
