@@ -1,30 +1,25 @@
 %loads in subjects' data and fits SCEPTIC models using VBA;
 close all;
 clear;  
-
-% test selective wide maintenance/stick PE and uniform stick PE
-modelstorun={'selective_wide_factorize'};
-save_all = 0;
-
-for i = length(modelstorun)
-    
-
-    model=modelstorun{i};
-    selective=contains(model,'selective');
-    wide=contains(model,'wide');
-    factorize=contains(model,'factorize');
-    
-    
-    
-    
-
 %curpath = fileparts(mfilename('fullpath'));
 
 os = computer;
 [~, me] = system('whoami');
 me = strtrim(me);
 is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
+is_jiazhouchen=strcmp(me,'jiazhouchen')==1;
+is_jiazhou_t=strcmp(me,'jiazhou')==1;
+% test selective wide maintenance/stick PE and uniform stick PE
+modelstorun={'selective_wide_factorize_stick','selective_narrow_factorize_stick','__factorize_stick'};
+save_all = 1;
+for i = 1:length(modelstorun)
+    
 
+    model=modelstorun{i};
+    selective=contains(model,'selective');
+    wide=contains(model,'wide');
+    factorize=contains(model,'factorize');
+    stick=contains(model,'stick');
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
@@ -55,7 +50,21 @@ else
     factortext="unfactorize";
 end
 
-save_all = 1;
+if (factorize)
+    so.factorize_decay=1;
+    factortext="factorize";
+else
+    so.factorize_decay=0;
+    factortext="unfactorize";
+end
+
+if (stick)
+    so.stickPE=1;
+    sticktext="stickPE";
+else
+    so.stickPE=0;
+    sticktext="gaussianPE";
+end
 
 %%
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings02
@@ -69,6 +78,8 @@ if is_alex
         sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task',me);
     end
     addpath(genpath('~/code/VBA-toolbox')); %setup VBA
+elseif is_jiazhouchen
+    sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/MatlabStation/tia/clock_task/');
 else
     sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
     addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
@@ -98,6 +109,8 @@ if is_alex
     else
         so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
     end
+elseif is_jiazhouchen
+     so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
 else
 so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/mfx/', so.model];
 if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
@@ -111,6 +124,12 @@ if is_alex
         ncpus=10;
         fprintf('defaulting to 10 cpus on iMac Pro \n');
     end
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
+        poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
+    end
+elseif is_jiazhouchen
+    ncpus=4;
     poolobj = gcp('nocreate');
     if isempty(poolobj)
         poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
@@ -185,31 +204,31 @@ s_all = cellfun(@(p, o) extract_subject_statistics(p, o), p_sub, o_sub, 'Uniform
 %output MFX results
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
-    sprintf('%s/%s_%s_%s_%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext), ...
-    sprintf('%s/%s_%s_%s_%s_%s_mfx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext));
+    sprintf('%s/%s_%s_%s_%s_%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext,sticktext), ...
+    sprintf('%s/%s_%s_%s_%s_%s_%s_mfx_sceptic_trial_outputs_by_timestep.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext,sticktext));
 
 %save the basis as a csv file
 vnames = cellfun(@(x) strcat('Time_', num2str(x)), num2cell(1:so.ntimesteps), 'UniformOutput', false);
 basis_mat = array2table(o_sub{1}.options.inF.gaussmat, 'VariableNames', vnames);
 
 if save_all
-writetable(basis_mat, sprintf('%s/%s_%s_%s_%s_%s_mfx_sceptic_basis.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext));
+writetable(basis_mat, sprintf('%s/%s_%s_%s_%s_%s_%s_mfx_sceptic_basis.csv', so.output_dir, so.dataset, so.model, infotext, tempgentext, factortext,sticktext));
 
 %save group outputs
-save(sprintf('%s/group_fits_%s_%s_%s_%s_%s', so.output_dir, so.model, so.dataset,infotext, tempgentext, factortext), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
+save(sprintf('%s/group_fits_%s_%s_%s_%s_%s_%s', so.output_dir, so.model, so.dataset,infotext, tempgentext, factortext,sticktext), 'ids', 'so', 's_all', 'group_global', 'group_trial_level');
 
 %sprintf('_%s_%s_%s_vba_mfx_results_settings.mat', infotext, tempgentext, factortext)
 
 %too huge to save into one .mat file
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_results_psub.mat', infotext, tempgentext, factortext)], 'p_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_results_pgroup.mat', infotext, tempgentext, factortext)], 'p_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_results_ogroup.mat', infotext, tempgentext, factortext)], 'o_group', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_results_osub.mat', infotext, tempgentext, factortext)], 'o_sub', '-v7.3');
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_results_settings.mat', infotext, tempgentext, factortext)], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_results_psub.mat', infotext, tempgentext, factortext,sticktext)], 'p_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_results_pgroup.mat', infotext, tempgentext, factortext,sticktext)], 'p_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_results_ogroup.mat', infotext, tempgentext, factortext,sticktext)], 'o_group', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_results_osub.mat', infotext, tempgentext, factortext,sticktext)], 'o_sub', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_results_settings.mat', infotext, tempgentext, factortext,sticktext)], 'priors_group', 'options_group', 'y_all', 'u_all', 'ids', '-v7.3');
 end
 F = o_group.within_fit.F;
 % just the L
-save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_vba_mfx_L.mat', infotext, tempgentext, factortext)], 'F', '-v7.3');
+save([so.output_dir, '/', so.dataset, '_', so.model, sprintf('_%s_%s_%s_%s_vba_mfx_L.mat', infotext, tempgentext, factortext,sticktext)], 'F', '-v7.3');
 
 
 end
