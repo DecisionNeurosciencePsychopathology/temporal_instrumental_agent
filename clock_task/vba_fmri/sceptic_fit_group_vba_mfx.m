@@ -1,7 +1,7 @@
 %loads in subjects' data and fits SCEPTIC models using VBA;
 close all;
 clear;  
-modelstorun={'selective_narrow_'};
+modelstorun={'_wide_'};
 save_all = 0;
 
 for i = length(modelstorun)
@@ -49,7 +49,7 @@ if (factorize)
     so.factorize_decay=1;
     factortext="factorize";
 else
-    so.factorize_decay=1;
+    so.factorize_decay=0;
     factortext="unfactorize";
 end
 
