@@ -1,7 +1,9 @@
 %loads in subjects' data and fits SCEPTIC models using VBA;
 close all;
 clear;  
-modelstorun={'_wide_'};
+
+% test selective wide maintenance/stick PE and uniform stick PE
+modelstorun={'selective_wide_factorize'};
 save_all = 0;
 
 for i = length(modelstorun)
