@@ -10,7 +10,7 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 is_jiazhouchen=strcmp(me,'jiazhouchen')==1;
 is_jiazhou_t=strcmp(me,'jiazhou')==1;
 % test selective wide maintenance/stick PE and uniform stick PE
-modelstorun={'selective_wide_factorize_stick','selective_narrow_factorize_stick','__factorize_stick'};
+modelstorun={'selective_wide_factorize_stick','selective____stick','____stick','selective_wide___stick','selective__factorize__stick'};
 save_all = 1;
 for i = 1:length(modelstorun)
     
@@ -44,23 +44,15 @@ end
 % PARAMETERIZATION; factorize decay/learning rate (1), don't (0)
 if (factorize)
     so.factorize_decay=1;
-    factortext="factorize";
+    factortext="factorized";
 else
     so.factorize_decay=0;
-    factortext="unfactorize";
-end
-
-if (factorize)
-    so.factorize_decay=1;
-    factortext="factorize";
-else
-    so.factorize_decay=0;
-    factortext="unfactorize";
+    factortext="unfactorized";
 end
 
 if (stick)
     so.stickPE=1;
-    sticktext="stickPE";
+    sticktext="stickPE_n";
 else
     so.stickPE=0;
     sticktext="gaussianPE";
@@ -147,6 +139,7 @@ else
 end
 
 ns = length(behavfiles);
+%ns = 1;
 y_all = cell(ns, 1);
 u_all = cell(ns, 1);
 options_all = cell(ns, 1);
@@ -182,6 +175,7 @@ priors_group.muX0 = zeros(so.nbasis*so.hidden_states,1); %have PE and decay as t
 priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_states); %have PE and decay as tag-along states
 priors_group.a_vX0 = Inf([1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
 priors_group.b_vX0 = zeros([1, so.nbasis*so.hidden_states]);
+
 
 [p_sub, o_sub, p_group, o_group] = VBA_MFX_parallel(y_all, u_all, so.evo_fname, so.obs_fname, dim, options_all, priors_group, options_group);
 %[p_sub, o_sub, p_group, o_group] = VBA_MFX(y_all, u_all, @h_sceptic_fixed_decay_fmri, @g_sceptic, dim, options_all, priors_group, options_group);

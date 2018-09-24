@@ -44,10 +44,10 @@ hist(sig(gamma),40); xlabel('decayNative')
 swu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_wide_unfactorized_vba_mfx_results_ogroup.mat');
 % uniform
 uwf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_factorized_vba_mfx_results_ogroup.mat');
-uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_unfactorized_vba_mfx_results_ogroup.mat');
+%uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_unfactorized_vba_mfx_results_ogroup.mat');
 % uNIFORM nARROW fACTORIZED
 unf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_narrow_factorized_vba_mfx_results_ogroup.mat');
-unu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uniform_narrow_unfactorize_vba_mfx_L.mat');
+unu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uniform_narrow_unfactorized_vba_mfx_L.mat');
 
 % test_swf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_wide_factorized_vba_mfx_results_osub.mat');
 % test_swu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_wide_unfactorized_vba_mfx_results_osub.mat');
@@ -56,20 +56,21 @@ unu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mm
 % 
 % test_snu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_selective_narrow_unfactorize_vba_mfx_results_osub.mat');
 % test_snu.o_sub{1}.options.inF
-test_unf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_narrow_factorized_vba_mfx_results_osub.mat');
-test_unf.o_sub{1}.options.inF
+%test_unf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_narrow_factorized_vba_mfx_results_osub.mat');
+%test_unf.o_sub{1}.options.inF
 
-test_uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_unfactorized_vba_mfx_results_osub.mat');
-test_uwu.o_sub{1}.options.inF
+%test_uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uni_wide_unfactorized_vba_mfx_results_osub.mat');
+%test_uwu.o_sub{1}.options.inF
 %% snu is in fact snf
 
 %% need to run
-swf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_selective_wide_factorize_vba_mfx_L.mat');
+swf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_selective_wide_factorized_vba_mfx_L.mat');
 %%
 
 snf = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_narrow_factorized_vba_mfx_L.mat');
 snu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_selective_narrow_unfactorize_vba_mfx_L.mat');
-uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uniform_wide_unfactorize_vba_mfx_L.mat');
+uwu = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/uniform/mmclock_fmri_decay_uniform_wide_unfactorized_vba_mfx_L.mat');
+swfS = load('~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/selective/mmclock_fmri_decay_selective_wide_factorized_stickPE_n_vba_mfx_L.mat');
 Lswf = swf.F;
 Lswu = swu.o_group.within_fit.F;
 Lsnu  = snu.F;
@@ -79,7 +80,7 @@ Luwu = uwu.F;
 % Luwu = uwu.o_group.within_fit.F;
 Lunf = unf.o_group.within_fit.F;
 Lunu = unu.F;
-
+LswfS = swfS.F;
 % % decay = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/decay/vba_mfx_results_ogroup.mat');
 % fixed = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/fixed/vba_mfx_results_ogroup.mat');
 % uniform = load('/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses/mmclock_fmri_decay_uniform_vba_mfx_results_ogroup.mat');
@@ -95,7 +96,7 @@ Lunu = unu.F;
 % Luni = uniform.o_group.within_fit.F;
 % Lwide = wide.o_group.within_fit.F;
 clear options;
-options.modelNames = {'SWF';'SWU';'SNF';'SNU';'UWF';'UWU';'UNF';'UNU'};
+options.modelNames = {'SWF';'SWU';'SNF';'SNU';'UWF';'UWU';'UNF';'UNU';'SWF_Stick'};
 % sel/uniform
 options.families{1} = 1:4;
 options.families{2} = 5:8;
@@ -105,11 +106,11 @@ options.families{2} = 5:8;
 % options.families{2} = [3:4,6:7]; % narrow
 % 
 % % factorized
-options.families{1} = [1,3,5,7]; % factorized
+options.families{1} = [1,3,5,7,9]; % factorized
 options.families{2} = [2,4,6,8]; % not
 
 
-[p,o] = VBA_groupBMC([Lswf; Lswu; Lsnf; Lsnu; Luwf;Luwu;Lunf;Lunu],options);
+[p,o] = VBA_groupBMC([Lswf; Lswu; Lsnf; Lsnu; Luwf;Luwu;Lunf;Lunu;LswfS],options);
 
 % ignore un-factorized models as theoretically insubstantial
 clear options;

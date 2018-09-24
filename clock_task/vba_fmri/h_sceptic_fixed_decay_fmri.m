@@ -12,7 +12,7 @@ function  [fx] = h_sceptic_fixed_decay_fmri(x_t, theta, u, inF)
 %   - fx: evolved basis values/heights (nbasis x 1)
 
 %transform from Gaussian posterior to relevant parameter distributions
-theta=transform_theta(theta, inF);
+theta = transform_theta(theta, inF);
 
 alpha = theta(1); %learning rate (transformed from Gaussian to 0..1)
 gamma = theta(2); %decay rate (transformed from Gaussian to 0..1)
@@ -51,26 +51,34 @@ reward = u(2); %obtained reward
 
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
 elig = gaussmf(inF.tvec, [sig_spread, rt]);
-eligStick = gaussmf(inF.tvec, [sig_spread/100, rt]);
+%eligStick = gaussmf(inF.tvec, [sig_spread/100, rt]);
 
 % for stick elig, place a Dirac delta at the rt
 
 % make up-sampled to 100 Hz space for dirac delta
 %compute sum of area under the curve of the gaussian function
 auc=sum(elig);
-aucStick = sum(eligStick);
+%aucStick = sum(eligStick);
 %divide gaussian update function by its sum so that AUC=1.0, then rescale to have AUC of a non-truncated basis
 %this ensures that eligibility is 0-1.0 for non-truncated update function, and can exceed 1.0 at the edge.
 %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
 %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
 elig=elig/auc*refspread;
-eligStick = eligStick/(aucStick)*refspread;
+%eligStick = eligStick/(aucStick)*refspread;
 %compute the intersection of the Gaussian spread function with the truncated Gaussian basis.
 %this is essentially summing the area under the curve of each truncated RBF weighted by the truncated
 %Gaussian spread function.
 e = sum(repmat(elig,inF.nbasis,1).*inF.gaussmat_trunc, 2);
-eStick = sum(repmat(eligStick,inF.nbasis,1).*inF.gaussmat_trunc, 2);
 
+
+rt_highres=str2double(num2str(rt*100));
+if rt_highres > 4000 
+   rt_highres = 4000; 
+end
+eStick = zeros(inF.nbasis, 1);
+for l =1:inF.nbasis
+        eStick(l,:) = inF.gaussmat_trunc_highres(l,rt_highres);
+end
 
 %compute prediction error, scaled by eligibility trace
 if inF.function_wise_pe
@@ -100,6 +108,8 @@ end
     % control whether last-RT region is selectively maintained vs. uniform decay
     if inF.uniform
         E = zeros(size(e)); % all weights decay uniformly
+    %elseif inF.stickPE
+    %    E = eStick;        
     else
         E = e; % weights inside eligibility trace are maintained
     end
@@ -112,6 +122,10 @@ end
     end
     w_new = w + alpha.*delta + decay;
     
-    fx=[w_new; delta; decay];
+   
+   
+
+   
+   fx=[w_new; delta; decay];
     
 end
