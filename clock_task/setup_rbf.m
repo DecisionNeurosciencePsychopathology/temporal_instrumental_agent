@@ -1,4 +1,4 @@
-function [c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread, margin_offset, basis_overlap, plot_rbf)
+function [c, sig, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread,gaussmat_highres,gaussmat_trunc_highres] = setup_rbf(ntimesteps, nbasis, prop_spread, margin_offset, basis_overlap, plot_rbf)
 % Shared function for setting up radial basis functions.
 %
 % Inputs:
@@ -26,6 +26,7 @@ if nargin < 4, margin_offset=.125; end %12.5% extension beyond min/max times
 if nargin < 5, basis_overlap=1.52; end %default of cohen's d of 1.52 between basis functions
 if nargin < 6, plot_rbf=0; end
 
+margin_offset_og=margin_offset;
 %Initialize time step vector and allocate for memory
 tvec=1:ntimesteps;
 
@@ -59,6 +60,25 @@ maxauc_all=max(sum(gaussmat, 2));
 maxauc_each=sum(gaussmat,2)*ones(1,length(tvec)); %outer product of vectors to allow for col-wise division below
 gaussmat_trunc=gaussmat./maxauc_each;
 %gaussmat_trunc=gaussmat_pdf;
+
+%construct high res gaussmat for stick model;
+
+%Initialize time step vector and allocate for memory
+tvec_highres=0.01:0.01:ntimesteps;
+gaussmat_highres = zeros(nbasis, length(tvec_highres));
+for j = 1:nbasis
+    gaussmat_highres(j,:) = gaussmf(tvec_highres,[sig c(j)]);
+end
+
+
+
+
+%version of gaussian where each function has AUC = 1.0 (PDF representation). Not currently used (MH Sep2015)
+%gaussmat_pdf=gaussmat./maxauc_all;
+%normalize RBFs to each have AUC = 1.0 within observed time interval
+%this is essentially a truncated Gaussian basis such that AUC = 1.0 for all basis functions within the discrete interval
+maxauc_each_hd=sum(gaussmat_highres,2)*ones(1,length(tvec_highres)); %outer product of vectors to allow for col-wise division below
+gaussmat_trunc_highres=gaussmat_highres./maxauc_each_hd;
 
 %basis functions at the edge are too sharp -- the agent is inflating value toward infinity. Need to soften the tails.
 %what if it's AUC=1.0 divided by some proportion of basis in the interval such that less gets downweighted?

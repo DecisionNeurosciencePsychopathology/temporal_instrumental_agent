@@ -28,7 +28,7 @@ options.GnTolFun = 1e-6;
 options.verbose=0; %don't show single subject fitting process
 
 %uses max prop spread parameter to obtain refspread in case where fit_propspread = 0;
-[~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, options.inF.max_prop_spread);
+[~, ~, options.inF.tvec, options.inF.sig_spread, options.inG.gaussmat, options.inF.gaussmat_trunc, options.inF.refspread,options.inG.gaussmat_highres, options.inF.gaussmat_trunc_highres] = setup_rbf(options.inF.ntimesteps, options.inF.nbasis, options.inF.max_prop_spread);
 
 options.inF.gaussmat = options.inG.gaussmat; %copy (non-truncated) gaussmat into inF
 
