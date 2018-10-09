@@ -30,102 +30,100 @@ v=w*ones(1,ntimesteps) .* inF.gaussmat;
 v_func = sum(v);
 
 if inF.fit_propspread
-    prop_spread = inF.max_prop_spread ./ theta(3); %0..max SD of Gaussian eligibility as proportion of interval
-    sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
-    
-    %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
-    refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
-    
-    %temporarily re-break the code to check replicability
-    %sig_spread = 1 ./ theta(3);
-    %refspread = inF.refspread;
+  prop_spread = inF.max_prop_spread ./ theta(3); %0..max SD of Gaussian eligibility as proportion of interval
+  sig_spread=prop_spread*range(inF.tvec); %determine SD of spread function in time units (not proportion)
+  
+  %if prop_spread is free, then refspread must be recomputed to get AUC of eligibility correct
+  refspread = sum(gaussmf(min(inF.tvec)-range(inF.tvec):max(inF.tvec)+range(inF.tvec), [sig_spread, median(inF.tvec)]));
+  
+  %temporarily re-break the code to check replicability
+  %sig_spread = 1 ./ theta(3);
+  %refspread = inF.refspread;
 else
-    sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
-    refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
+  sig_spread = inF.sig_spread; %precomputed sig_spread based on fixed prop_spread (see setup_rbf.m)
+  refspread = inF.refspread; %precomputed refspread based on fixed prop_spread
 end
 
 rt = u(1); %response time 0..40, but can be fractional
 reward = u(2); %obtained reward
 
-
-
 %compute gaussian spread function with mu = rts(i) and sigma based on free param prop_spread
 elig = gaussmf(inF.tvec, [sig_spread, rt]);
-%eligStick = gaussmf(inF.tvec, [sig_spread/100, rt]);
-
-% for stick elig, place a Dirac delta at the rt
 
 % make up-sampled to 100 Hz space for dirac delta
 %compute sum of area under the curve of the gaussian function
 auc=sum(elig);
-%aucStick = sum(eligStick);
+
 %divide gaussian update function by its sum so that AUC=1.0, then rescale to have AUC of a non-truncated basis
 %this ensures that eligibility is 0-1.0 for non-truncated update function, and can exceed 1.0 at the edge.
 %note: this leads to a truncated gaussian update function defined on the interval of interest because AUC
 %will be 1.0 even for a partial Gaussian where part of the distribution falls outside of the interval.
 elig=elig/auc*refspread;
-%eligStick = eligStick/(aucStick)*refspread;
+
 %compute the intersection of the Gaussian spread function with the truncated Gaussian basis.
 %this is essentially summing the area under the curve of each truncated RBF weighted by the truncated
 %Gaussian spread function.
 e = sum(repmat(elig,inF.nbasis,1).*inF.gaussmat_trunc, 2);
 
+%handle stick pe model, if requested
+if inF.stick_pe
+  %eligStick = gaussmf(inF.tvec, [sig_spread/100, rt]);
+  %aucStick = sum(eligStick);
+  %eligStick = eligStick/(aucStick)*refspread;
 
-rt_highres=str2double(num2str(rt*100));
-if rt_highres > 4000 
-   rt_highres = 4000; 
-end
-eStick = zeros(inF.nbasis, 1);
-for l =1:inF.nbasis
-        eStick(l,:) = inF.gaussmat_trunc_highres(l,rt_highres);
+  % for stick elig, place a Dirac delta at the rt
+
+  rescale_factor = inF.trial_length./inF.ntimesteps;
+  rt_highres=rt*rescale_factor;
+
+  %ensure that upsampled RT fits in trial window
+  if rt_highres > inF.trial_length, rt_highres = inF.trial_length; end
+  
+  eStick = zeros(inF.nbasis, 1);
+  for l=1:inF.nbasis
+    eStick(l,:) = inF.gaussmat_trunc_highres(l,rt_highres);
+  end
 end
 
 %compute prediction error, scaled by eligibility trace
 if inF.function_wise_pe
-    %%clunky to put this inside observation function
-    rtrnd=round(rt);
-    if rtrnd < 1
-        rtrnd = 1;
-    elseif rtrnd > ntimesteps
-        rtrnd = ntimesteps;
-    end
-    if inF.stickPE
-        delta = eStick.*(reward - v_func(rtrnd));
-    else
-        delta = e.*(reward - v_func(rtrnd));
-    end
+  %%clunky to put this inside observation function
+  rtrnd=round(rt);
+  if rtrnd < 1
+    rtrnd = 1;
+  elseif rtrnd > ntimesteps
+    rtrnd = ntimesteps;
+  end
+  
+  if inF.stick_pe
+    delta = eStick.*(reward - v_func(rtrnd));
+  else
+    delta = e.*(reward - v_func(rtrnd));
+  end
 else
-    if inF.stickPE
-        delta = eStick.*(reward - w);
-    else
-        delta = e.*(reward - w);
-    end
-        %   if inF.stickPE
-        % %       delta =
-        %   end
+  if inF.stick_pe
+    delta = eStick.*(reward - w);
+  else
+    delta = e.*(reward - w);
+  end
 end
-    
-    % control whether last-RT region is selectively maintained vs. uniform decay
-    if inF.uniform
-        E = zeros(size(e)); % all weights decay uniformly
-    %elseif inF.stickPE
-    %    E = eStick;        
-    else
-        E = e; % weights inside eligibility trace are maintained
-    end
-    
-    % introduce decay
-    if inF.factorize_decay
-        decay = -gamma.*alpha.*(1-E).*w;
-    else
-        decay = -gamma.*(1-E).*w;
-    end
-    w_new = w + alpha.*delta + decay;
-    
-   
-   
 
-   
-   fx=[w_new; delta; decay];
-    
+% control whether last-RT region is selectively maintained vs. uniform decay
+if inF.uniform
+  E = zeros(size(e)); % all weights decay uniformly
+else
+  E = e; % weights inside eligibility trace are maintained
+end
+
+% introduce decay
+if inF.factorize_decay
+  decay = -gamma.*alpha.*(1-E).*w;
+else
+  decay = -gamma.*(1-E).*w;
+end
+
+w_new = w + alpha.*delta + decay;
+
+fx=[w_new; delta; decay];
+
 end
