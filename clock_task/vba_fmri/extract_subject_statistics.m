@@ -12,7 +12,7 @@ s.V = posterior.muX((1:so.nbasis) + so.nbasis*0,:); %first set of hidden states
 s.PE = posterior.muX((1:so.nbasis) + so.nbasis*1,:); %second set of hidden states
 
 if so.hidden_states == 3
-  s.decay = posterior.muX((1:so.nbasis) + so.nbasis*2,:); %third set of hidden states
+  s.D = posterior.muX((1:so.nbasis) + so.nbasis*2,:); %third set of hidden states
 end
 
 %% posterior parameter estimates

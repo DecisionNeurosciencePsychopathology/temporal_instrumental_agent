@@ -103,9 +103,9 @@ for i = 1:ns
     t_tbl = horzcat(t_tbl, vcell);
   end
   
-  if isfield(this_subj, 'decay')
+  if isfield(this_subj, 'D')
     vnames = cellfun(@(x) strcat('D_', num2str(x)), num2cell(1:nbasis), 'UniformOutput', false);
-    vcell = array2table(this_subj.V', 'VariableNames', vnames);
+    vcell = array2table(this_subj.D', 'VariableNames', vnames);
     t_tbl = horzcat(t_tbl, vcell);
   end
   

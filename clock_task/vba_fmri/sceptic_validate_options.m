@@ -57,6 +57,12 @@ function [so] = sceptic_validate_options(so)
     so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
     so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
     so.theta_names={'alpha', 'gamma'};
+  elseif strcmpi(so.model,'decay_ps_equate')
+    so.evo_fname = @h_sceptic_fixed_decay_fmri;
+    so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
+    so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+    so.theta_names={'alpha', 'gamma'};
+    so.max_prop_spread = -1;
   elseif strcmpi(so.model,'fixed_UV')
     so.evo_fname = @h_sceptic_kalman_fmri;
     so.hidden_states=3; %track basis weights (value), as well as PE and uncertainty
@@ -68,6 +74,19 @@ function [so] = sceptic_validate_options(so)
     so.n_theta=2; %learning rate and selective maintenance
     so.theta_names={'alpha', 'gamma'};
     so.factorize_decay=1; %turn on factorized parameterization
+  elseif strcmpi(so.model, 'decay_uniform')
+    so.evo_fname = @h_sceptic_fixed_decay_fmri;
+    so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
+    so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+    so.theta_names={'alpha', 'gamma'};
+    so.uniform=1; %uniform decay
+  elseif strcmpi(so.model, 'decay_uniform_ps_equate')
+    so.evo_fname = @h_sceptic_fixed_decay_fmri;
+    so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
+    so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+    so.theta_names={'alpha', 'gamma'};
+    so.uniform=1; %uniform decay
+    so.max_prop_spread = -1; %equate SD to underlying basis
   end
   
   so.obs_fname = @g_sceptic; %just regular softmax observation rule for now

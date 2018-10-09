@@ -44,9 +44,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   })
 
   #value of the chosen time bin (action)
-  v_chosen <- unname(sapply(1:nrow(v_func), function(r) {
-    v_func[r, y_chosen[r]]
-  }))
+  v_chosen <- unname(sapply(1:nrow(v_func), function(r) { v_func[r, y_chosen[r]] }))
 
   #calculate entropy of the basis weights (as in the Cognition paper)
   v_entropy <- apply(v_mat, 1, function(basis_weights) {
@@ -87,6 +85,15 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     }
   })
 
+  #Note that because PE is calculated as a function of the value curve, it's possible that the max/min PE is
+  #not the PE of the chosen timestep. They tend to be highly correlated, but here's the PE of the chosen timestep.
+  #Because the PE columns are right shifted by 1 compared to y_chosen, we need to align them here or we will not be grabbing
+  #the right element of pe_func that corresponds to y_chosen
+  y_chosen_prev <- trial_df %>% select(id, asc_trial) %>% bind_cols(y_chosen=y_chosen) %>% group_by(id) %>%
+    mutate(y_chosen_prev=lag(y_chosen, order_by=asc_trial)) %>% pull(y_chosen_prev)
+  
+  pe_chosen <- sapply(1:nrow(pe_func), function(r) { pe_func[r, y_chosen_prev[r]] })
+  
   #####
   # Decay statistics
   d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
@@ -107,17 +114,17 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #This is necessary to get the t versus t-1 in the evolution of learning in VBA.
   
   #Consequently, the PE of trial 1 is actually in position 2, etc. And, for now, the PE and D of the last trial (50) is not collected/estimated
-  #Thus, flip the first trial (value of 0) to the end (currently unspecified/not estimated)
 
   #compile trial statistics
   trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
-      v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, d_auc=d_auc) %>%
+      v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen, d_auc=d_auc) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
       score=lead(score_next, 1, order_by=asc_trial), #same for score
-      pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE
+      pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE_max
+      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial), #same for PE_chosen
       d_auc=lead(d_auc, 1, order_by=asc_trial) #same for DAUC
     ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score)
 

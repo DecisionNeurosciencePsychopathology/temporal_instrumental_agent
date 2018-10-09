@@ -12,7 +12,6 @@ is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
-so.uniform = 1;
 so = sceptic_validate_options(); %initialize and validate sceptic fitting settings
 
 

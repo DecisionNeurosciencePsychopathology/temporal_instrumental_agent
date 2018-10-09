@@ -4,8 +4,9 @@ library(readr)
 
 trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
 
-datasets <- c("mmclock_meg", "mmclock_fmri")
-models <- c("decay", "fixed", "decay_factorize")
+#datasets <- c("mmclock_meg", "mmclock_fmri")
+datasets <- c("mmclock_fmri")
+models <- c("decay", "fixed", "decay_factorize", "decay_uniform", "decay_ps_equate", "decay_uniform_ps_equate")
 fitting <- c("ffx", "mfx")
 
 for (d in datasets) {
