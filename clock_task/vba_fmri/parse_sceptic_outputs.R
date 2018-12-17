@@ -100,7 +100,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   if (ncol(d_mat) > 0) { #will be absent for non-decay models
     d_func <- d_mat %*% basis
     d_auc <- apply(d_mat, 1, function(r) {
-      if (sd(r) < .1) {
+      if (sd(r) < .001) {
         return(NA)
       } else {
         return(sum(r))

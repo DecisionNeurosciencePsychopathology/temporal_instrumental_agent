@@ -11,7 +11,9 @@ is_alex=strcmp(me,'Alex')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
-so = sceptic_validate_options(); %initialize and validate sceptic fitting settings
+%so.model='decay_factorize_selective_psequate_fixedparams';
+so=[];
+so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 
 %% set environment and define file locations
 if is_alex

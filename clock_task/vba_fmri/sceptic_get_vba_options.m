@@ -62,7 +62,7 @@ dim = struct('n', so.hidden_states * so.nbasis, ...
   'n_t', n_t);
 
 %%populate priors
-priors = sceptic_get_priors(dim);
+priors = sceptic_get_priors(dim, so);
 
 options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)

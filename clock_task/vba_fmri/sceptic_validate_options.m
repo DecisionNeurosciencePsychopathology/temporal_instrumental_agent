@@ -11,7 +11,7 @@ function [so] = sceptic_validate_options(so)
 
   %if user specifies a dataset upstream, don't check environment variable
   if isfield(so, 'sceptic_dataset')
-    fprintf('Using user-specified dataset: %s.\n   Will not check sceptic_dataset environment variable', so.sceptic_dataset);
+    fprintf('Using user-specified dataset: %s.\n   Will not check sceptic_dataset environment variable.\n', so.sceptic_dataset);
   else
     so.dataset=getenv('sceptic_dataset');
     if strcmpi(so.dataset, '')
@@ -20,8 +20,8 @@ function [so] = sceptic_validate_options(so)
   end
   
   %same principle for model variant
-  if isfield(so, 'sceptic_model')
-    fprintf('Using user-specified model: %s.\n   Will not check sceptic_model environment variable', so.sceptic_model);
+  if isfield(so, 'model')
+    fprintf('Using user-specified model: %s.\n   Will not check sceptic_model environment variable.\n', so.model);
   else
     so.model=getenv('sceptic_model');
     if strcmpi(so.model, '')
@@ -58,19 +58,21 @@ function [so] = sceptic_validate_options(so)
     so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
     so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
     so.theta_names={'alpha', 'gamma'};
+
+    %model variants for factorize, equate prop sprad, uniform decay
+    if contains(so.model, 'factorize'), so.factorize_decay=1; end %factorize alpha + decay
+    if contains(so.model, 'separate'), so.factorize_decay=0; end
+
+    if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
+    if contains(so.model, 'selective'), so.uniform=0; end %selective decay
   elseif strcmpi(so.model,'fixed_UV')
     so.evo_fname = @h_sceptic_kalman_fmri;
     so.hidden_states=3; %track basis weights (value), as well as PE and uncertainty
     so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
     so.theta_names={'tau', 'alpha'};
   end
-  
-  %model variants for factorize, equate prop sprad, uniform decay
-  if contains(so.model, 'factorize'), so.factorize_decay=1; end %factorize alpha + decay
-  
-  if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to underlying basis
     
-  if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
+  if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to underlying basis
   
   if contains(so.model, 'stickpe'), so.stick_pe=1; end
   
