@@ -384,7 +384,7 @@ end
 fprintf([' done.','\n'])
 o_group.date = clock;
 o_group.dt = toc(o_group.tStart);
-o_group.options.binomial = o_sub{1}.options.binomial;
+o_group.options.sources = o_sub{1}.options.sources;
 
 fprintf('adding diagnostics and h0 fits\n');
 F_all = NaN(1, ns);
@@ -450,7 +450,11 @@ m = m0;
 V(indrfx,indrfx) = VBA_inv(iV0(indrfx,indrfx)+ns*iQ);
 m(indrfx) = V(indrfx,indrfx)*(iV0(indrfx,indrfx)*m0(indrfx)+iQ*sm);
 a(indrfx) = a0(indrfx) + 0.5*ns;
-b(indrfx) = b0(indrfx) + 0.5*(sv(indrfx)+ns*diag(V(indrfx,indrfx)));
+% b(indrfx) = b0(indrfx) + 0.5*(sv(indrfx)+ns*diag(V(indrfx,indrfx)));
+% fix: do not index because 'sv' is by definition updated only for the rfx
+%      parameters
+b(indrfx) = b0(indrfx) + 0.5*(sv+ns*diag(V(indrfx,indrfx))); % do not index sv b
+
 % FFX
 if ~isempty(indffx)
     tmp = VBA_inv(sP);
