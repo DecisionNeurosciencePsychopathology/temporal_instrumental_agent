@@ -5,12 +5,20 @@ function [priors] = sceptic_get_priors(dim, so)
   priors.a_sigma = 1;     % Jeffrey's prior
   priors.b_sigma = 1;     % Jeffrey's prior
 
-  if strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams')
+  if strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_fmri')
     %fix params at group means from MFX
     priors.muPhi = [ 2.576046 ];
     priors.SigmaPhi = zeros(dim.n_phi);
 
     priors.muTheta = [ -0.4139055; -0.02077855 ];
+    priors.SigmaTheta = zeros(dim.n_theta);
+
+  elseif strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_meg')
+    %fix params at group means from MFX
+    priors.muPhi = [ 2.473331 ]; %beta
+    priors.SigmaPhi = zeros(dim.n_phi); 
+
+    priors.muTheta = [ -0.2807462; 0.5393902 ]; %alpha, gamma
     priors.SigmaTheta = zeros(dim.n_theta);
   else
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform on temperature inside observation fx

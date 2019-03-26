@@ -11,7 +11,8 @@ is_alex=strcmp(me,'Alex')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
-%so.model='decay_factorize_selective_psequate_fixedparams';
+%so.model='decay_factorize_selective_psequate_fixedparams_fmri';
+so.model='decay_factorize_selective_psequate_fixedparams_meg';
 so=[];
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 

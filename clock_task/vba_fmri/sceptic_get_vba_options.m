@@ -68,8 +68,7 @@ options.priors = priors;
 options.inG.priors = priors; %copy priors into inG for parameter transformation (e.g., Gaussian -> uniform)
 
 if so.multinomial
-  options.sources(1) = struct('out', 1:so.ntimesteps, 'type', 2);
-  options.binomial = 1; %multinomial fitting
+  options.sources(1) = struct('out', 1:so.ntimesteps, 'type', 2); %multinomial fitting
 end
 
 end
