@@ -20,6 +20,13 @@ function [priors] = sceptic_get_priors(dim, so)
 
     priors.muTheta = [ -0.2807462; 0.5393902 ]; %alpha, gamma
     priors.SigmaTheta = zeros(dim.n_theta);
+  elseif strcmpi(so.model, 'specc_decay_factorize_selective_psequate_fixedparams')
+    %fix params at group medians from MFX
+    priors.muPhi = [ 2.482078 ]; %median beta
+    priors.SigmaPhi = zeros(dim.n_phi); 
+
+    priors.muTheta = [ -0.5212639; 0.4397096 ]; %median alpha, gamma
+    priors.SigmaTheta = zeros(dim.n_theta);
   else
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform on temperature inside observation fx
     priors.SigmaPhi = 1e1*eye(dim.n_phi); %variance of 10

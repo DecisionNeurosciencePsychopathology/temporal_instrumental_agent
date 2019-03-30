@@ -10,21 +10,21 @@ if nargin < 7, vprior = 0; end %zero priors (0) or random priors(1)
 [c, ~, tvec, sig_spread, gaussmat, gaussmat_trunc, refspread] = setup_rbf(ntimesteps, nbasis, prop_spread);
 fprintf('basis centers\n');
 fprintf('%.2f, ', c);
-alpha=.05;
+alpha=.1;
 beta = 10; %typical softmax inverse temperature
 %draw a random sample from the phase-shifted sinusoids for each replication
 str = load('mastersamp_equateauc.mat');
-ev = str.mastersamp_equateauc.IEV.ev;
-prb = str.mastersamp_equateauc.IEV.prb;
-mag = str.mastersamp_equateauc.IEV.mag;
+ev = str.mastersamp_equateauc.DEV.ev;
+prb = str.mastersamp_equateauc.DEV.prb;
+mag = str.mastersamp_equateauc.DEV.mag;
 
-% ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
-% ev = ev + abs(min(ev)) + 10;
-% prb = 25*cos(2*pi*(1:ntimesteps).*1/ntimesteps) + 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps) + 6*sin(2*pi*(1:ntimesteps)*5/ntimesteps);
-% prb_max=0.7;
-% prb_min=0.3;
-% prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
-% mag = ev./prb;
+ev = 10*sin(2*pi*(1:ntimesteps).*1/ntimesteps) + 2.5*sin(2*pi*(1:ntimesteps)*2/ntimesteps) + 2.0*cos(2*pi*(1:ntimesteps)*4/ntimesteps);
+ev = ev + abs(min(ev)) + 10;
+prb = 25*cos(2*pi*(1:ntimesteps).*1/ntimesteps) + 10*cos(2*pi*(1:ntimesteps)*3/ntimesteps) + 6*sin(2*pi*(1:ntimesteps)*5/ntimesteps);
+prb_max=0.7;
+prb_min=0.3;
+prb = (prb - min(prb))*(prb_max-prb_min)/(max(prb)-min(prb)) + prb_min;
+mag = ev./prb;
 
 %shift sinusoid randomly each call
 % offset=randi([0, ntimesteps], 1, 1);
@@ -163,6 +163,7 @@ end
         auc=sum(elig);
         elig=elig/auc*refspread;
         e_ij = sum(repmat(elig,nbasis,1).*gaussmat_trunc, 2);
+        vxx = repmat(elig,nbasis,1).*gaussmat_trunc;
         
         if peversion == 0
             %PE version 1: familiar e*(rew - Vb)
