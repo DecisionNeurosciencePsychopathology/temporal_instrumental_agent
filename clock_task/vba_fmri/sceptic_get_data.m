@@ -1,6 +1,7 @@
 function [data, y, u] = sceptic_get_data(data_file, so)
 if(strcmpi(so.dataset,'explore'))
     load(data_file,'-mat','order','orderfmt')
+    order=order(~cellfun('isempty',order));
     outx=cellfun(@cell2table, order, 'UniformOutput', false);
     data=vertcat(outx{:});
     data.Properties.VariableNames=orderfmt;
