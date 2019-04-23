@@ -17,7 +17,8 @@ if is_alex
   
   addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 elseif is_jiazhouchen
-  sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/MatlabStation/tia/clock_task/');
+  sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/RStation/temporal_instrumental_agent/clock_task/');
+  boxdir = sprintf('/Users/%s/Box',me);
 else
   %ICS-ACI setup
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
@@ -35,6 +36,9 @@ elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
 elseif strcmpi(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
+elseif strcmpi(so.dataset,'explore')
+    rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
+    behavfiles = glob([rootdir, '/*/*.mat']);
 end
 
 if is_alex
