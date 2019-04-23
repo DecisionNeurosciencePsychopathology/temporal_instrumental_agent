@@ -37,7 +37,7 @@ if ~isfield(so, 'fit_propspread'), so.fit_propspread=0; end
 if ~isfield(so, 'max_prop_spread'), so.max_prop_spread = .0125; end %used for fixed propspread case
 if ~isfield(so, 'stick_pe'), so.stick_pe=0; end %spread PE by eligibility
 if ~isfield(so, 'ntimesteps')
-    if strcmpi(so.model,'explore')
+    if strcmpi(so.dataset,'explore')
         so.ntimesteps=50;
     else
         so.ntimesteps=40;
@@ -47,14 +47,14 @@ if ~isfield(so, 'u_aversion'), so.u_aversion=1; end  % default based on Cognitio
 if ~isfield(so, 'graphics'), so.graphics=0; end
 if ~isfield(so, 'model'), so.model='fixed'; end
 if ~isfield(so, 'trials_per_run')
-    if strcmpi(so.model,'explore')
+    if strcmpi(so.dataset,'explore')
         so.trials_per_run=120;
     else
         so.trials_per_run=50;
     end
 end
 if ~isfield(so, 'trial_length')  %trial length in ms (used for discretizing to bins)
-    if strcmpi(so.model,'explore')
+    if strcmpi(so.dataset,'explore')
         so.trial_length=5000;
     else
         so.trial_length=4000;

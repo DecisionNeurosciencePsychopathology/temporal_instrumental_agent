@@ -11,7 +11,7 @@ is_jiazhouchen=strcmp(me,'jiazhouchen')==1;
 if is_alex
   if  strcmp(me,'Alex')
     sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
-      boxdir = sprintf('/Users/%s/Box',me);
+      boxdir = sprintf('/Users/localadmin/Box Sync');
   else
     sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task', me);
   end
@@ -46,7 +46,7 @@ if is_alex
   if strcmp(me,'dombax')
     so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
   else
-    so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+    so.output_dir = '/Users/localadmin/Box Sync/skinner/projects_analyses/SCEPTIC/fMRI_paper/vba_output';
   end
 elseif is_jiazhouchen
   so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
