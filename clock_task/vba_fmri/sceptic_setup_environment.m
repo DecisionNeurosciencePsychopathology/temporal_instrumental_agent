@@ -11,6 +11,7 @@ is_jiazhouchen=strcmp(me,'jiazhouchen')==1;
 if is_alex
   if  strcmp(me,'Alex')
     sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
+      boxdir = sprintf('/Users/%s/Box',me);
   else
     sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task', me);
   end
