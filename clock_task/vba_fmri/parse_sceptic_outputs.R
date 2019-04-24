@@ -4,6 +4,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   require(entropy)
   require(LaplacesDemon)
   sceptic_files <- list.files(path=outdir, pattern=".*sceptic.*\\.csv", full.names=TRUE)
+  isexplore<-any(grepl("explore",sceptic_files))
   basis_file <- grep("basis.csv", sceptic_files, fixed=TRUE, value=TRUE)
   global_file <- grep("global_statistics.csv", sceptic_files, fixed=TRUE, value=TRUE)
   trial_file <- grep("trial_outputs_by_timestep.csv", sceptic_files, fixed=TRUE, value=TRUE)
@@ -23,7 +24,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   #####
   # Expected value statistics
-  
+
   v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
   #put value back onto time grid
@@ -54,11 +55,11 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     entropy <- -sum(nz * log10(nz))
     return(entropy)
   })
-  
+
   #calculate entropy on the full value function, discretizing into 20 bins
   v_entropy_func <- apply(v_func, 1, function(r) {
-    if (all(is.na(r)) || sd(r) < .01) { #essentially no variability, so hard to say there's a max 
-      return(NA) 
+    if (all(is.na(r)) || sd(r) < .01) { #essentially no variability, so hard to say there's a max
+      return(NA)
     } else {
       #normalize entropy by discretizing into 20 bins
       dd <- discretize(r, numBins=20)
@@ -82,7 +83,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
 
   kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
-    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()    
+    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
     v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
     if (sum(v_cur) < .001 || sum(v_lag) < .001) {
       kld <- c(NA, NA, NA, NA)
@@ -93,7 +94,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
       #KLD.px.py is distance from py (lag) to px (cur) here. New learning
       #KLD.py.px is distance from px (cur) to py (lag) here. Forgetting
       kld <- c(kl_out$mean.sum.KLD, kl_out$intrinsic.discrepancy,
-        kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
+               kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
     }
     return(kld)
   })
@@ -111,9 +112,9 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     #note that this returns NA if there was no V in the time bin and an omission occurs
     #this should probably be a zero PE, not NA
     #if (sd(r) < .1) {
-    #  return(NA) 
+    #  return(NA)
     #} else if (min(r) >= 0) {
-    
+
     if (min(r) >= 0) {
       return(max(r)) #positive PE
     } else {
@@ -127,9 +128,9 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #the right element of pe_func that corresponds to y_chosen
   y_chosen_prev <- trial_df %>% select(id, asc_trial) %>% bind_cols(y_chosen=y_chosen) %>% group_by(id) %>%
     mutate(y_chosen_prev=lag(y_chosen, order_by=asc_trial)) %>% pull(y_chosen_prev)
-  
+
   pe_chosen <- sapply(1:nrow(pe_func), function(r) { pe_func[r, y_chosen_prev[r]] })
-  
+
   #####
   # Decay statistics
   d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
@@ -141,20 +142,20 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
       } else {
         return(sum(r))
       }
-    })    
+    })
   } else {
     d_auc <- NULL #so that bind_cols proceeds
   }
 
   #For PE- AND D-based statistics, these have been right-shifted by 1 position (in u) to line up the inputs and outputs in SCEPTIC VBA fitting.
   #This is necessary to get the t versus t-1 in the evolution of learning in VBA.
-  
+
   #Consequently, the PE of trial 1 is actually in position 2, etc. And, for now, the PE and D of the last trial (50) is not collected/estimated
 
   #compile trial statistics
   trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
-      v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen, d_auc=d_auc) %>%
+              v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen, d_auc=d_auc) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
@@ -168,10 +169,19 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   attr(trial_stats, "spec") <- NULL
 
   #merge with original data
-  subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=FALSE)
+  if(isexplore){
+    subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=TRUE)
+  } else {
+    subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=FALSE)
+  }
   subj_data <- bind_rows(lapply(subj_files, function(ff) {
     df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score) %>% mutate(asc_trial=1:n()) #asc_trial used to match with vba outputs
-    df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+    if(isexplore){
+      a<-strsplit(ff,.Platform$file.sep)[[1]]
+      df$id<-a[length(a)-1]
+    } else {
+      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+    }
     df <- df %>% select(id, run, asc_trial, rewFunc, emotion, everything())
     return(df)
   }))
@@ -179,6 +189,6 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   trial_stats <- trial_stats %>% left_join(subj_data, by=c("id", "asc_trial")) %>%
     select(dataset, model, id, run, trial, asc_trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
     arrange(dataset, model, id, trial)
-  
+
   return(trial_stats)
 }

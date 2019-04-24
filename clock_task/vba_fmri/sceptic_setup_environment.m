@@ -49,7 +49,7 @@ if is_alex
     so.output_dir = '/Users/localadmin/Box Sync/skinner/projects_analyses/SCEPTIC/fMRI_paper/vba_output';
   end
 elseif is_jiazhouchen
-  so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+  so.output_dir = fullfile(boxdir,'skinner/projects_analyses/SCEPTIC/fMRI_paper/vba_output');
 else
   so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/mfx/', so.model];
   if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end

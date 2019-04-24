@@ -5,6 +5,7 @@ if(strcmpi(so.dataset,'explore'))
     outx=cellfun(@cell2table, order, 'UniformOutput', false);
     data=vertcat(outx{:});
     data.Properties.VariableNames=orderfmt;
+    writetable(data,strrep(data_file,'.mat','.csv'))
 else
     data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
 end
