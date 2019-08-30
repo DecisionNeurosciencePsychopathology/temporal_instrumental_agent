@@ -36,7 +36,11 @@ function [priors] = sceptic_get_priors(dim, so)
   end
   
   %0 mean and variance on initial states
-  priors.muX0 = zeros(dim.n,1);
+  priors.muX0 = zeros(dim.n,1); %nbasis * hidden_states
   priors.SigmaX0 = zeros(dim.n);
-
+  
+  %for u + v models, we need to initialize the sigmas at sigma_noise
+  %this is done downstream in clock_sceptic_fmri
+  
+  
 end

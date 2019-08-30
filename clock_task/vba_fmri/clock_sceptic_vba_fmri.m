@@ -30,6 +30,15 @@ end
 sigma_noise = mean(sigma_noise);
 vba_options.inF.sigma_noise = sigma_noise;
 
+%populate sigmas with sigma_noise as prior
+if ismember(so.model, {'fixed_uv', 'fixed_uv_baked'})
+  hidden_state_index=1:so.hidden_states*so.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
+  hidden_state_index = reshape(hidden_state_index, so.nbasis, so.hidden_states); %3 x nbasis here
+  
+  %uncertainty is second hidden state
+  vba_options.priors.muX0(hidden_state_index(:,2)) = sigma_noise;
+end
+
 [posterior,out] = VBA_NLStateSpaceModel(y, u, so.evo_fname, so.obs_fname, dim, vba_options);
 
 posterior=add_transformed_params(posterior, so); %add transformed phi and mu into output objects

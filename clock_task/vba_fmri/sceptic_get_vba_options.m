@@ -1,13 +1,9 @@
 function [options, dim] = sceptic_get_vba_options(data, so)
-%% this function sets up the options and dim structures for VBA
-
-so=sceptic_validate_options(so); %should be handled upstream, but just in case
+% this function sets up the options and dim structures for VBA
+% so should be setup upstream by sceptic_validate_options
 
 options=[];
 priors=[];
-
-%% set up dim defaults
-n_phi = 1; %temperature
 
 if ~so.graphics
   options.DisplayWin = 0; %whether to display graphics during fitting
@@ -40,12 +36,12 @@ options.inF.n_runs = n_runs; %used downstream
 if so.multisession
   options.multisession.split = repmat(n_t/n_runs,1,n_runs);
   
-  %% fix parameters
+  % fix parameters
   if fixed_params_across_runs
     options.multisession.fixed.theta = 'all';
     options.multisession.fixed.phi = 'all';
     
-    %% allow unique initial values for each run?
+    % allow unique initial values for each run?
     options.multisession.fixed.X0 = 'all';
   end
 end
@@ -57,7 +53,7 @@ options.skipf(1) = 1;
 %% specify dimensions of data to be fit
 dim = struct('n', so.hidden_states * so.nbasis, ...
   'n_theta', so.n_theta + so.fit_propspread, ...
-  'n_phi', n_phi, ...
+  'n_phi', so.n_phi, ...
   'p', so.ntimesteps, ...
   'n_t', n_t);
 

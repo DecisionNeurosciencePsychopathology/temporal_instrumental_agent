@@ -91,21 +91,27 @@ for i = 1:ns
   t_tbl = table(repmat(this_subj.id, n_trials, 1), repmat(this_subj.sceptic_settings.dataset, n_trials, 1), ...
     repmat(this_subj.sceptic_settings.model, n_trials, 1), (1:n_trials)', 'VariableNames', {'id', 'dataset', 'model', 'asc_trial'});
   
-  if isfield(this_subj, 'V')
+  if isfield(this_subj, 'V') %value
     vnames = cellfun(@(x) strcat('V_', num2str(x)), num2cell(1:nbasis), 'UniformOutput', false);
     vcell = array2table(this_subj.V', 'VariableNames', vnames);
     t_tbl = horzcat(t_tbl, vcell);
   end
   
-  if isfield(this_subj, 'PE')
+  if isfield(this_subj, 'PE') %prediction error
     vnames = cellfun(@(x) strcat('PE_', num2str(x)), num2cell(1:nbasis), 'UniformOutput', false);
     vcell = array2table(this_subj.PE', 'VariableNames', vnames);
     t_tbl = horzcat(t_tbl, vcell);
   end
   
-  if isfield(this_subj, 'D')
+  if isfield(this_subj, 'D') %decay
     vnames = cellfun(@(x) strcat('D_', num2str(x)), num2cell(1:nbasis), 'UniformOutput', false);
     vcell = array2table(this_subj.D', 'VariableNames', vnames);
+    t_tbl = horzcat(t_tbl, vcell);
+  end
+  
+  if isfield(this_subj, 'U') %uncertainty estimates
+    vnames = cellfun(@(x) strcat('U_', num2str(x)), num2cell(1:nbasis), 'UniformOutput', false);
+    vcell = array2table(this_subj.U', 'VariableNames', vnames);
     t_tbl = horzcat(t_tbl, vcell);
   end
   

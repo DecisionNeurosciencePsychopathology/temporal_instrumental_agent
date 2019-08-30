@@ -1,19 +1,28 @@
 function [s] = extract_subject_statistics(posterior, out)
 s=[];
 
+%some subjects appear to have empty VBA results, which crashes group extraction
+if ~isfield(out, 'y')
+  error('fitting appears to have failed in this subject');
+end
+
 so = out.options.inF; %so elements should have been copied during sceptic_get_vba_options
 
 posterior=add_transformed_params(posterior, so);
 
 s.id = so.id;
 
-%% hidden states
-s.V = posterior.muX((1:so.nbasis) + so.nbasis*0,:); %first set of hidden states
-s.PE = posterior.muX((1:so.nbasis) + so.nbasis*1,:); %second set of hidden states
-
-if so.hidden_states == 3
-  s.D = posterior.muX((1:so.nbasis) + so.nbasis*2,:); %third set of hidden states
+%% populate hidden states
+for i = 1:so.hidden_states
+  s.(so.state_names{i}) = posterior.muX((1:so.nbasis) + so.nbasis*(i-1),:); %offset in hidden state vector
 end
+  
+% s.V = posterior.muX((1:so.nbasis) + so.nbasis*0,:); %first set of hidden states
+% s.PE = posterior.muX((1:so.nbasis) + so.nbasis*1,:); %second set of hidden states
+% 
+% if so.hidden_states == 3
+%   s.D = posterior.muX((1:so.nbasis) + so.nbasis*2,:); %third set of hidden states
+% end
 
 %% posterior parameter estimates
 s.muPhi = posterior.muPhi;

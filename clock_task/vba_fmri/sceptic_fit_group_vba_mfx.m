@@ -6,6 +6,7 @@ close all; clear;
 
 so = []; %you can set custom sceptic options here that will override the function below.
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
+so.mfx = 1; %for mfx subdir naming
 
 %setup paths, parallel pools, etc. based on user environment
 [so, poolobj, behavfiles] = sceptic_setup_environment(so);
@@ -13,6 +14,11 @@ so = sceptic_validate_options(so); %initialize and validate sceptic fitting sett
 %extract IDs for record keeping
 [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
 ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
+
+%zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
+maxlen = max(cellfun(@(x) strlength(x), ids));
+
+ids=cellfun(@(x) sprintf('%0*s', maxlen, x), ids, 'UniformOutput', false);
 
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
@@ -73,6 +79,9 @@ end
 s_all = cellfun(@(p, o) extract_subject_statistics(p, o), p_sub, o_sub, 'UniformOutput', false);
 
 %output MFX results
+
+%save group outputs
+save(sprintf('%s/group_fits_%s_%s', so.output_dir, so.model, so.dataset), 'ids', 'so', 's_all');
 
 [group_global, group_trial_level] = extract_group_statistics(s_all, ...
     sprintf('%s/%s_%s_mfx_sceptic_global_statistics.csv', so.output_dir, so.dataset, so.model), ...

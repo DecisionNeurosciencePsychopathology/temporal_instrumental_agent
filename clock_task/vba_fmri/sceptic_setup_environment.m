@@ -8,6 +8,18 @@ me = strtrim(me);
 is_alex= strcmp(me,'Alex')==1 || strcmp(me,'dombax')==1;
 is_jiazhouchen=strcmp(me,'jiazhouchen')==1;
 
+if ~isfield(so, 'mfx')
+  fprintf('assuming MFX fitting since so.mfx was not set\n');
+  so.mfx=1;
+end
+  
+%for subdir naming scheme
+if so.mfx==1
+  mfx_str='mfx';
+else
+  mfx_str='ffx';
+end
+
 if is_alex
   if  strcmp(me,'Alex')
     sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
@@ -34,7 +46,7 @@ if strcmpi(so.dataset,'mmclock_meg')
 elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
 elseif strcmpi(so.dataset,'specc')
-  behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
+  behavfiles = glob([sceptic_repo, '/subjects/specc/*.csv']);
 end
 
 if is_alex
@@ -46,7 +58,7 @@ if is_alex
 elseif is_jiazhouchen
   so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
 else
-  so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/mfx/', so.model];
+  so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/', mfx_str, '/', so.model];
   if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
 end
 

@@ -4,7 +4,8 @@ library(readr)
 
 trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
 
-datasets <- c("mmclock_meg", "mmclock_fmri")
+#datasets <- c("mmclock_meg", "mmclock_fmri")
+datasets <- c("specc")
 #datasets <- c("mmclock_fmri")
 #models <- c("decay", "fixed", "decay_factorize", "decay_uniform", "decay_ps_equate", "decay_uniform_ps_equate")
 models <- c("decay")
@@ -15,9 +16,10 @@ ps <- c("psnarrow", "psequate")
 
 mdf <- do.call(expand.grid, list(models, factorize, decay, ps))
 models <- apply(mdf, 1, paste, collapse="_")
-models <- c(models, "decay_factorize_selective_psequate_fixedparams_meg")
+#models <- c(models, "decay_factorize_selective_psequate_fixedparams_meg")
 #models <- c(models, "decay_factorize_selective_psequate_fixedparams_fmri")
-models <- c("decay_factorize_selective_psequate_fixedparams")
+#models <- c("decay_factorize_selective_psequate_fixedparams")
+models <- c("specc_decay_factorize_selective_psequate_fixedparams")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
 
 for (d in datasets) {

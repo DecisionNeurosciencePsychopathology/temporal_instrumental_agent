@@ -11,30 +11,17 @@ is_alex=strcmp(me,'Alex')==1;
 
 %note that this function looks for 'sceptic_dataset' and 'sceptic_model'
 %as environment variables so that this script can be scaled easily for batch processing
-%so.model='decay_factorize_selective_psequate_fixedparams_fmri';
-so.model='decay_factorize_selective_psequate_fixedparams_meg';
 so=[];
+%so.model='fixed_uv_baked';
+%so.model='decay_factorize_selective_psequate_fixedparams_fmri';
+%so.model='decay_factorize_selective_psequate_fixedparams_meg';
+so.mfx=0; %so that output dir is set properly to have 'ffx' in path
+
+%so.model='decay';
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 
-%% set environment and define file locations
-if is_alex
-  sceptic_repo='~/code/temporal_instrumental_agent/clock_task';
-  addpath(genpath('~/code/VBA-toolbox')); %setup VBA
-else
-  sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
-  addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
-end
-
-addpath(sceptic_repo); %has glob.m and setup_rbf.m
-
-group_dir=[sceptic_repo, '/subjects']; %not used for anything at the moment...
-if strcmpi(so.dataset,'mmclock_meg')
-  behavfiles = glob([sceptic_repo, '/subjects/mmclock_meg/*.csv']);
-elseif strcmpi(so.dataset,'mmclock_fmri')
-  behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
-elseif strcmpi(so.dataset,'specc')
-  behavfiles = glob([sceptic_repo, '/subjects/SPECC/*.csv']);
-end
+%setup paths, parallel pools, etc. based on user environment
+[so, poolobj, behavfiles] = sceptic_setup_environment(so);
 
 %extract IDs for record keeping
 [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
@@ -43,25 +30,11 @@ ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','m
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
 
-so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/ffx/', so.model];
-if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
-
 % Log evidence matrix
 L = NaN(1,length(behavfiles));
 
 % Subject statistics cell vector
 s_all = cell(1,length(behavfiles));
-
-%% setup parallel parameters
-ncpus=getenv('matlab_cpus');
-if strcmpi(ncpus, '')
-  ncpus=40;
-  fprintf('defaulting to 40 cpus because matlab_cpus not set\n');
-else
-  ncpus=str2double(ncpus);
-end
-
-poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
 
 % p = ProgressBar(length(behavfiles));
 
