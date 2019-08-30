@@ -5,6 +5,10 @@ close all; clear;
 % as environment variables so that this script can be scaled easily for batch processing
 
 so = []; %you can set custom sceptic options here that will override the function below.
+
+so.model='decay';
+so.dataset='explore';
+so.sceptic_dataset=so.dataset;
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 so.mfx = 1; %for mfx subdir naming
 
@@ -12,8 +16,13 @@ so.mfx = 1; %for mfx subdir naming
 [so, poolobj, behavfiles] = sceptic_setup_environment(so);
 
 %extract IDs for record keeping
-[~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
-ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
+
+if(strcmpi(so.dataset,'explore'))
+  ids=cellfun(@getexploreid,behavfiles,'UniformOutput', false);
+else
+  [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+  ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
+end
 
 %zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
 maxlen = max(cellfun(@(x) strlength(x), ids));
@@ -108,3 +117,4 @@ L = o_group.within_fit.F;
 
 % save just the log evidence, L
 save([so.output_dir, '/', so.dataset, '_', so.model, '_vba_mfx_L.mat'], 'L', '-v7.3');
+

@@ -83,6 +83,7 @@ writetable(overall, overall_fname)
 trial_stats=cell(1,ns);
 for i = 1:ns
   this_subj = s_array{i};
+  this_subj.id = convertCharsToStrings(this_subj.id);
   n_trials = size(this_subj.y,2);
   ntimesteps = this_subj.sceptic_settings.ntimesteps;
   nbasis = this_subj.sceptic_settings.nbasis;

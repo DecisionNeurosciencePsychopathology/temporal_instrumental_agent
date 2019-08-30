@@ -23,13 +23,15 @@ end
 if is_alex
   if  strcmp(me,'Alex')
     sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
+      boxdir = sprintf('/Users/localadmin/Box Sync');
   else
     sceptic_repo=sprintf('/Users/%s/code/temporal_instrumental_agent/clock_task', me);
   end
   
   addpath(genpath('~/code/VBA-toolbox')); %setup VBA
 elseif is_jiazhouchen
-  sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/MatlabStation/tia/clock_task/');
+  sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/RStation/temporal_instrumental_agent/clock_task/');
+  boxdir = sprintf('/Users/%s/Box',me);
 else
   %ICS-ACI setup
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
@@ -47,16 +49,19 @@ elseif strcmpi(so.dataset,'mmclock_fmri')
   behavfiles = glob([sceptic_repo, '/subjects/mmclock_fmri/*.csv']);
 elseif strcmpi(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/subjects/specc/*.csv']);
+elseif strcmpi(so.dataset,'explore')
+    rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
+    behavfiles = glob([rootdir, '/*/*.mat']);
 end
 
 if is_alex
   if strcmp(me,'dombax')
     so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
   else
-    so.output_dir = '~/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+    so.output_dir = '/Users/localadmin/Box Sync/skinner/projects_analyses/SCEPTIC/fMRI_paper/vba_output';
   end
 elseif is_jiazhouchen
-  so.output_dir = '/Volumes/bek/Box Sync/skinner/projects_analyses/SCEPTIC/mfx_analyses';
+  so.output_dir = fullfile(boxdir,'skinner/projects_analyses/SCEPTIC/fMRI_paper/vba_output');
 else
   so.output_dir = [sceptic_repo, '/vba_fmri/vba_out/', so.dataset, '/', mfx_str, '/', so.model];
   if ~exist(so.output_dir, 'dir'), mkdir(so.output_dir); end
