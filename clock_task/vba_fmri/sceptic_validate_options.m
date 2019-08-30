@@ -36,6 +36,7 @@ if ~isfield(so, 'fixed_params_across_runs'), so.fixed_params_across_runs=1; end
 if ~isfield(so, 'fit_propspread'), so.fit_propspread=0; end
 if ~isfield(so, 'max_prop_spread'), so.max_prop_spread = .0125; end %used for fixed propspread case
 if ~isfield(so, 'stick_pe'), so.stick_pe=0; end %spread PE by eligibility
+
 if ~isfield(so, 'ntimesteps')
     if strcmpi(so.dataset,'explore')
         so.ntimesteps=50;
@@ -43,9 +44,11 @@ if ~isfield(so, 'ntimesteps')
         so.ntimesteps=40;
     end
 end
+
 if ~isfield(so, 'u_aversion'), so.u_aversion=1; end  % default based on Cognition analyses
 if ~isfield(so, 'graphics'), so.graphics=0; end
 if ~isfield(so, 'model'), so.model='fixed'; end
+
 if ~isfield(so, 'trials_per_run')
     if strcmpi(so.dataset,'explore')
         so.trials_per_run=120;
@@ -53,37 +56,15 @@ if ~isfield(so, 'trials_per_run')
         so.trials_per_run=50;
     end
 end
+
 if ~isfield(so, 'trial_length')  %trial length in ms (used for discretizing to bins)
-    if strcmpi(so.dataset,'explore')
-        so.trial_length=5000;
-    else
-        so.trial_length=4000;
-    end
-<<<<<<< HEAD
+  if strcmpi(so.dataset,'explore')
+    so.trial_length=5000;
+  else
+    so.trial_length=4000;
   end
-  
-  if ~isfield(so, 'nbasis'), so.nbasis=24; end
-  if ~isfield(so, 'multinomial'), so.multinomial=1; end
-  if ~isfield(so, 'multisession'), so.multisession=0; end
-  if ~isfield(so, 'fixed_params_across_runs'), so.fixed_params_across_runs=1; end
-  if ~isfield(so, 'fit_propspread'), so.fit_propspread=0; end
-  if ~isfield(so, 'max_prop_spread'), so.max_prop_spread = .0125; end %used for fixed propspread case
-  if ~isfield(so, 'stick_pe'), so.stick_pe=0; end %spread PE by eligibility
-  if ~isfield(so, 'ntimesteps'), so.ntimesteps=40; end
-  if ~isfield(so, 'u_aversion'), so.u_aversion=1; end  % default based on Cognition analyses
-  if ~isfield(so, 'graphics'), so.graphics=0; end
-  if ~isfield(so, 'model'), so.model='fixed'; end
-  if ~isfield(so, 'trials_per_run'), so.trials_per_run=50; end
-  if ~isfield(so, 'trial_length'), so.trial_length=4000; end %trial length in ms (used for discretizing to bins)
-  if ~isfield(so, 'saveresults'), so.saveresults=0; end %used in some places to denote whether to save fitted outputs
-  if ~isfield(so, 'factorize_decay'), so.factorize_decay=0; end %whether to reparameterize decay model with alpha multiplying entire update
-  if ~isfield(so, 'function_wise_pe'), so.function_wise_pe=0; end %whether PE is computed compared to the evaluated value function (1) or the individual basis weight (0)
-  if ~isfield(so, 'uniform'), so.uniform=0; end %whether decay is uniform (1) or whether values are maintained within eligibility trace
-  
-  %hidden states field used to index hidden state vector inside evolution and observation functions
-  if strcmpi(so.model,'fixed')
-=======
 end
+
 if ~isfield(so, 'saveresults'), so.saveresults=0; end %used in some places to denote whether to save fitted outputs
 if ~isfield(so, 'factorize_decay'), so.factorize_decay=0; end %whether to reparameterize decay model with alpha multiplying entire update
 if ~isfield(so, 'function_wise_pe'), so.function_wise_pe=0; end %whether PE is computed compared to the evaluated value function (1) or the individual basis weight (0)
@@ -91,77 +72,58 @@ if ~isfield(so, 'uniform'), so.uniform=0; end %whether decay is uniform (1) or w
 
 %hidden states field used to index hidden state vector inside evolution and observation functions
 if strcmpi(so.model,'fixed')
->>>>>>> 7dca6a8faf6257d0fcc37b2180c297c4bb64de83
-    so.evo_fname = @h_sceptic_fixed_fmri;
-    so.hidden_states=2; %track basis weights (value), as well as PE as tag-along state
-    so.state_names={'V', 'PE'};
-    so.n_theta=1; %learning rate
-    so.theta_names={'alpha'};
+  so.evo_fname = @h_sceptic_fixed_fmri;
+  so.hidden_states=2; %track basis weights (value), as well as PE as tag-along state
+  so.state_names={'V', 'PE'};
+  so.n_theta=1; %learning rate
+  so.theta_names={'alpha'};
 elseif contains(so.model,'decay')
-    so.evo_fname = @h_sceptic_fixed_decay_fmri;
-    so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
-    so.state_names={'V', 'PE', 'D'};
-    so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
-    so.theta_names={'alpha', 'gamma'};
-    
-    %model variants for factorize, equate prop sprad, uniform decay
-    if contains(so.model, 'factorize'), so.factorize_decay=1; end %factorize alpha + decay
-    if contains(so.model, 'separate'), so.factorize_decay=0; end
-    
-    if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
-    if contains(so.model, 'selective'), so.uniform=0; end %selective decay
-<<<<<<< HEAD
-  elseif strcmpi(so.model,'fixed_uv')
-    so.evo_fname = @h_sceptic_kalman;
-    so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
-    so.state_names={'V', 'U', 'PE'};
-    so.n_theta=1; %learning rate alpha
-    so.theta_names={'alpha'};
-  elseif strcmpi(so.model, 'fixed_uv_baked')
-    so.evo_fname = @h_sceptic_kalman;
-    so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
-    so.state_names={'V', 'U', 'PE'};
-    so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
-    so.theta_names={'alpha', 'tau'}; %for baked, tau is in theta (learning rule)
-  end
-    
-  if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to underlying basis
+  so.evo_fname = @h_sceptic_fixed_decay_fmri;
+  so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
+  so.state_names={'V', 'PE', 'D'};
+  so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
+  so.theta_names={'alpha', 'gamma'};
   
-  if contains(so.model, 'stickpe'), so.stick_pe=1; end
+  %model variants for factorize, equate prop sprad, uniform decay
+  if contains(so.model, 'factorize'), so.factorize_decay=1; end %factorize alpha + decay
+  if contains(so.model, 'separate'), so.factorize_decay=0; end
   
-  %for 'true' fixed uv, the mixing of V and U should be in observation function
-  if strcmpi(so.model, 'fixed_uv')
-    so.obs_fname = @g_sceptic_uv; %just regular softmax observation rule for now
-    so.n_phi = 2;
-    so.phi_names = {'beta', 'tau'}; %temperature, uv mixing
-  else
-    %for all other models, just regular softmax on V
-    so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
-    so.n_phi = 1;
-    so.phi_names = {'beta'}; %temperature  
-  end
-  
-  if strcmpi(so.dataset, 'mmclock_meg')
-=======
-elseif strcmpi(so.model,'fixed_UV')
-    so.evo_fname = @h_sceptic_kalman_fmri;
-    so.hidden_states=3; %track basis weights (value), as well as PE and uncertainty
-    so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
-    so.theta_names={'tau', 'alpha'};
+  if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
+  if contains(so.model, 'selective'), so.uniform=0; end %selective decay
+elseif strcmpi(so.model,'fixed_uv')
+  so.evo_fname = @h_sceptic_kalman;
+  so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
+  so.state_names={'V', 'U', 'PE'};
+  so.n_theta=1; %learning rate alpha
+  so.theta_names={'alpha'};
+elseif strcmpi(so.model, 'fixed_uv_baked')
+  so.evo_fname = @h_sceptic_kalman;
+  so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
+  so.state_names={'V', 'U', 'PE'};
+  so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
+  so.theta_names={'alpha', 'tau'}; %for baked, tau is in theta (learning rule)
 end
 
 if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to underlying basis
 
 if contains(so.model, 'stickpe'), so.stick_pe=1; end
 
-so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
-so.phi_names = {'beta'}; %temperature
+%for 'true' fixed uv, the mixing of V and U should be in observation function
+if strcmpi(so.model, 'fixed_uv')
+  so.obs_fname = @g_sceptic_uv; %just regular softmax observation rule for now
+  so.n_phi = 2;
+  so.phi_names = {'beta', 'tau'}; %temperature, uv mixing
+else
+  %for all other models, just regular softmax on V
+  so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
+  so.n_phi = 1;
+  so.phi_names = {'beta'}; %temperature
+end
 
 if strcmpi(so.dataset, 'mmclock_meg')
->>>>>>> 7dca6a8faf6257d0fcc37b2180c297c4bb64de83
-    so.trials_per_run=63; %63 for MEG, 50 for fMRI
+  so.trials_per_run=63; %63 for MEG, 50 for fMRI
 else
-    so.trials_per_run=50;
+  so.trials_per_run=50;
 end
 
 end
