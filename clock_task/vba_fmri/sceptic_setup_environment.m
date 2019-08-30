@@ -36,6 +36,7 @@ else
   %ICS-ACI setup
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
   addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
+  boxdir = '';
 end
 
 addpath(sceptic_repo); %has glob.m and setup_rbf.m

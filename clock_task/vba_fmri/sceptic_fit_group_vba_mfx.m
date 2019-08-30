@@ -6,9 +6,10 @@ close all; clear;
 
 so = []; %you can set custom sceptic options here that will override the function below.
 
-so.model='decay';
-so.dataset='explore';
-so.sceptic_dataset=so.dataset;
+%so.model='decay';
+%so.dataset='explore';
+%so.sceptic_dataset=so.dataset;
+
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 so.mfx = 1; %for mfx subdir naming
 

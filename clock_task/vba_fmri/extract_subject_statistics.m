@@ -59,6 +59,10 @@ s.u = out.u;
 s.skipf = out.options.skipf;
 s.priors = out.options.priors;
 
+%% model-predicted responses
+s.y_pred = out.suffStat.gx; %model-predicted values for each y
+s.y_pred_priors = out.diagnostics.pgx; %model-predicted y at priors
+
 %remove large cell arrays of matrices for hidden state covariance (SigmaX),
 % state noise precision (iQx) and measurement noise precision (iQy)
 s.priors = rmfield(s.priors, {'SigmaX', 'iQx', 'iQy'}); 

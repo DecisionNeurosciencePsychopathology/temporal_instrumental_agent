@@ -19,6 +19,12 @@ if length(unique(n_phi)) ~= 1
   error('muPhi has inconsistent size across subjects in s_array');
 end
 
+%validate y output size
+n_y = cellfun(@(obj) size(obj.y, 1), s_array);
+if length(unique(n_y)) ~= 1
+  error('y has inconsistent size across subjects in s_array');
+end
+
 %validate parameter names
 par_names = cellfun(@(x) {x.sceptic_settings.theta_names{:}, x.sceptic_settings.phi_names{:}}, s_array, 'UniformOutput', false);
 if ~isequal(par_names{:})
@@ -29,13 +35,13 @@ end
 
 par_names_transformed=strcat(par_names, '_transformed');
 
-params = cellfun(@(x) num2cell([x.muTheta', x.muPhi]), s_array, 'UniformOutput', false);
-params_transformed = cellfun(@(x) num2cell([x.transformed.muTheta', x.transformed.muPhi]), s_array, 'UniformOutput', false);
+params = cellfun(@(x) num2cell([x.muTheta', x.muPhi']), s_array, 'UniformOutput', false);
+params_transformed = cellfun(@(x) num2cell([x.transformed.muTheta', x.transformed.muPhi']), s_array, 'UniformOutput', false);
 
 has_ffx = all(cellfun(@(x) isfield(x, 'muTheta_ffx'), s_array));
 if has_ffx
-  params_ffx = cellfun(@(x) num2cell([x.muTheta_ffx', x.muPhi_ffx]), s_array, 'UniformOutput', false);
-  params_transformed_ffx = cellfun(@(x) num2cell([x.transformed.muTheta_ffx', x.transformed.muPhi_ffx]), s_array, 'UniformOutput', false);
+  params_ffx = cellfun(@(x) num2cell([x.muTheta_ffx', x.muPhi_ffx']), s_array, 'UniformOutput', false);
+  params_transformed_ffx = cellfun(@(x) num2cell([x.transformed.muTheta_ffx', x.transformed.muPhi_ffx']), s_array, 'UniformOutput', false);
 end
 
 %validate elements of fit structure
@@ -116,9 +122,16 @@ for i = 1:ns
     t_tbl = horzcat(t_tbl, vcell);
   end
   
+  %observed responses
   if isfield(this_subj, 'y')
     vnames = cellfun(@(x) strcat('y_', num2str(x)), num2cell(1:ntimesteps), 'UniformOutput', false);
     vcell = array2table(this_subj.y', 'VariableNames', vnames);
+    t_tbl = horzcat(t_tbl, vcell);
+  end
+
+  %model-predicted responses
+  if isfield(this_subj, 'y_pred')
+    vcell = array2table(this_subj.y_pred', 'VariableNames', strcat(y_names, '_pred'));
     t_tbl = horzcat(t_tbl, vcell);
   end
   
