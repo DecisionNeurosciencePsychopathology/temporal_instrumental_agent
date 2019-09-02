@@ -6,9 +6,13 @@ close all; clear;
 
 so = []; %you can set custom sceptic options here that will override the function below.
 
+%for manual tests
+%so.model = 'fixed_uv';
+%so.dataset = 'mmclock_fmri';
 %so.model='decay';
 %so.dataset='explore';
 %so.sceptic_dataset=so.dataset;
+%setenv('matlab_cpus', '2');
 
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 so.mfx = 1; %for mfx subdir naming
@@ -40,11 +44,37 @@ options_all = cell(ns, 1);
 
 n_t=NaN(1,ns);
 
+global rew_rng_state 
+rew_rng_seed = 99;
+
 for sub = 1:ns
     fprintf('Loading subject %d id: %s \n', sub, ids{sub});
     [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
+    
+    %Set up sigma noise for every point in u or hidden state?
+    rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
+    rew_rng_state=rng;
+    [~,idx] = unique(data.run);
+    conditions=data.rewFunc(idx);
+    sigma_noise = zeros(length(conditions), 1);
+    run_length = dim.n_t/options.inF.n_runs;
+    for i = 1:length(conditions)
+      sni = repmat(std(arrayfun(@(x) RewFunction(x*100, conditions(i), 0), options.inF.tvec))^2, 1, run_length);
+      sigma_noise(i) = mean(sni);
+    end
+    sigma_noise = mean(sigma_noise);
+    options.inF.sigma_noise = sigma_noise;
+    
+    %populate sigmas with sigma_noise as prior
+    if ismember(so.model, {'fixed_uv', 'fixed_uv_baked'})
+      hidden_state_index=1:so.hidden_states*so.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
+      hidden_state_index = reshape(hidden_state_index, so.nbasis, so.hidden_states); %3 x nbasis here
+      
+      %uncertainty is second hidden state
+      options.priors.muX0(hidden_state_index(:,2)) = sigma_noise;
+    end
     
     % populate data structures for VBA_MFX
     y_all{sub} = y;
@@ -61,12 +91,24 @@ options_group.MaxIter=50;
 options_group.DisplayWin=0;
 options_group.verbose=1;
 
-priors_group.muPhi = 0; %temperature -- exp(phi(1))
-priors_group.SigmaPhi = 10; %variance on temperature (before exponential transform)
+priors_group.muPhi = zeros(dim.n_phi,1); %temperature -- exp(phi(1))
+priors_group.SigmaPhi = 1e1*eye(dim.n_phi); %variance on temperature (before exponential transform)
 priors_group.muTheta = zeros(dim.n_theta,1); %learning rate (alpha), selective maintenance (gamma) -- before logistic transform
 priors_group.SigmaTheta =  1e1*eye(dim.n_theta); %variance of 10 on alpha and gamma
+
 priors_group.muX0 = zeros(so.nbasis*so.hidden_states,1); %have PE and decay as tag-along states
 priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_states); %have PE and decay as tag-along states
+
+%for initial hidden state values, need to populate sigmas for fixed_uv variants at *group* level
+%in fact, MFX will overwrite the priors.muX0 with group values, undoing subject-wise setup above
+if ismember(so.model, {'fixed_uv', 'fixed_uv_baked'})
+  hidden_state_index=1:so.hidden_states*so.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
+  hidden_state_index = reshape(hidden_state_index, so.nbasis, so.hidden_states); %3 x nbasis here
+  
+  %uncertainty is second hidden state
+  priors_group.muX0(hidden_state_index(:,2)) = sigma_noise;
+end
+
 priors_group.a_vX0 = Inf([1, so.nbasis*so.hidden_states]); %use infinite precision prior on gamma for X0 to treat as fixed (a = Inf; b = 0)
 priors_group.b_vX0 = zeros([1, so.nbasis*so.hidden_states]);
 

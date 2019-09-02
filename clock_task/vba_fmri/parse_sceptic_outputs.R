@@ -14,6 +14,9 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   global <- readr::read_csv(global_file)
   trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
 
+  has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
+  has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
+  
   basis <- as.matrix(basis) #24 x 40 (nbasis x ntimesteps)
 
   #response vector (y1-y40)
@@ -133,20 +136,38 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   #####
   # Decay statistics
-  d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
-  if (ncol(d_mat) > 0) { #will be absent for non-decay models
-    d_func <- d_mat %*% basis
-    d_auc <- apply(d_mat, 1, function(r) {
-      if (sd(r) < .001) {
-        return(NA)
-      } else {
-        return(sum(r))
-      }
-    })
-  } else {
-    d_auc <- NULL #so that bind_cols proceeds
+  
+  if (has_d) {
+    
+    d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
+    if (ncol(d_mat) > 0) { #will be absent for non-decay models
+      d_func <- d_mat %*% basis
+      d_auc <- apply(d_mat, 1, function(r) {
+        if (sd(r) < .001) {
+          return(NA)
+        } else {
+          return(sum(r))
+        }
+      })
+    } else {
+      d_auc <- NULL #so that bind_cols proceeds
+    }
   }
 
+  #####
+  # Uncertainty statistics
+  if (has_u) {
+    
+    u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+
+    #put value back onto time grid
+    u_func <- u_mat %*% basis
+
+    #uncertainty of the chosen time bin (action)
+    u_chosen <- unname(sapply(1:nrow(u_func), function(r) { u_func[r, y_chosen[r]] }))
+  }
+
+  
   #For PE- AND D-based statistics, these have been right-shifted by 1 position (in u) to line up the inputs and outputs in SCEPTIC VBA fitting.
   #This is necessary to get the t versus t-1 in the evolution of learning in VBA.
 
@@ -155,16 +176,28 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #compile trial statistics
   trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
-              v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen, d_auc=d_auc) %>%
+              v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
       score=lead(score_next, 1, order_by=asc_trial), #same for score
       pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE_max
-      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial), #same for PE_chosen
-      d_auc=lead(d_auc, 1, order_by=asc_trial) #same for DAUC
+      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial) #same for PE_chosen
     ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) %>% cbind(kld_est)
 
+  if (has_u) {
+    trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen) %>% group_by(id) %>%
+      mutate(
+        u_chosen_lag = lag(u_chosen, 1, order_by=asc_trial),
+        u_chosen_change = u_chosen - u_chosen_lag
+      ) %>% ungroup()
+  }
+
+  if (has_d) {
+    trial_stats <- trial_stats %>% bind_cols(d_auc=d_auc) %>% group_by(id) %>%
+      mutate(d_auc=lead(d_auc, 1, order_by=asc_trial)) %>% ungroup() #as with RTs and PE, need to left-shift DAUC
+  }
+  
   #remove readr detritus
   attr(trial_stats, "spec") <- NULL
 
@@ -174,6 +207,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   } else {
     subj_files <- list.files(path=subjects_dir, pattern=".*\\.csv", full.names=TRUE, recursive=FALSE)
   }
+
   subj_data <- bind_rows(lapply(subj_files, function(ff) {
     df <- read_csv(ff) %>% dplyr::rename(rt_csv=rt, score_csv=score) %>% mutate(asc_trial=1:n()) #asc_trial used to match with vba outputs
     if(isexplore){

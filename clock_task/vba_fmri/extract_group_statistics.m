@@ -131,7 +131,8 @@ for i = 1:ns
 
   %model-predicted responses
   if isfield(this_subj, 'y_pred')
-    vcell = array2table(this_subj.y_pred', 'VariableNames', strcat(y_names, '_pred'));
+    vnames = cellfun(@(x) strcat('ypred_', num2str(x)), num2cell(1:ntimesteps), 'UniformOutput', false);
+    vcell = array2table(this_subj.y_pred', 'VariableNames', vnames);
     t_tbl = horzcat(t_tbl, vcell);
   end
   
