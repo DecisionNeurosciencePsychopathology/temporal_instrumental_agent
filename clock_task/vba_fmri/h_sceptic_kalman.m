@@ -87,9 +87,9 @@ k = (sigma)./(sigma + sigma_noise);
 %Update posterior variances on the basis of Kalman gains
 sigma_new = (1 - e.*k).*(sigma);
 
-if strcmpi(inF.model, 'fixed_uv') %this is the u aversion variant
+if ismember(inF.model, {'fixed_uv', 'fixed_uv_ureset'}) %this is the u aversion variant
   w_new = w + alpha.*delta; %update values based on fixed learning rate
-elseif strcmpi(inF.model, 'fixed_uv_baked')
+elseif ismember(inF.model, {'fixed_uv_baked', 'fixed_uv_baked_ureset'})
   %this is the u aversion variant that bakes in uncertainty
   %following the codebase in vba/, I am using the evolved sigmas
   

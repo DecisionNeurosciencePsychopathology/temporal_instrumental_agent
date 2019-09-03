@@ -1,7 +1,7 @@
 function [theta_trans] = transform_theta(theta, inF)
 
 %only fixed uv baked has tau in theta (part of learning rule)
-if ismember(inF.model, {'fixed_uv_baked'})
+if ismember(inF.model, {'fixed_uv_baked', 'fixed_uv_baked_ureset'})
   %fixed_uv is the variant where tau is allowed to be positive or negative
   %fixed_uv_positive would be the version where we enforce positiviety
 

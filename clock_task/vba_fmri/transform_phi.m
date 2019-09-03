@@ -1,6 +1,6 @@
 function [phi_trans] = transform_phi(phi, inG)
 
-if strcmpi(inG.model, 'fixed_uv')
+if ismember(inG.model, {'fixed_uv', 'fixed_uv_ureset'})
   phi_trans = [ exp(phi(1)); ... %temperature
     phi(2)./100 ]; % scale down tau since it tends to be << 1, but in fitting, having a larger range may help estimation
 else
