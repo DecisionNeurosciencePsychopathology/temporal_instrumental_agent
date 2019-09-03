@@ -30,4 +30,7 @@ end
 u = [(data{trials_to_fit, 'rt'} / so.trial_length * so.ntimesteps)'; data{trials_to_fit, 'score'}'];
 u = [zeros(size(u,1),1) u(:,1:end-1)]; %right shift inputs to get t versus t+1 correct in inputs versus predictions
 
+%add run boundary marker for u resetting
+u = vertcat(u, [0; diff(data.run)]');
+
 end

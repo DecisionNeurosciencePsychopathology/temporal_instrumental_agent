@@ -36,6 +36,7 @@ if ~isfield(so, 'fixed_params_across_runs'), so.fixed_params_across_runs=1; end
 if ~isfield(so, 'fit_propspread'), so.fit_propspread=0; end
 if ~isfield(so, 'max_prop_spread'), so.max_prop_spread = .0125; end %used for fixed propspread case
 if ~isfield(so, 'stick_pe'), so.stick_pe=0; end %spread PE by eligibility
+if ~isfield(so, 'u_run_reset'), so.u_run_reset=0; end %don't reset uncertainty to sigma_noise at run boundary
 
 if ~isfield(so, 'ntimesteps')
     if strcmpi(so.dataset,'explore')
@@ -96,12 +97,14 @@ elseif strcmpi(so.model,'fixed_uv')
   so.state_names={'V', 'U', 'PE'};
   so.n_theta=1; %learning rate alpha
   so.theta_names={'alpha'};
+  if contains(so.model, 'ureset'), so.u_run_reset=1; end
 elseif strcmpi(so.model, 'fixed_uv_baked')
   so.evo_fname = @h_sceptic_kalman;
   so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
   so.state_names={'V', 'U', 'PE'};
   so.n_theta=2; %learning rate alpha and uncertainty sensitivity parameter tau
   so.theta_names={'alpha', 'tau'}; %for baked, tau is in theta (learning rule)
+  if contains(so.model, 'ureset'), so.u_run_reset=1; end
 end
 
 if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to underlying basis

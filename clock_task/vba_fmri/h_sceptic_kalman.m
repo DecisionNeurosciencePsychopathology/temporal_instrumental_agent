@@ -45,6 +45,11 @@ rt = u(1);
 reward = u(2);
 sigma_noise = inF.sigma_noise;
 
+%if we are at a run boundary in a u-resetting model, then re-initialize sigma at sigma_noise
+if length(u) > 2 && u(3) == 1 && inF.u_run_reset == 1
+  sigma(:) = sigma_noise;
+end
+
 %compute gaussian spread function with w = rts(i) and sigma based on free param prop_spread
 elig = gaussmf(inF.tvec, [sig_spread, rt]);
 
