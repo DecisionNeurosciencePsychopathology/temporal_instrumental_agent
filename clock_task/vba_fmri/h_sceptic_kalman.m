@@ -87,7 +87,7 @@ k = (sigma)./(sigma + sigma_noise);
 %Update posterior variances on the basis of Kalman gains
 sigma_new = (1 - e.*k).*(sigma);
 
-if ismember(inF.model, {'fixed_uv', 'fixed_uv_ureset'}) %this is the u aversion variant
+if ismember(inF.model, {'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'}) %this is the u aversion variant
   w_new = w + alpha.*delta; %update values based on fixed learning rate
 elseif ismember(inF.model, {'fixed_uv_baked', 'fixed_uv_baked_ureset'})
   %this is the u aversion variant that bakes in uncertainty

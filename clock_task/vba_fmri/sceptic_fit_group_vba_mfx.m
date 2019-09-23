@@ -68,7 +68,7 @@ for sub = 1:ns
     options.inF.sigma_noise = sigma_noise;
     
     %populate sigmas with sigma_noise as prior
-    if ismember(so.model, {'fixed_uv', 'fixed_uv_baked'})
+    if contains(so.model, 'fixed_uv')
       hidden_state_index=1:so.hidden_states*so.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
       hidden_state_index = reshape(hidden_state_index, so.nbasis, so.hidden_states); %3 x nbasis here
       
@@ -101,7 +101,7 @@ priors_group.SigmaX0 = zeros(so.nbasis*so.hidden_states, so.nbasis*so.hidden_sta
 
 %for initial hidden state values, need to populate sigmas for fixed_uv variants at *group* level
 %in fact, MFX will overwrite the priors.muX0 with group values, undoing subject-wise setup above
-if ismember(so.model, {'fixed_uv', 'fixed_uv_baked'})
+if contains(so.model, 'fixed_uv')
   hidden_state_index=1:so.hidden_states*so.nbasis; %total number of hidden states (inF.hidden_states is the number of state vectors)
   hidden_state_index = reshape(hidden_state_index, so.nbasis, so.hidden_states); %3 x nbasis here
   

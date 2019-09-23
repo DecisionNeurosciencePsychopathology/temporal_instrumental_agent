@@ -12,7 +12,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   basis <- readr::read_csv(basis_file)
   global <- readr::read_csv(global_file)
-  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
+  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2, run_boundary=u_3) %>% mutate(id=as.character(id))
 
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
@@ -157,9 +157,9 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Uncertainty statistics
   if (has_u) {
-    
-    u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
+    u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+    
     #put value back onto time grid
     u_func <- u_mat %*% basis
 

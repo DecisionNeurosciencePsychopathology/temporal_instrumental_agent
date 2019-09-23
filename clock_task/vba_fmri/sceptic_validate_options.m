@@ -91,7 +91,7 @@ elseif contains(so.model,'decay')
   
   if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
   if contains(so.model, 'selective'), so.uniform=0; end %selective decay
-elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset'})
+elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})
   so.evo_fname = @h_sceptic_kalman;
   so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
   so.state_names={'V', 'U', 'PE'};
@@ -112,7 +112,7 @@ if contains(so.model, 'psequate'), so.max_prop_spread = -1; end %equate SD to un
 if contains(so.model, 'stickpe'), so.stick_pe=1; end
 
 %for 'true' fixed uv, the mixing of V and U should be in observation function
-if ismember(so.model, {'fixed_uv', 'fixed_uv_ureset'})
+if ismember(so.model, {'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})
   so.obs_fname = @g_sceptic_uv; %just regular softmax observation rule for now
   so.n_phi = 2;
   so.phi_names = {'beta', 'tau'}; %temperature, uv mixing
