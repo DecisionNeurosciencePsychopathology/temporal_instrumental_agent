@@ -72,12 +72,13 @@ if ~isfield(so, 'function_wise_pe'), so.function_wise_pe=0; end %whether PE is c
 if ~isfield(so, 'uniform'), so.uniform=0; end %whether decay is uniform (1) or whether values are maintained within eligibility trace
 
 %hidden states field used to index hidden state vector inside evolution and observation functions
-if strcmpi(so.model,'fixed')
+if ismember(so.model, {'fixed', 'fixed_fixedparams_fmri'})
   so.evo_fname = @h_sceptic_fixed_fmri;
   so.hidden_states=2; %track basis weights (value), as well as PE as tag-along state
   so.state_names={'V', 'PE'};
   so.n_theta=1; %learning rate
   so.theta_names={'alpha'};
+
 elseif contains(so.model,'decay')
   so.evo_fname = @h_sceptic_fixed_decay_fmri;
   so.hidden_states=3; %track basis weights (value), as well as PE and decay as tag-along states
@@ -91,6 +92,7 @@ elseif contains(so.model,'decay')
   
   if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
   if contains(so.model, 'selective'), so.uniform=0; end %selective decay
+
 elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})
   so.evo_fname = @h_sceptic_kalman;
   so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE
@@ -98,6 +100,7 @@ elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedp
   so.n_theta=1; %learning rate alpha
   so.theta_names={'alpha'};
   if contains(so.model, 'ureset'), so.u_run_reset=1; end
+
 elseif ismember(so.model, {'fixed_uv_baked', 'fixed_uv_baked_ureset'})
   so.evo_fname = @h_sceptic_kalman;
   so.hidden_states=3; %track 1: kalman means (value), 2: uncertainty, 3: PE

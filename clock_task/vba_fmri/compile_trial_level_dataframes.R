@@ -2,7 +2,8 @@ source("parse_sceptic_outputs.R")
 library(dplyr)
 library(readr)
 
-trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
+#trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
+trial_out_dir <- file.path(getwd(), "vba_out/compiled_outputs")
 
 #datasets <- c("mmclock_meg", "mmclock_fmri")
 #datasets <- c("specc")
@@ -24,7 +25,8 @@ models <- apply(mdf, 1, paste, collapse="_")
 #models <- c("specc_decay_factorize_selective_psequate_fixedparams")
 #models <- c("fixed_uv_ureset", "fixed_uv_baked_ureset")
 #models <- c("fixed_uv_ureset_fixedparams_fmri")
-models <- c("fixed_uv_ureset_fixedparams_meg")
+#models <- c("fixed_uv_ureset_fixedparams_meg", "fixed_uv_ureset_fixedparams_fmri")
+models <- c("fixed_fixedparams_fmri")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
 
 for (d in datasets) {
