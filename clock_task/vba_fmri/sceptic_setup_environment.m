@@ -24,7 +24,7 @@ end
 host = strtrim(host);
 	
 is_aci = contains(host, 'aci.ics.psu.edu');
-is_longleaf = contains(host, 'longleaf');
+is_longleaf = contains(host, 'unc.edu');
 
 if is_alex
   if  strcmp(me,'Alex')

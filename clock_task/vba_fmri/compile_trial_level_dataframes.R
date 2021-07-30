@@ -3,7 +3,9 @@ library(dplyr)
 library(readr)
 
 #trial_out_dir <- "/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out/compiled_outputs"
-trial_out_dir <- file.path(getwd(), "vba_out/compiled_outputs")
+vba_out_dir <- file.path(getwd(), "vba_out")
+trial_out_dir <- file.path(vba_out_dir, "compiled_outputs")
+subjects_dir <- normalizePath(file.path(vba_out_dir, "..", "..", "subjects"))
 
 #datasets <- c("mmclock_meg", "mmclock_fmri")
 #datasets <- c("specc")
@@ -26,15 +28,16 @@ models <- apply(mdf, 1, paste, collapse="_")
 #models <- c("fixed_uv_ureset", "fixed_uv_baked_ureset")
 #models <- c("fixed_uv_ureset_fixedparams_fmri")
 #models <- c("fixed_uv_ureset_fixedparams_meg", "fixed_uv_ureset_fixedparams_fmri")
-models <- c("fixed_fixedparams_fmri")
+#models <- c("fixed_fixedparams_fmri")
+models <- c("fixed")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
 
 for (d in datasets) {
   for (m in models) {
     for (f in fitting) {
-      outdir <- file.path("/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out", d, f, m)
+      outdir <- file.path(vba_out_dir, d, f, m)
       if (!dir.exists(outdir)) { next } #skip non-existent outputs
-      subj_dir <- file.path("/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/subjects", d)
+      subj_dir <- file.path(subjects_dir, d)
       
       file.copy(file.path(outdir, paste0(d, "_", m, "_", f, "_sceptic_trial_outputs_by_timestep.csv")), trial_out_dir, overwrite=TRUE)
       file.copy(file.path(outdir, paste0(d, "_", m, "_", f, "_sceptic_global_statistics.csv")), trial_out_dir, overwrite=TRUE)
