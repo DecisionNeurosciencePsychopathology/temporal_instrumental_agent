@@ -51,7 +51,7 @@ if so.saveresults
   % savefig(h,sprintf('results/%s_%s_multinomial%d_multisession%d_fixedParams%d', data_file,model,multinomial,multisession,fixed_params_across_runs))
   
   if ~isfield(so, 'output_dir')
-    so.output_dir = '/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task/vba_fmri/vba_out';
+    so.output_dir = '/proj/mnhallqlab/users/michael/temporal_instrumental_agent/clock_task/vba_fmri';
   end
   
   save(sprintf([so.output_dir, '/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedParams%d_uaversion%d'], ...

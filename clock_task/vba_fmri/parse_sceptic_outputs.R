@@ -55,6 +55,13 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #value of the chosen time bin (action)
   v_chosen <- unname(sapply(1:nrow(v_func), function(r) { v_func[r, y_chosen[r]] }))
 
+  #quantile of value for the chosen action
+  #remove the first time bin because it reflects the first 100ms, which the subject essentially can't reach
+  v_chosen_quantile <- unname(sapply(1:nrow(v_func), function(r) {
+    ee <- ecdf(v_func[r,-1])
+    ee(v_func[r, y_chosen[r]])
+  }))
+  
   #calculate entropy of the basis weights (as in the Cognition paper)
   v_entropy <- apply(v_mat, 1, function(basis_weights) {
     w_norm <- basis_weights/sum(basis_weights)
@@ -166,6 +173,16 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     #put value back onto time grid
     u_func <- u_mat %*% basis
 
+    #u_func_wiz <- t(apply(u_func, 1, function(uvec) { as.vector(scale(uvec[-1])) }))
+    #u_func_wiz <- t(apply(u_func, 1, function(uvec) { uvec[-1]/mean(uvec[-1]) })) #just renormalize to mean=1
+    
+    #uncertainty quantile for the chosen action
+    #remove the first time bin because it reflects the first 100ms, which the subject essentially can't reach
+    u_chosen_quantile <- unname(sapply(1:nrow(u_func), function(r) {
+      ee <- ecdf(u_func[r,-1])
+      ee(u_func[r, y_chosen[r]])
+    }))
+    
     #uncertainty of the chosen time bin (action)
     u_chosen <- unname(sapply(1:nrow(u_func), function(r) { u_func[r, y_chosen[r]] }))
   }
@@ -178,21 +195,25 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   #compile trial statistics
   trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
-    bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
+    bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, v_chosen_quantile=v_chosen_quantile, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
               v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
       score=lead(score_next, 1, order_by=asc_trial), #same for score
       pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE_max
-      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial) #same for PE_chosen
-    ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) #%>% cbind(kld_est)
+      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial), #same for PE_chosen
+      v_chosen_quantile_lag = lag(v_chosen_quantile, 1, order_by=asc_trial),
+      v_chosen_quantile_change = v_chosen_quantile - v_chosen_quantile_lag
+    ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) %>% cbind(kld_est)
 
   if (has_u) {
-    trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen) %>% group_by(id) %>%
+    trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen, u_chosen_quantile=u_chosen_quantile) %>% group_by(id) %>%
       mutate(
         u_chosen_lag = lag(u_chosen, 1, order_by=asc_trial),
-        u_chosen_change = u_chosen - u_chosen_lag
+        u_chosen_quantile_lag = lag(u_chosen_quantile, 1, order_by=asc_trial),
+        u_chosen_change = u_chosen - u_chosen_lag,
+        u_chosen_quantile_change = u_chosen_quantile - u_chosen_quantile_lag
       ) %>% ungroup()
   }
 
