@@ -12,8 +12,12 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   basis <- readr::read_csv(basis_file)
   global <- readr::read_csv(global_file)
-  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2, run_boundary=u_3) %>% mutate(id=as.character(id))
+  #trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2, run_boundary=u_3) %>% mutate(id=as.character(id))
+  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
 
+  #uncertainty models include u_3 as run boundary for u resetting
+  if ("u_3" %in% names(trial_df)) { trial_df <- trial_df %>% dplyr::rename(run_boundary=u_3) }
+  
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
   
@@ -71,39 +75,39 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   })
 
   #loss functions based on K-L distance
-  v_mat_lag <- trial_df %>% select(id, asc_trial) %>% bind_cols(as.data.frame(v_mat)) %>%
-    mutate(asc_trial=as.integer(asc_trial), run_trial=case_when(
-      asc_trial >= 1 & asc_trial <= 50 ~ asc_trial,
-      asc_trial >= 51 & asc_trial <= 100 ~ asc_trial - 50L, #dplyr/rlang has gotten awfully picky about data types!!
-      asc_trial >= 101 & asc_trial <= 150 ~ asc_trial - 100L,
-      asc_trial >= 151 & asc_trial <= 200 ~ asc_trial - 150L,
-      asc_trial >= 201 & asc_trial <= 250 ~ asc_trial - 200L,
-      asc_trial >= 251 & asc_trial <= 300 ~ asc_trial - 250L,
-      asc_trial >= 301 & asc_trial <= 350 ~ asc_trial - 300L,
-      asc_trial >= 351 & asc_trial <= 400 ~ asc_trial - 350L,
-      TRUE ~ NA_integer_)) %>%
-    group_by(id) %>%
-    mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
-
-  kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
-    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
-    v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
-    if (sum(v_cur) < .001 || sum(v_lag) < .001) {
-      kld <- c(NA, NA, NA, NA)
-    } else {
-      v_cur_norm <- v_cur/sum(v_cur)
-      v_lag_norm <- v_lag/sum(v_lag)
-      kl_out <- KLD(v_cur_norm,v_lag_norm)
-      #KLD.px.py is distance from py (lag) to px (cur) here. New learning
-      #KLD.py.px is distance from px (cur) to py (lag) here. Forgetting
-      kld <- c(kl_out$mean.sum.KLD, kl_out$intrinsic.discrepancy,
-               kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
-    }
-    return(kld)
-  })
-
-  kld_est <- t(kld_est) %>% as.data.frame() %>%
-    setNames(c("mean_kld", "intrinsic_discrepancy", "kld_newlearn", "kld_forget"))
+  # v_mat_lag <- trial_df %>% select(id, asc_trial) %>% bind_cols(as.data.frame(v_mat)) %>%
+  #   mutate(asc_trial=as.integer(asc_trial), run_trial=case_when(
+  #     asc_trial >= 1 & asc_trial <= 50 ~ asc_trial,
+  #     asc_trial >= 51 & asc_trial <= 100 ~ asc_trial - 50L, #dplyr/rlang has gotten awfully picky about data types!!
+  #     asc_trial >= 101 & asc_trial <= 150 ~ asc_trial - 100L,
+  #     asc_trial >= 151 & asc_trial <= 200 ~ asc_trial - 150L,
+  #     asc_trial >= 201 & asc_trial <= 250 ~ asc_trial - 200L,
+  #     asc_trial >= 251 & asc_trial <= 300 ~ asc_trial - 250L,
+  #     asc_trial >= 301 & asc_trial <= 350 ~ asc_trial - 300L,
+  #     asc_trial >= 351 & asc_trial <= 400 ~ asc_trial - 350L,
+  #     TRUE ~ NA_integer_)) %>%
+  #   group_by(id) %>%
+  #   mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
+  # 
+  # kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
+  #   v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
+  #   v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
+  #   if (sum(v_cur) < .001 || sum(v_lag) < .001) {
+  #     kld <- c(NA, NA, NA, NA)
+  #   } else {
+  #     v_cur_norm <- v_cur/sum(v_cur)
+  #     v_lag_norm <- v_lag/sum(v_lag)
+  #     kl_out <- KLD(v_cur_norm,v_lag_norm)
+  #     #KLD.px.py is distance from py (lag) to px (cur) here. New learning
+  #     #KLD.py.px is distance from px (cur) to py (lag) here. Forgetting
+  #     kld <- c(kl_out$mean.sum.KLD, kl_out$intrinsic.discrepancy,
+  #              kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
+  #   }
+  #   return(kld)
+  # })
+  # 
+  # kld_est <- t(kld_est) %>% as.data.frame() %>%
+  #   setNames(c("mean_kld", "intrinsic_discrepancy", "kld_newlearn", "kld_forget"))
 
   #####
   # Prediction error statistics
@@ -157,7 +161,6 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Uncertainty statistics
   if (has_u) {
-
     u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
     
     #put value back onto time grid
@@ -183,7 +186,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
       score=lead(score_next, 1, order_by=asc_trial), #same for score
       pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE_max
       pe_chosen=lead(pe_chosen, 1, order_by=asc_trial) #same for PE_chosen
-    ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) %>% cbind(kld_est)
+    ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) #%>% cbind(kld_est)
 
   if (has_u) {
     trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen) %>% group_by(id) %>%
@@ -224,5 +227,22 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     select(dataset, model, id, run, trial, asc_trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
     arrange(dataset, model, id, trial)
 
-  return(trial_stats)
+  #also return the trials x bins matrices for each signal (for wide/coxme-style analysis)
+  v_df <- v_func %>% as_tibble() %>% setNames(paste("V", 1:ncol(v_func), sep="_"))
+  v_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(v_df)
+  
+  pe_df <- pe_func %>% as_tibble() %>% setNames(paste("PE", 1:ncol(v_func), sep="_"))
+  pe_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(pe_df)
+
+  if (has_d) {
+    d_df <- d_func %>% as_tibble() %>% setNames(paste("D", 1:ncol(d_func), sep="_"))
+    d_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(d_df)
+  } else { d_df <- NULL }
+  
+  if (has_u) {
+    u_df <- u_func %>% as_tibble() %>% setNames(paste("U", 1:ncol(u_func), sep="_"))
+    u_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(u_df)
+  } else { u_df <- NULL }
+  
+  return(list(trial_stats=trial_stats, v_df=v_df, pe_df=pe_df, d_df=d_df, u_df=u_df))
 }
