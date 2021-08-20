@@ -2,7 +2,7 @@
 
 #!/bin/bash
 #SBATCH -N 1
-#SBATCH -n 16
+#SBATCH -n 12
 #SBATCH --time=04:00:00
 #SBATCH --mem-per-cpu=6G
 #SBATCH -p general
@@ -10,21 +10,22 @@
 # env
 cd $SLURM_SUBMIT_DIR
 
-export matlab_cpus=16
+export matlab_cpus=12
 module use /proj/mnhallqlab/sw/modules
 
 module load matlab/2021a
 module load r/4.0.3_depend
 
 #datasets="mmclock_meg mmclock_fmri"
-#datasets="mmclock_fmri"
-datasets="mmclock_meg"
-#models="decay" # fixed decay_factorize decay_uniform decay_ps_equate decay_uniform_ps_equate"
+datasets="mmclock_fmri"
+#datasets="mmclock_meg"
+#models="decay fixed decay_factorize decay_uniform decay_ps_equate decay_uniform_ps_equate"
 #models="fixed_uv_ureset fixed_uv_baked_ureset"
 #models="fixed_uv_ureset_fixedparams_fmri"
 #models="fixed_uv_ureset fixed_uv_baked_ureset"
 #models="fixed"
-models="fixed_fixedparams_meg"
+#models="fixed_fixedparams_meg"
+models="exp_compress_psequate_variant1 exp_compress_psequate_variant2 fixed_psequate decay_factorize_selective_psequate"
 
 #factorize="separate factorize"
 #decay="uniform selective"

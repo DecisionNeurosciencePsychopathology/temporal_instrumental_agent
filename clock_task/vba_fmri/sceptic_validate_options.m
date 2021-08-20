@@ -86,12 +86,25 @@ elseif contains(so.model,'decay')
   so.n_theta=2; %learning rate and selective maintenance parameters (decay outside of the eligibility trace)
   so.theta_names={'alpha', 'gamma'};
   
-  %model variants for factorize, equate prop sprad, uniform decay
+  %model variants for factorize, equate prop spread, uniform decay
   if contains(so.model, 'factorize'), so.factorize_decay=1; end %factorize alpha + decay
   if contains(so.model, 'separate'), so.factorize_decay=0; end
   
   if contains(so.model, 'uniform'), so.uniform=1; end %uniform decay
   if contains(so.model, 'selective'), so.uniform=0; end %selective decay
+elseif contains(so.model, 'exp_compress')
+  so.evo_fname = @h_sceptic_exp_compress_fmri;
+  so.hidden_states = 3; %basis weights, PEs, basis weights before compress
+  so.state_names={'V', 'PE', 'Vorig'};
+  so.n_theta = 2; %learning rate, compression
+  so.theta_names = {'alpha', 'phi'};
+
+  %model parameterization
+  if contains(so.model, 'variant1')
+    so.exp_variant = 1;
+  elseif contains(so.model, 'variant2')
+    so.exp_variant = 2;
+  end
 
 elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})
   so.evo_fname = @h_sceptic_kalman;
@@ -116,12 +129,12 @@ if contains(so.model, 'stickpe'), so.stick_pe=1; end
 
 %for 'true' fixed uv, the mixing of V and U should be in observation function
 if ismember(so.model, {'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})
-  so.obs_fname = @g_sceptic_uv; %just regular softmax observation rule for now
+  so.obs_fname = @g_sceptic_uv; %U + V weighted choice
   so.n_phi = 2;
   so.phi_names = {'beta', 'tau'}; %temperature, uv mixing
 else
   %for all other models, just regular softmax on V
-  so.obs_fname = @g_sceptic; %just regular softmax observation rule for now
+  so.obs_fname = @g_sceptic; %just regular softmax observation rule
   so.n_phi = 1;
   so.phi_names = {'beta'}; %temperature
 end
