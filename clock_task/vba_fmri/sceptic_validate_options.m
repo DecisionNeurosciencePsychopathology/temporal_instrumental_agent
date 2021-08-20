@@ -100,10 +100,13 @@ elseif contains(so.model, 'exp_compress')
   so.theta_names = {'alpha', 'phi'};
 
   %model parameterization
+  so.exp_variant = 1; %default
   if contains(so.model, 'variant1')
     so.exp_variant = 1;
   elseif contains(so.model, 'variant2')
     so.exp_variant = 2;
+  elseif contains(so.model, 'variant3')
+    so.exp_variant = 3;
   end
 
 elseif ismember(so.model,{'fixed_uv', 'fixed_uv_ureset', 'fixed_uv_ureset_fixedparams_fmri', 'fixed_uv_ureset_fixedparams_meg'})

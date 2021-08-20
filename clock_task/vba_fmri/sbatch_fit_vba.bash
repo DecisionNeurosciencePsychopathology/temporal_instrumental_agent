@@ -3,7 +3,7 @@
 #!/bin/bash
 #SBATCH -N 1
 #SBATCH -n 12
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mem-per-cpu=6G
 #SBATCH -p general
 
@@ -25,7 +25,7 @@ datasets="mmclock_fmri"
 #models="fixed_uv_ureset fixed_uv_baked_ureset"
 #models="fixed"
 #models="fixed_fixedparams_meg"
-models="exp_compress_psequate_variant1 exp_compress_psequate_variant2 fixed_psequate decay_factorize_selective_psequate"
+models="exp_compress_psequate_variant1 exp_compress_psequate_variant2 exp_compress_psequate_variant3 fixed_psequate decay_factorize_selective_psequate"
 
 #factorize="separate factorize"
 #decay="uniform selective"
