@@ -72,7 +72,7 @@ if ~isfield(so, 'function_wise_pe'), so.function_wise_pe=0; end %whether PE is c
 if ~isfield(so, 'uniform'), so.uniform=0; end %whether decay is uniform (1) or whether values are maintained within eligibility trace
 
 %hidden states field used to index hidden state vector inside evolution and observation functions
-if ismember(so.model, {'fixed', 'fixed_fixedparams_fmri', 'fixed_fixedparams_meg'})
+if ismember(so.model, {'fixed', 'fixed_fixedparams_fmri', 'fixed_fixedparams_meg', 'fixed_psequate'})
   so.evo_fname = @h_sceptic_fixed_fmri;
   so.hidden_states=2; %track basis weights (value), as well as PE as tag-along state
   so.state_names={'V', 'PE'};

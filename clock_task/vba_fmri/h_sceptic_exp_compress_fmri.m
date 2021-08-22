@@ -87,7 +87,7 @@ elseif inF.exp_variant == 3
   C = exp_renorm(w, phi); %compressed weights
   L = w - C; %loss function
   delta = e.*(reward - w); %PE on uncompressed weights
-  w_new = w + alpha .* delta - (1-e)*L; %PE update and subtract loss function outside of eligibility
+  w_new = w + alpha .* delta - (1-e).*L; %PE update and subtract loss function outside of eligibility
 end
 
 fx=[w_new; delta; w];

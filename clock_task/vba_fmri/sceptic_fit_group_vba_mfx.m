@@ -9,10 +9,10 @@ so = []; %you can set custom sceptic options here that will override the functio
 %for manual tests
 %so.model = 'fixed_uv';
 %so.dataset = 'mmclock_fmri';
-%so.model='decay';
+%so.model='exp_compress_variant3_psequate';
 %so.dataset='explore';
 %so.sceptic_dataset=so.dataset;
-%setenv('matlab_cpus', '2');
+%setenv('matlab_cpus', '1');
 
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 so.mfx = 1; %for mfx subdir naming
