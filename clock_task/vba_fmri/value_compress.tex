@@ -1,12 +1,13 @@
-\documentclass[11pt]{amsart}
+\documentclass[12pt]{article}
 \usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
 \geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
 %\geometry{landscape}                % Activate for for rotated page geometry
 %\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
-\usepackage{graphicx}
+%\usepackage{graphicx}
 \usepackage{amssymb}
-\usepackage{epstopdf}
-\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+\usepackage{amsmath}
+%\usepackage{epstopdf}
+%\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
 
 \title{SCEPTIC Value-based compression}
 \author{Michael Hallquist \& Alex Dombrovski}
@@ -34,6 +35,13 @@ V_{i+1} = V_{i} + \alpha [ e \delta_{(i | t)}  - (1-e) \gamma V_{i} ]
 
 \section{Value compression models}
 
+Note that the value vector is renormalized after exponentiation to maintain the same min and max values pre- and post-compression. This is accomplished by:
+
+\begin{align}
+V' &= \exp{(V/\phi)} \\
+V' &= (\max(V) - \min(V)) \cdot \frac{V' - \min(V')}{\max(V') - \min(V')} + \min(V)
+\end{align}
+
 \subsection{Variant 1: compression after update}
 
 Conceptually, this approach calculates the usual SCEPTIC update from PE, then uses exponential compression of the updated value vector (basis weights).
@@ -60,6 +68,28 @@ C(V_i) =  \exp(\frac{V_i}{\phi})
 
 \begin{equation}
 V_{i+1} =  C(V_i) + \alpha \delta_{(i | t)}
+\end{equation}
+
+\subsection{Variant 3: Compression outside of eligibility function}
+
+Here, we only compress values that lie outside of the eligibility function. The big difference from variant 2 is that the prediction error is computed against the uncompressed value vector, then these are summed in the usual weighted fashion across basis weights.
+
+Compressed values
+\begin{equation}
+C(V_i) =  \exp(\frac{V_i}{\phi})
+\end{equation}
+
+Loss function
+\begin{equation}
+L(V_i) =  V_i - C_i
+\end{equation}
+
+\begin{equation}
+\delta_{(i | t)} = e \alpha( r_{(i | t)} - V_i)
+\end{equation}
+
+\begin{equation}
+V_{i+1} =  V_i + \delta_{(i | t)} - (1-e) L(V_i)
 \end{equation}
 
 \end{document}  
