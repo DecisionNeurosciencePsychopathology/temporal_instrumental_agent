@@ -1,4 +1,4 @@
-parse_sceptic_outputs <- function(outdir, subjects_dir) {
+parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   require(readr)
   require(dplyr)
   require(entropy)
@@ -82,39 +82,30 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   })
 
   #loss functions based on K-L distance
-  # v_mat_lag <- trial_df %>% select(id, asc_trial) %>% bind_cols(as.data.frame(v_mat)) %>%
-  #   mutate(asc_trial=as.integer(asc_trial), run_trial=case_when(
-  #     asc_trial >= 1 & asc_trial <= 50 ~ asc_trial,
-  #     asc_trial >= 51 & asc_trial <= 100 ~ asc_trial - 50L, #dplyr/rlang has gotten awfully picky about data types!!
-  #     asc_trial >= 101 & asc_trial <= 150 ~ asc_trial - 100L,
-  #     asc_trial >= 151 & asc_trial <= 200 ~ asc_trial - 150L,
-  #     asc_trial >= 201 & asc_trial <= 250 ~ asc_trial - 200L,
-  #     asc_trial >= 251 & asc_trial <= 300 ~ asc_trial - 250L,
-  #     asc_trial >= 301 & asc_trial <= 350 ~ asc_trial - 300L,
-  #     asc_trial >= 351 & asc_trial <= 400 ~ asc_trial - 350L,
-  #     TRUE ~ NA_integer_)) %>%
-  #   group_by(id) %>%
-  #   mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
-  # 
-  # kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
-  #   v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
-  #   v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
-  #   if (sum(v_cur) < .001 || sum(v_lag) < .001) {
-  #     kld <- c(NA, NA, NA, NA)
-  #   } else {
-  #     v_cur_norm <- v_cur/sum(v_cur)
-  #     v_lag_norm <- v_lag/sum(v_lag)
-  #     kl_out <- KLD(v_cur_norm,v_lag_norm)
-  #     #KLD.px.py is distance from py (lag) to px (cur) here. New learning
-  #     #KLD.py.px is distance from px (cur) to py (lag) here. Forgetting
-  #     kld <- c(kl_out$mean.sum.KLD, kl_out$intrinsic.discrepancy,
-  #              kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
-  #   }
-  #   return(kld)
-  # })
-  # 
-  # kld_est <- t(kld_est) %>% as.data.frame() %>%
-  #   setNames(c("mean_kld", "intrinsic_discrepancy", "kld_newlearn", "kld_forget"))
+  v_mat_lag <- trial_df %>% select(id, asc_trial) %>% bind_cols(as.data.frame(v_mat)) %>%
+    mutate(asc_trial=as.integer(asc_trial), run_trial=ceiling(asc_trial/!!trials_per_run)) %>%
+    group_by(id) %>%
+    mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
+  
+  kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
+    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
+    v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
+    if (sum(v_cur) < .001 || sum(v_lag) < .001) {
+      kld <- c(NA, NA, NA, NA)
+    } else {
+      v_cur_norm <- v_cur/sum(v_cur)
+      v_lag_norm <- v_lag/sum(v_lag)
+      kl_out <- KLD(v_cur_norm,v_lag_norm)
+      #KLD.px.py is distance from py (lag) to px (cur) here. New learning
+      #KLD.py.px is distance from px (cur) to py (lag) here. Forgetting
+      kld <- c(kl_out$mean.sum.KLD, kl_out$intrinsic.discrepancy,
+               kl_out$sum.KLD.px.py, kl_out$sum.KLD.py.px)
+    }
+    return(kld)
+  })
+  
+  kld_est <- t(kld_est) %>% as.data.frame() %>%
+    setNames(c("mean_kld", "intrinsic_discrepancy", "kld_newlearn", "kld_forget"))
 
   #####
   # Prediction error statistics

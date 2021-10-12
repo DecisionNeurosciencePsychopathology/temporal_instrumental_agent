@@ -9,8 +9,8 @@ subjects_dir <- normalizePath(file.path(vba_out_dir, "..", "..", "subjects"))
 
 #datasets <- c("mmclock_meg", "mmclock_fmri")
 #datasets <- c("specc")
-#datasets <- c("mmclock_fmri")
-datasets <- c("mmclock_meg")
+datasets <- c("mmclock_fmri")
+#datasets <- c("mmclock_meg")
 
 #models <- c("decay", "fixed", "decay_factorize", "decay_uniform", "decay_ps_equate", "decay_uniform_ps_equate")
 models <- c("decay")
@@ -29,8 +29,9 @@ models <- apply(mdf, 1, paste, collapse="_")
 #models <- c("fixed_uv_ureset_fixedparams_fmri")
 #models <- c("fixed_uv_ureset_fixedparams_meg", "fixed_uv_ureset_fixedparams_fmri")
 #models <- c("fixed_fixedparams_fmri")
-models <- c("fixed")
+#models <- c("fixed_fixedparams_meg")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
+models <- paste0("exp_compress_psequate_variant", 1:3)
 
 for (d in datasets) {
   for (m in models) {
@@ -43,7 +44,7 @@ for (d in datasets) {
       file.copy(file.path(outdir, paste0(d, "_", m, "_", f, "_sceptic_global_statistics.csv")), trial_out_dir, overwrite=TRUE)
       file.copy(file.path(outdir, paste0(d, "_", m, "_", f, "_sceptic_basis.csv")), trial_out_dir, overwrite=TRUE)
       sceptic_stats <- parse_sceptic_outputs(outdir, subj_dir)
-      write_csv(sceptic_stats, path=file.path(trial_out_dir, paste(d, m, f, "trial_statistics.csv.gz", sep="_")))
+      write_csv(sceptic_stats$trial_stats, file=file.path(trial_out_dir, paste(d, m, f, "trial_statistics.csv.gz", sep="_")))
     }
   }
 }
