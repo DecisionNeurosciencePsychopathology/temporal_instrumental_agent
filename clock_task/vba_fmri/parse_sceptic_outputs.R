@@ -21,10 +21,10 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
   
-  basis <- as.matrix(basis) #24 x 40 (nbasis x ntimesteps)
+  basis <- as.matrix(basis) # 24 x 40 (nbasis x ntimesteps)
 
   #response vector (y1-y40)
-  y_mat <- trial_df %>% dplyr::select(matches("y_\\d+")) %>% as.matrix()
+  y_mat <- trial_df %>% dplyr::select(matches("^y_\\d+$")) %>% as.matrix()
 
   #identify the chosen time bin
   y_chosen <- apply(y_mat, 1, function(r) { which(r==1) })
@@ -32,7 +32,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   #####
   # Expected value statistics
 
-  v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+  v_mat <- trial_df %>% dplyr::select(matches("^V_\\d+$")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
   #put value back onto time grid
   v_func <- v_mat %*% basis
@@ -88,8 +88,8 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
     mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
   
   kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
-    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
-    v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
+    v_cur <- v_mat_lag %>% select(matches("^V_\\d+$")) %>% slice(r) %>% unlist()
+    v_lag <- v_mat_lag %>% select(matches("^V_\\d+_lag$")) %>% slice(r) %>% unlist()
     if (sum(v_cur) < .001 || sum(v_lag) < .001) {
       kld <- c(NA, NA, NA, NA)
     } else {
@@ -110,7 +110,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   #####
   # Prediction error statistics
 
-  pe_mat <- trial_df %>% dplyr::select(matches("PE_\\d+")) %>% as.matrix()
+  pe_mat <- trial_df %>% dplyr::select(matches("^PE_\\d+$")) %>% as.matrix()
   pe_func <- pe_mat %*% basis
 
   pe_max <- apply(pe_func, 1, function(r) {
@@ -141,7 +141,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   
   if (has_d) {
     
-    d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
+    d_mat <- trial_df %>% dplyr::select(matches("^D_\\d+$")) %>% as.matrix()
     if (ncol(d_mat) > 0) { #will be absent for non-decay models
       d_func <- d_mat %*% basis
       d_auc <- apply(d_mat, 1, function(r) {
@@ -159,7 +159,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   #####
   # Uncertainty statistics
   if (has_u) {
-    u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+    u_mat <- trial_df %>% dplyr::select(matches("^U_\\d+$")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
     
     #put value back onto time grid
     u_func <- u_mat %*% basis
@@ -229,7 +229,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
       a<-strsplit(ff,.Platform$file.sep)[[1]]
       df$id<-a[length(a)-1]
     } else {
-      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?:_1)*(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
     }
     df <- df %>% select(id, run, asc_trial, rewFunc, emotion, everything())
     return(df)

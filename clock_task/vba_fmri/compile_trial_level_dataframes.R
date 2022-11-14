@@ -9,8 +9,9 @@ subjects_dir <- normalizePath(file.path(vba_out_dir, "..", "..", "subjects"))
 
 #datasets <- c("mmclock_meg", "mmclock_fmri")
 #datasets <- c("specc")
-datasets <- c("mmclock_fmri")
+#datasets <- c("mmclock_fmri")
 #datasets <- c("mmclock_meg")
+datasets <- c("bsocial")
 
 #models <- c("decay", "fixed", "decay_factorize", "decay_uniform", "decay_ps_equate", "decay_uniform_ps_equate")
 models <- c("decay")
@@ -31,7 +32,8 @@ models <- apply(mdf, 1, paste, collapse="_")
 #models <- c("fixed_fixedparams_fmri")
 #models <- c("fixed_fixedparams_meg")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
-models <- paste0("exp_compress_psequate_variant", 1:3)
+#models <- paste0("exp_compress_psequate_variant", 1:3)
+models <- c("fixed_psequate", "decay_factorize_selective_psequate")
 
 for (d in datasets) {
   for (m in models) {

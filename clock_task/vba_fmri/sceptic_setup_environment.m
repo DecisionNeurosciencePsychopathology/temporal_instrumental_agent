@@ -61,8 +61,10 @@ elseif strcmpi(so.dataset,'mmclock_fmri')
 elseif strcmpi(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/subjects/specc/*.csv']);
 elseif strcmpi(so.dataset,'explore')
-    rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
-    behavfiles = glob([rootdir, '/*/*.mat']);
+  rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
+  behavfiles = glob([rootdir, '/*/*.mat']);
+elseif strcmpi(so.dataset, 'bsocial')
+  behavfiles = glob([sceptic_repo, '/subjects/bsocial/*.csv']);
 end
 
 if is_alex

@@ -8,7 +8,7 @@ so = []; %you can set custom sceptic options here that will override the functio
 
 %for manual tests
 %so.model = 'fixed_uv';
-%so.dataset = 'mmclock_fmri';
+%so.dataset = 'bsocial';
 %so.model='exp_compress_variant3_psequate';
 %so.dataset='explore';
 %so.sceptic_dataset=so.dataset;
@@ -22,8 +22,12 @@ so.mfx = 1; %for mfx subdir naming
 
 %extract IDs for record keeping
 
-if(strcmpi(so.dataset,'explore'))
+if (strcmpi(so.dataset,'explore'))
   ids=cellfun(@getexploreid,behavfiles,'UniformOutput', false);
+elseif strcmpi(so.dataset, 'bsocial')
+  % bsocial files have _1 at the end (session?)
+  [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+  ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_1_tc|_concat)','match')), fnames, 'UniformOutput', false);
 else
   [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
@@ -49,9 +53,14 @@ rew_rng_seed = 99;
 
 for sub = 1:ns
     fprintf('Loading subject %d id: %s \n', sub, ids{sub});
-    [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
+    [data, y, u, so] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
+
+    %% also ignore any trial in which the RT was implausibly fast or exceeded 4000
+    options.isYout = zeros(size(y));
+    bad_rts = find(data{:,'rt'} < 100 | data{:, 'rt'} >= 4000);
+    options.isYout(:,bad_rts) = 1; % need ones on entire column indicating all basis elements ignored on that trial.
     
     %Set up sigma noise for every point in u or hidden state?
     rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction

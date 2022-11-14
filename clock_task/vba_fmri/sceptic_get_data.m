@@ -1,4 +1,4 @@
-function [data, y, u] = sceptic_get_data(data_file, so)
+function [data, y, u, so] = sceptic_get_data(data_file, so)
 if(strcmpi(so.dataset,'explore'))
     load(data_file,'-mat','order','orderfmt')
     order=order(~cellfun('isempty',order));
@@ -10,6 +10,22 @@ else
     data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
 end
 
+% determine block number by looking at change in rewFunc and emotion
+data{:,'block_number'} = 0;
+curval = strcat(data{1,'rewFunc'}, data{1,'emotion'});
+curit = 1;
+for (i = 1:size(data,1))
+  testval = strcat(data{i,'rewFunc'}, data{i,'emotion'});
+  if (~strcmpi(curval, testval))
+    curval = testval;
+    curit = curit + 1;
+  end
+  data{i,'block_number'} = curit;
+end
+
+% determine trials per run from data since it might vary (unlikely, but happens in bsocial)
+boundaries = find(ischange(data{:,'block_number'})) - 1;
+so.trials_per_run = boundaries(1);
 
 n_t = size(data,1); %number of rows
 trials_to_fit = 1:n_t; %fit all trials by default

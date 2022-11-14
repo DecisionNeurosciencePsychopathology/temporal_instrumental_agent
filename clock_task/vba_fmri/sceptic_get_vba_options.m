@@ -28,7 +28,7 @@ options.verbose=0; %don't show single subject fitting process
 
 options.inF.gaussmat = options.inG.gaussmat; %copy (non-truncated) gaussmat into inF
 
-n_t = size(data,1); %number of rows
+n_t = size(data, 1); %number of rows
 n_runs = n_t/so.trials_per_run; %determine number of runs
 options.inF.n_runs = n_runs; %used downstream
 
@@ -46,7 +46,7 @@ if so.multisession
   end
 end
 
-%% skip first trial
+%% skip evolution on first trial (copy initial states)
 options.skipf = zeros(1,n_t);
 options.skipf(1) = 1;
 
