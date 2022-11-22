@@ -24,10 +24,10 @@ so.mfx = 1; %for mfx subdir naming
 
 if (strcmpi(so.dataset,'explore'))
   ids=cellfun(@getexploreid,behavfiles,'UniformOutput', false);
-elseif strcmpi(so.dataset, 'bsocial')
-  % bsocial files have _1 at the end (session?)
-  [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
-  ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_1_tc|_concat)','match')), fnames, 'UniformOutput', false);
+% elseif strcmpi(so.dataset, 'bsocial')
+%   % bsocial files have _1 at the end (session?)
+%   [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+%   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_1_tc|_concat)','match')), fnames, 'UniformOutput', false);
 else
   [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);

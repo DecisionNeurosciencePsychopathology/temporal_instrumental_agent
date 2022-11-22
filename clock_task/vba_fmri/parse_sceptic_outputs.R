@@ -16,7 +16,10 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
 
   #uncertainty models include u_3 as run boundary for u resetting
-  if ("u_3" %in% names(trial_df)) { trial_df <- trial_df %>% dplyr::rename(run_boundary=u_3) }
+  if ("u_3" %in% names(trial_df)) trial_df <- trial_df %>% dplyr::rename(run_boundary = u_3)
+
+  # u_4 indicates a bad RT that was censored in fitting (1 = censored)
+  if ("u_4" %in% names(trial_df)) trial_df <- trial_df %>% dplyr::rename(bad_rt = u_4)
   
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
@@ -229,7 +232,8 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
       a<-strsplit(ff,.Platform$file.sep)[[1]]
       df$id<-a[length(a)-1]
     } else {
-      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?:_1)*(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+      #df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d]+)(?:_1)*(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl = TRUE)
     }
     df <- df %>% select(id, run, asc_trial, rewFunc, emotion, everything())
     return(df)

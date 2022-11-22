@@ -50,6 +50,11 @@ end
 options.skipf = zeros(1,n_t);
 options.skipf(1) = 1;
 
+%% censor trials with bad RTs (4th column of u, set in sceptic_get_data)
+options.isYout = zeros(so.ntimesteps, n_t);
+bad_rts = data.bad_rt;
+options.isYout(:,bad_rts) = 1; % need ones on entire column indicating all basis elements ignored on that trial.
+
 %% specify dimensions of data to be fit
 dim = struct('n', so.hidden_states * so.nbasis, ...
   'n_theta', so.n_theta + so.fit_propspread, ...
