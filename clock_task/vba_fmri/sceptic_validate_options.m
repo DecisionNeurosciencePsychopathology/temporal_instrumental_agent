@@ -148,4 +148,11 @@ else
   so.trials_per_run=50;
 end
 
+% default to censoring missed (> 4000ms) trials and fast trials (< 100ms)
+if contains(so.model, 'nocensor')
+  so.rt_censor = 0;
+else
+  so.rt_censor = 1;
+end
+
 end

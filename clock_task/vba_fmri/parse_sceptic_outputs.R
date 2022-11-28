@@ -19,7 +19,11 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   if ("u_3" %in% names(trial_df)) trial_df <- trial_df %>% dplyr::rename(run_boundary = u_3)
 
   # u_4 indicates a bad RT that was censored in fitting (1 = censored)
-  if ("u_4" %in% names(trial_df)) trial_df <- trial_df %>% dplyr::rename(bad_rt = u_4)
+  if ("u_4" %in% names(trial_df)) {
+    trial_df <- trial_df %>% dplyr::rename(bad_rt = u_4)
+  } else {
+    trial_df$bad_rt <- NA # model did not use u_4
+  }
   
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
@@ -188,7 +192,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   #Consequently, the PE of trial 1 is actually in position 2, etc. And, for now, the PE and D of the last trial (50) is not collected/estimated
 
   #compile trial statistics
-  trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
+  trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next, bad_rt) %>%
     bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, v_chosen_quantile=v_chosen_quantile, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
               v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen) %>%
     group_by(id) %>%

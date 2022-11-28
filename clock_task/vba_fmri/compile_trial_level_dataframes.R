@@ -33,7 +33,8 @@ models <- apply(mdf, 1, paste, collapse="_")
 #models <- c("fixed_fixedparams_meg")
 #mdf$model <- sub("_", "/", mdf$model) #replace just the first instance since it's organized by ffx and mfx folders
 #models <- paste0("exp_compress_psequate_variant", 1:3)
-models <- c("fixed_psequate", "decay_factorize_selective_psequate")
+#models <- c("fixed_psequate", "decay_factorize_selective_psequate", "bsocial_decay_factorize_selective_psequate_fixedparams")
+models <- c("decay_factorize_selective_psequate_nocensor")
 
 for (d in datasets) {
   for (m in models) {

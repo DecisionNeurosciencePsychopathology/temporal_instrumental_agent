@@ -1,15 +1,13 @@
 #!/usr/bin/env sh
-
-#!/bin/bash
 #SBATCH -N 1
-#SBATCH -n 12
-#SBATCH --time=12:00:00
-#SBATCH --mem-per-cpu=6G
+#SBATCH -n 10
+#SBATCH --time=6:00:00
+#SBATCH --mem-per-cpu=8G
 
 # env
 cd $SLURM_SUBMIT_DIR
 
-export matlab_cpus=12
+export matlab_cpus=10
 module use /proj/mnhallqlab/sw/modules
 
 module load matlab/2022b
@@ -17,7 +15,8 @@ module load r/4.2.1
 
 datasets="bsocial"
 
-models="fixed_psequate decay_factorize_selective_psequate bsocial_decay_factorize_selective_psequate_fixedparams"
+#models="fixed_psequate decay_factorize_selective_psequate bsocial_decay_factorize_selective_psequate_fixedparams"
+models="decay_factorize_selective_psequate_nocensor"
 
 #factorize="separate factorize"
 #decay="uniform selective"

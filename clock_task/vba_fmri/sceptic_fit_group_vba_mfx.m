@@ -33,10 +33,10 @@ else
   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
 end
 
-%zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
-maxlen = max(cellfun(@(x) strlength(x), ids));
-
-ids=cellfun(@(x) sprintf('%0*s', maxlen, x), ids, 'UniformOutput', false);
+% zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
+% This is no longer necessary since extract_group_statistics now converts to a string before input to table.
+% maxlen = max(cellfun(@(x) strlength(x), ids));
+% ids=cellfun(@(x) sprintf('%0*s', maxlen, x), ids, 'UniformOutput', false);
 
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
@@ -56,12 +56,7 @@ for sub = 1:ns
     [data, y, u, so] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
-
-    %% also ignore any trial in which the RT was implausibly fast or exceeded 4000
-    options.isYout = zeros(size(y));
-    bad_rts = find(data{:,'rt'} < 100 | data{:, 'rt'} >= 4000);
-    options.isYout(:,bad_rts) = 1; % need ones on entire column indicating all basis elements ignored on that trial.
-    
+  
     %Set up sigma noise for every point in u or hidden state?
     rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
     rew_rng_state=rng;
