@@ -1,21 +1,17 @@
 %loads in subjects' data and fits SCEPTIC models using VBA;
+close all; clear;
 
-close all;
-clear;
 %curpath = fileparts(mfilename('fullpath'));
 
-os = computer;
-[~, me] = system('whoami');
-me = strtrim(me);
-is_alex=strcmp(me,'Alex')==1;
+% Note: this function looks for 'sceptic_dataset' and 'sceptic_model'
+% as environment variables so that this script can be scaled easily for batch processing
 
-%note that this function looks for 'sceptic_dataset' and 'sceptic_model'
-%as environment variables so that this script can be scaled easily for batch processing
 so=[];
+
 %so.model='fixed_uv_baked';
 %so.model='decay_factorize_selective_psequate_fixedparams_fmri';
 %so.model='decay_factorize_selective_psequate_fixedparams_meg';
-so.mfx=0; %so that output dir is set properly to have 'ffx' in path
+so.mfx = 0; %so that output dir is set properly to have 'ffx' in path
 
 %so.model='decay';
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
