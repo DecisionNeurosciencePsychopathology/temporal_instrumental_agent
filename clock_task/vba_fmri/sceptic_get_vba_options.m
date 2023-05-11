@@ -28,7 +28,7 @@ options.verbose=0; %don't show single subject fitting process
 
 options.inF.gaussmat = options.inG.gaussmat; %copy (non-truncated) gaussmat into inF
 
-n_t = size(data,1); %number of rows
+n_t = size(data, 1); %number of rows
 n_runs = n_t/so.trials_per_run; %determine number of runs
 options.inF.n_runs = n_runs; %used downstream
 
@@ -46,9 +46,16 @@ if so.multisession
   end
 end
 
-%% skip first trial
+%% skip evolution on first trial (copy initial states)
 options.skipf = zeros(1,n_t);
 options.skipf(1) = 1;
+
+%% censor trials with bad RTs (4th column of u, set in sceptic_get_data)
+options.isYout = zeros(so.ntimesteps, n_t);
+if (so.rt_censor)
+  bad_rts = data.bad_rt;
+  options.isYout(:,bad_rts) = 1; % need ones on entire column indicating all basis elements ignored on that trial.
+end
 
 %% specify dimensions of data to be fit
 dim = struct('n', so.hidden_states * so.nbasis, ...

@@ -8,11 +8,11 @@ so = []; %you can set custom sceptic options here that will override the functio
 
 %for manual tests
 %so.model = 'fixed_uv';
-%so.dataset = 'mmclock_fmri';
-%so.model='decay';
+%so.dataset = 'bsocial';
+%so.model='exp_compress_variant3_psequate';
 %so.dataset='explore';
 %so.sceptic_dataset=so.dataset;
-%setenv('matlab_cpus', '2');
+%setenv('matlab_cpus', '1');
 
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 so.mfx = 1; %for mfx subdir naming
@@ -22,17 +22,21 @@ so.mfx = 1; %for mfx subdir naming
 
 %extract IDs for record keeping
 
-if(strcmpi(so.dataset,'explore'))
+if (strcmpi(so.dataset,'explore'))
   ids=cellfun(@getexploreid,behavfiles,'UniformOutput', false);
+% elseif strcmpi(so.dataset, 'bsocial')
+%   % bsocial files have _1 at the end (session?)
+%   [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+%   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_1_tc|_concat)','match')), fnames, 'UniformOutput', false);
 else
   [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
   ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
 end
 
-%zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
-maxlen = max(cellfun(@(x) strlength(x), ids));
-
-ids=cellfun(@(x) sprintf('%0*s', maxlen, x), ids, 'UniformOutput', false);
+% zero pad IDs if lengths vary so that character strings have consistent length for concatenation of group statistics
+% This is no longer necessary since extract_group_statistics now converts to a string before input to table.
+% maxlen = max(cellfun(@(x) strlength(x), ids));
+% ids=cellfun(@(x) sprintf('%0*s', maxlen, x), ids, 'UniformOutput', false);
 
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
@@ -49,10 +53,10 @@ rew_rng_seed = 99;
 
 for sub = 1:ns
     fprintf('Loading subject %d id: %s \n', sub, ids{sub});
-    [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
+    [data, y, u, so] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
-    
+  
     %Set up sigma noise for every point in u or hidden state?
     rng(rew_rng_seed); %inside trial loop, use random number generator to draw probabilistic outcomes using RewFunction
     rew_rng_state=rng;

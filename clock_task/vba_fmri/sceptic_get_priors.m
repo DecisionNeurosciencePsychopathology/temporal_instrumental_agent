@@ -5,7 +5,23 @@ function [priors] = sceptic_get_priors(dim, so)
   priors.a_sigma = 1;     % Jeffrey's prior
   priors.b_sigma = 1;     % Jeffrey's prior
 
-  if strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_fmri')
+  if strcmpi(so.model, 'fixed_fixedparams_fmri')
+    %fix params at group means from MFX
+    priors.muPhi = [ 3.036006 ]; %beta
+    priors.SigmaPhi = zeros(dim.n_phi);
+
+    priors.muTheta = [ 1.224094 ]; %learning rate
+    priors.SigmaTheta = zeros(dim.n_theta);
+  
+  elseif strcmpi(so.model, 'fixed_fixedparams_meg')
+    %fix params at group means from MFX
+    priors.muPhi = [ 2.922986 ]; %beta
+    priors.SigmaPhi = zeros(dim.n_phi);
+
+    priors.muTheta = [ 1.922545 ]; %learning rate
+    priors.SigmaTheta = zeros(dim.n_theta);
+
+  elseif strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_fmri')
     %fix params at group means from MFX
     priors.muPhi = [ 2.576046 ];
     priors.SigmaPhi = zeros(dim.n_phi);
@@ -44,6 +60,22 @@ function [priors] = sceptic_get_priors(dim, so)
 
     priors.muTheta = [ 4.218003 ]; %learning rate
     priors.SigmaTheta = zeros(dim.n_theta);    
+
+  elseif strcmpi(so.model, 'bsocial_decay_factorize_selective_psequate_fixedparams')
+    %fix params at group means from MFX
+    priors.muPhi = [ 2.638837 ]; %mean beta
+    priors.SigmaPhi = zeros(dim.n_phi); 
+
+    priors.muTheta = [ -0.1616953; -0.07719722 ]; % alpha, gamma
+    priors.SigmaTheta = zeros(dim.n_theta);
+
+  elseif strcmpi(so.model, 'bsocial_decay_factorize_selective_psequate_fixedparams_nocensor')
+    %fix params at group means from MFX without RT censoring
+    priors.muPhi = [ 2.627321 ]; %mean beta
+    priors.SigmaPhi = zeros(dim.n_phi); 
+
+    priors.muTheta = [ -0.2003653; 0.1274972 ]; % alpha, gamma
+    priors.SigmaTheta = zeros(dim.n_theta);
 
   else
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform on temperature inside observation fx

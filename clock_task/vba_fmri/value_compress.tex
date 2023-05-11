@@ -1,0 +1,95 @@
+\documentclass[12pt]{article}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+%\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+%\usepackage{epstopdf}
+%\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\title{SCEPTIC Value-based compression}
+\author{Michael Hallquist \& Alex Dombrovski}
+%\date{}                                           % Activate to display a given date or no date
+
+
+
+\begin{document}
+\maketitle
+%\section{}
+%\subsection{}
+
+I'm setting aside the complexity of the basis weights and eligibility function in the first equations to emphasize qualitative differences. Nevertheless,
+$\delta$ refers to the prediction error calculated from the usual eligibility-scaled PE equations from the main SCEPTIC model.
+
+\section{Spatial decay}
+\subsection{Extant spatial decay model}
+
+This is the current winning model, using the factorized parameterization of learning rate versus decay. Here, I've simplified the notation to deemphasize basis functions, and e
+is the eligibility function on trial $i$ given choice/RT $t$.
+
+\begin{equation}
+V_{i+1} = V_{i} + \alpha [ e \delta_{(i | t)}  - (1-e) \gamma V_{i} ]
+\end{equation}
+
+\section{Value compression models}
+
+Note that the value vector is renormalized after exponentiation to maintain the same min and max values pre- and post-compression. This is accomplished by:
+
+\begin{align}
+V' &= \exp{(V/\phi)} \\
+V' &= (\max(V) - \min(V)) \cdot \frac{V' - \min(V')}{\max(V') - \min(V')} + \min(V)
+\end{align}
+
+\subsection{Variant 1: compression after update}
+
+Conceptually, this approach calculates the usual SCEPTIC update from PE, then uses exponential compression of the updated value vector (basis weights).
+Larger values of $\phi$ yield less compression, while small values shift the value function toward a narrow peak on $RT_{Vmax}$.
+
+\begin{equation}
+V_{i+1} = \exp(\frac{V_i + \alpha \delta_{(i | t)}}{\phi})
+\end{equation}
+
+In initial tests, this model has some parameter competition between $\alpha$ and $\phi$, yielding negative correlations at subject level.
+
+\subsection{Variant 2: Updating against the compressed V}
+
+In this variant, the value vector is updated by exponential compression (applied to all basis weights), then the PE is calculated vis-a-vis this vector and added in the usual fashion.
+Conceptually, this is closer to the view that values are compressed offline (e.g., between trials), then updated by the surprise you experience of the current outcome against that compressed value function.
+
+\begin{equation}
+C(V_i) =  \exp(\frac{V_i}{\phi})
+\end{equation}
+
+\begin{equation}
+\delta_{(i | t)} = e \alpha( r_{(i | t)} - C(V_i))
+\end{equation}
+
+\begin{equation}
+V_{i+1} =  C(V_i) + \alpha \delta_{(i | t)}
+\end{equation}
+
+\subsection{Variant 3: Compression outside of eligibility function}
+
+Here, we only compress values that lie outside of the eligibility function. The big difference from variant 2 is that the prediction error is computed against the uncompressed value vector, then these are summed in the usual weighted fashion across basis weights.
+
+Compressed values
+\begin{equation}
+C(V_i) =  \exp(\frac{V_i}{\phi})
+\end{equation}
+
+Loss function
+\begin{equation}
+L(V_i) =  V_i - C_i
+\end{equation}
+
+\begin{equation}
+\delta_{(i | t)} = e \alpha( r_{(i | t)} - V_i)
+\end{equation}
+
+\begin{equation}
+V_{i+1} =  V_i + \delta_{(i | t)} - (1-e) L(V_i)
+\end{equation}
+
+\end{document}  

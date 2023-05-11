@@ -20,6 +20,12 @@ else
   mfx_str='ffx';
 end
 
+[~, host]=system('hostname');
+host = strtrim(host);
+	
+is_aci = contains(host, 'aci.ics.psu.edu');
+is_longleaf = contains(host, 'unc.edu');
+
 if is_alex
   if  strcmp(me,'Alex')
     sceptic_repo=sprintf('/Users/localadmin/code/temporal_instrumental_agent/clock_task');
@@ -32,10 +38,14 @@ if is_alex
 elseif is_jiazhouchen
   sceptic_repo=sprintf('/Users/jiazhouchen/Documents/UPMC/RStation/temporal_instrumental_agent/clock_task/');
   boxdir = sprintf('/Users/%s/Box',me);
-else
+elseif is_aci
   %ICS-ACI setup
   sceptic_repo='/gpfs/group/mnh5174/default/temporal_instrumental_agent/clock_task';
   addpath(genpath('/storage/home/mnh5174/MATLAB/VBA-toolbox')); %setup VBA
+  boxdir = '';
+elseif is_longleaf
+  sceptic_repo='/proj/mnhallqlab/users/michael/temporal_instrumental_agent/clock_task';
+  addpath(genpath('/proj/mnhallqlab/lab_resources/VBA-toolbox')); %setup VBA
   boxdir = '';
 end
 
@@ -51,8 +61,10 @@ elseif strcmpi(so.dataset,'mmclock_fmri')
 elseif strcmpi(so.dataset,'specc')
   behavfiles = glob([sceptic_repo, '/subjects/specc/*.csv']);
 elseif strcmpi(so.dataset,'explore')
-    rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
-    behavfiles = glob([rootdir, '/*/*.mat']);
+  rootdir = sprintf(fullfile(boxdir,'skinner','data','eprime','clock_reversal'));
+  behavfiles = glob([rootdir, '/*/*.mat']);
+elseif strcmpi(so.dataset, 'bsocial')
+  behavfiles = glob([sceptic_repo, '/subjects/bsocial/*.csv']);
 end
 
 if is_alex

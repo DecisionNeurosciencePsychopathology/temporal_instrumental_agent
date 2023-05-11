@@ -11,6 +11,10 @@ elseif strcmpi(inF.model, 'fixed_uv_positive')
   %this is just a stub in the port; I have not implemented this in full
   theta_trans = [ VBA_sigmoid(theta(1)); ... %alpha
     1./(1+exp(-theta(2)-log(inF.sigma_noise))) ]; %tau -- discounted by noise?
+elseif contains(inF.model, 'exp_compress')
+  %alpha is sigmoid transform, phi is exp transform (positive)
+  theta_trans = [ VBA_sigmoid(theta(1)); ... %alpha
+    exp(theta(2)) ]; % phi (power shaping)
 else
   %for now, transforming all elements of theta... should eventually trap models as below, but a bit of a pain
   theta_trans = VBA_sigmoid(theta); %sigmoid transform alpha and gamma, if they exist

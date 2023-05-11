@@ -1,4 +1,4 @@
-function [data, y, u] = sceptic_get_data(data_file, so)
+function [data, y, u, so] = sceptic_get_data(data_file, so)
 if(strcmpi(so.dataset,'explore'))
     load(data_file,'-mat','order','orderfmt')
     order=order(~cellfun('isempty',order));
@@ -10,6 +10,22 @@ else
     data = readtable(data_file,'Delimiter',',','ReadVariableNames',true);
 end
 
+% determine block number by looking at change in rewFunc and emotion
+data{:,'block_number'} = 0;
+curval = strcat(data{1,'rewFunc'}, data{1,'emotion'});
+curit = 1;
+for (i = 1:size(data,1))
+  testval = strcat(data{i,'rewFunc'}, data{i,'emotion'});
+  if (~strcmpi(curval, testval))
+    curval = testval;
+    curit = curit + 1;
+  end
+  data{i,'block_number'} = curit;
+end
+
+% determine trials per run from data since it might vary (unlikely, but happens in bsocial)
+boundaries = find(ischange(data{:,'block_number'})) - 1;
+so.trials_per_run = boundaries(1);
 
 n_t = size(data,1); %number of rows
 trials_to_fit = 1:n_t; %fit all trials by default
@@ -30,7 +46,12 @@ end
 u = [(data{trials_to_fit, 'rt'} / so.trial_length * so.ntimesteps)'; data{trials_to_fit, 'score'}'];
 u = [zeros(size(u,1),1) u(:,1:end-1)]; %right shift inputs to get t versus t+1 correct in inputs versus predictions
 
-%add run boundary marker for u resetting
-u = vertcat(u, [0; diff(data.run)]');
+%add run/block boundary marker for u-resetting models
+u = vertcat(u, [0; diff(data.block_number)]');
+
+% add any bad RTs to 4th input, can be used to set isYout
+bad_rt = data.rt < 100 | data.rt >= 4000;
+data = addvars(data, bad_rt);
+u = vertcat(u, data.bad_rt');
 
 end

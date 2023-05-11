@@ -1,4 +1,4 @@
-parse_sceptic_outputs <- function(outdir, subjects_dir) {
+parse_sceptic_outputs <- function(outdir, subjects_dir, trials_per_run = 50) {
   require(readr)
   require(dplyr)
   require(entropy)
@@ -12,15 +12,26 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   basis <- readr::read_csv(basis_file)
   global <- readr::read_csv(global_file)
-  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2, run_boundary=u_3) %>% mutate(id=as.character(id))
+  #trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2, run_boundary=u_3) %>% mutate(id=as.character(id))
+  trial_df <- readr::read_csv(trial_file) %>% dplyr::rename(rt_next=u_1, score_next=u_2) %>% mutate(id=as.character(id))
 
+  #uncertainty models include u_3 as run boundary for u resetting
+  if ("u_3" %in% names(trial_df)) trial_df <- trial_df %>% dplyr::rename(run_boundary = u_3)
+
+  # u_4 indicates a bad RT that was censored in fitting (1 = censored)
+  if ("u_4" %in% names(trial_df)) {
+    trial_df <- trial_df %>% dplyr::rename(bad_rt = u_4)
+  } else {
+    trial_df$bad_rt <- NA # model did not use u_4
+  }
+  
   has_u <- any(grepl("^U_\\d+", names(trial_df), perl=TRUE)) #are u outputs present?
   has_d <- any(grepl("^D_\\d+", names(trial_df), perl=TRUE)) #are d outputs present?
   
-  basis <- as.matrix(basis) #24 x 40 (nbasis x ntimesteps)
+  basis <- as.matrix(basis) # 24 x 40 (nbasis x ntimesteps)
 
   #response vector (y1-y40)
-  y_mat <- trial_df %>% dplyr::select(matches("y_\\d+")) %>% as.matrix()
+  y_mat <- trial_df %>% dplyr::select(matches("^y_\\d+$")) %>% as.matrix()
 
   #identify the chosen time bin
   y_chosen <- apply(y_mat, 1, function(r) { which(r==1) })
@@ -28,7 +39,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Expected value statistics
 
-  v_mat <- trial_df %>% dplyr::select(matches("V_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+  v_mat <- trial_df %>% dplyr::select(matches("^V_\\d+$")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
 
   #put value back onto time grid
   v_func <- v_mat %*% basis
@@ -51,6 +62,13 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #value of the chosen time bin (action)
   v_chosen <- unname(sapply(1:nrow(v_func), function(r) { v_func[r, y_chosen[r]] }))
 
+  #quantile of value for the chosen action
+  #remove the first time bin because it reflects the first 100ms, which the subject essentially can't reach
+  v_chosen_quantile <- unname(sapply(1:nrow(v_func), function(r) {
+    ee <- ecdf(v_func[r,-1])
+    ee(v_func[r, y_chosen[r]])
+  }))
+  
   #calculate entropy of the basis weights (as in the Cognition paper)
   v_entropy <- apply(v_mat, 1, function(basis_weights) {
     w_norm <- basis_weights/sum(basis_weights)
@@ -72,22 +90,13 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
 
   #loss functions based on K-L distance
   v_mat_lag <- trial_df %>% select(id, asc_trial) %>% bind_cols(as.data.frame(v_mat)) %>%
-    mutate(asc_trial=as.integer(asc_trial), run_trial=case_when(
-      asc_trial >= 1 & asc_trial <= 50 ~ asc_trial,
-      asc_trial >= 51 & asc_trial <= 100 ~ asc_trial - 50L, #dplyr/rlang has gotten awfully picky about data types!!
-      asc_trial >= 101 & asc_trial <= 150 ~ asc_trial - 100L,
-      asc_trial >= 151 & asc_trial <= 200 ~ asc_trial - 150L,
-      asc_trial >= 201 & asc_trial <= 250 ~ asc_trial - 200L,
-      asc_trial >= 251 & asc_trial <= 300 ~ asc_trial - 250L,
-      asc_trial >= 301 & asc_trial <= 350 ~ asc_trial - 300L,
-      asc_trial >= 351 & asc_trial <= 400 ~ asc_trial - 350L,
-      TRUE ~ NA_integer_)) %>%
+    mutate(asc_trial=as.integer(asc_trial), run_trial=ceiling(asc_trial/!!trials_per_run)) %>%
     group_by(id) %>%
     mutate_at(vars(starts_with("V_")), funs(lag=lag(., 1, order_by=asc_trial))) %>% ungroup()
-
+  
   kld_est <- sapply(1:nrow(v_mat_lag), function(r) {
-    v_cur <- v_mat_lag %>% select(matches("V_\\d+$")) %>% slice(r) %>% unlist()
-    v_lag <- v_mat_lag %>% select(matches("V_\\d+_lag$")) %>% slice(r) %>% unlist()
+    v_cur <- v_mat_lag %>% select(matches("^V_\\d+$")) %>% slice(r) %>% unlist()
+    v_lag <- v_mat_lag %>% select(matches("^V_\\d+_lag$")) %>% slice(r) %>% unlist()
     if (sum(v_cur) < .001 || sum(v_lag) < .001) {
       kld <- c(NA, NA, NA, NA)
     } else {
@@ -101,14 +110,14 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     }
     return(kld)
   })
-
+  
   kld_est <- t(kld_est) %>% as.data.frame() %>%
     setNames(c("mean_kld", "intrinsic_discrepancy", "kld_newlearn", "kld_forget"))
 
   #####
   # Prediction error statistics
 
-  pe_mat <- trial_df %>% dplyr::select(matches("PE_\\d+")) %>% as.matrix()
+  pe_mat <- trial_df %>% dplyr::select(matches("^PE_\\d+$")) %>% as.matrix()
   pe_func <- pe_mat %*% basis
 
   pe_max <- apply(pe_func, 1, function(r) {
@@ -139,7 +148,7 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   
   if (has_d) {
     
-    d_mat <- trial_df %>% dplyr::select(matches("D_\\d+")) %>% as.matrix()
+    d_mat <- trial_df %>% dplyr::select(matches("^D_\\d+$")) %>% as.matrix()
     if (ncol(d_mat) > 0) { #will be absent for non-decay models
       d_func <- d_mat %*% basis
       d_auc <- apply(d_mat, 1, function(r) {
@@ -157,12 +166,21 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #####
   # Uncertainty statistics
   if (has_u) {
-
-    u_mat <- trial_df %>% dplyr::select(matches("U_\\d+")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
+    u_mat <- trial_df %>% dplyr::select(matches("^U_\\d+$")) %>% as.matrix() # (nsubjs * ntrials) x nbasis
     
     #put value back onto time grid
     u_func <- u_mat %*% basis
 
+    #u_func_wiz <- t(apply(u_func, 1, function(uvec) { as.vector(scale(uvec[-1])) }))
+    #u_func_wiz <- t(apply(u_func, 1, function(uvec) { uvec[-1]/mean(uvec[-1]) })) #just renormalize to mean=1
+    
+    #uncertainty quantile for the chosen action
+    #remove the first time bin because it reflects the first 100ms, which the subject essentially can't reach
+    u_chosen_quantile <- unname(sapply(1:nrow(u_func), function(r) {
+      ee <- ecdf(u_func[r,-1])
+      ee(u_func[r, y_chosen[r]])
+    }))
+    
     #uncertainty of the chosen time bin (action)
     u_chosen <- unname(sapply(1:nrow(u_func), function(r) { u_func[r, y_chosen[r]] }))
   }
@@ -174,22 +192,26 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
   #Consequently, the PE of trial 1 is actually in position 2, etc. And, for now, the PE and D of the last trial (50) is not collected/estimated
 
   #compile trial statistics
-  trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next) %>%
-    bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
+  trial_stats <- trial_df %>% select(id, dataset, model, asc_trial, rt_next, score_next, bad_rt) %>%
+    bind_cols(y_chosen=y_chosen, v_chosen=v_chosen, v_chosen_quantile=v_chosen_quantile, rt_vmax=rt_vmax, v_max=v_max, v_auc=v_auc,
               v_sd=v_sd, v_entropy=v_entropy, v_entropy_func=v_entropy_func, pe_max=pe_max, pe_chosen=pe_chosen) %>%
     group_by(id) %>%
     mutate(
       rt=lead(rt_next, 1, order_by=asc_trial), #shift rt back onto original time grid
       score=lead(score_next, 1, order_by=asc_trial), #same for score
       pe_max=lead(pe_max, 1, order_by=asc_trial), #same for PE_max
-      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial) #same for PE_chosen
+      pe_chosen=lead(pe_chosen, 1, order_by=asc_trial), #same for PE_chosen
+      v_chosen_quantile_lag = lag(v_chosen_quantile, 1, order_by=asc_trial),
+      v_chosen_quantile_change = v_chosen_quantile - v_chosen_quantile_lag
     ) %>% ungroup() %>% dplyr::rename(rt_vba=rt, score_vba=score) %>% cbind(kld_est)
 
   if (has_u) {
-    trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen) %>% group_by(id) %>%
+    trial_stats <- trial_stats %>% bind_cols(u_chosen=u_chosen, u_chosen_quantile=u_chosen_quantile) %>% group_by(id) %>%
       mutate(
         u_chosen_lag = lag(u_chosen, 1, order_by=asc_trial),
-        u_chosen_change = u_chosen - u_chosen_lag
+        u_chosen_quantile_lag = lag(u_chosen_quantile, 1, order_by=asc_trial),
+        u_chosen_change = u_chosen - u_chosen_lag,
+        u_chosen_quantile_change = u_chosen_quantile - u_chosen_quantile_lag
       ) %>% ungroup()
   }
 
@@ -214,7 +236,8 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
       a<-strsplit(ff,.Platform$file.sep)[[1]]
       df$id<-a[length(a)-1]
     } else {
-      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+      #df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d]+)(?:_1)*(?=_tc|_concat).*", "\\1", ff, perl=TRUE)
+      df$id <- sub(".*(?<=MEG_|fMRIEmoClock_)([\\d_]+)(?=_tc|_concat).*", "\\1", ff, perl = TRUE)
     }
     df <- df %>% select(id, run, asc_trial, rewFunc, emotion, everything())
     return(df)
@@ -224,5 +247,22 @@ parse_sceptic_outputs <- function(outdir, subjects_dir) {
     select(dataset, model, id, run, trial, asc_trial, rewFunc, emotion, rt_csv, score_csv, magnitude, probability, ev, everything()) %>%
     arrange(dataset, model, id, trial)
 
-  return(trial_stats)
+  #also return the trials x bins matrices for each signal (for wide/coxme-style analysis)
+  v_df <- v_func %>% as_tibble() %>% setNames(paste("V", 1:ncol(v_func), sep="_"))
+  v_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(v_df)
+  
+  pe_df <- pe_func %>% as_tibble() %>% setNames(paste("PE", 1:ncol(v_func), sep="_"))
+  pe_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(pe_df)
+
+  if (has_d) {
+    d_df <- d_func %>% as_tibble() %>% setNames(paste("D", 1:ncol(d_func), sep="_"))
+    d_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(d_df)
+  } else { d_df <- NULL }
+  
+  if (has_u) {
+    u_df <- u_func %>% as_tibble() %>% setNames(paste("U", 1:ncol(u_func), sep="_"))
+    u_df <- trial_stats %>% select(id, run, trial, rewFunc, y_chosen) %>% bind_cols(u_df)
+  } else { u_df <- NULL }
+  
+  return(list(trial_stats=trial_stats, v_df=v_df, pe_df=pe_df, d_df=d_df, u_df=u_df))
 }
