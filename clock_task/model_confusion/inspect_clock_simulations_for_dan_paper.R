@@ -41,3 +41,35 @@ bdf <- data.table::rbindlist(model_list)
 ggplot(bdf, aes(trial, rt, lty = model)) + geom_smooth()
 ggplot(bdf %>% filter(str_detect(model, "fixed")), aes(trial, rt_swing, color = model)) + geom_smooth(se = F) + geom_line(alpha = .1) + facet_grid(~set)
 ggplot(bdf, aes(trial, reward, color = model)) + geom_smooth() + facet_wrap(~set)
+
+# get the sinusoidals
+optmat <- l$optmat[,1,]
+#get the EV of the models' choices (not just the score)
+# idea: loop over all contingencies
+models <- unique(bdf$model)
+for (contingency_index in 1:n_contingencies) {
+  bdf$sinusoidal[bdf$contingency==contingency_index] <- as.character(optmat[,contingency_index]$name)
+  for (model_index in 1:length(models)) {
+    for (set in 1:n_sets) {
+      for (trial in 1:n_trials) {
+        bdf$ev_chosen[bdf$contingency==contingency_index & bdf$model==models[model_index] & bdf$set==set & bdf$trial==trial] <- 
+          optmat[,contingency]$ev[bdf$rt[bdf$contingency==contingency_index & bdf$model==models[model_index] & bdf$set==set & bdf$trial==trial]]
+      }
+    }
+  }
+}
+bdf <- bdf %>% group_by(model, contingency, set) %>% arrange(trial, by_group = T) %>% mutate(ev_lag = lag(ev_chosen),
+                                                                                             rt_lag = lag(rt)) %>% ungroup()
+setwd("~/OneDrive - University of Pittsburgh/Documents/SCEPTIC_fMRI/model_simulations/")
+pdf("ev_chosen_by_model_trial_set.pdf", height = 30, width = 10)
+ggplot(bdf, aes(trial,ev_chosen, color = model)) + geom_smooth() + facet_wrap(contingency~set)
+dev.off()
+
+# sanity check: SOMETHING WRONG
+ggplot(bdf, aes(rt,ev_chosen, color = model)) + geom_smooth(method = "loess")# + facet_wrap(contingency~set)
+
+pdf("ev_chosen_vs_rtswing_by_model.pdf", height = 30, width = 10)
+ggplot(bdf, aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess")# + facet_wrap(contingency~set)
+dev.off()
+
+ggplot(bdf %>% filter(trial>1), aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess") + facet_wrap(~ev_lag > 22)# + facet_wrap(contingency~set)
