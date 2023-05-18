@@ -46,30 +46,54 @@ ggplot(bdf, aes(trial, reward, color = model)) + geom_smooth() + facet_wrap(~set
 optmat <- l$optmat[,1,]
 #get the EV of the models' choices (not just the score)
 # idea: loop over all contingencies
-models <- unique(bdf$model)
+
+ev_list <- list()
 for (contingency_index in 1:n_contingencies) {
-  bdf$sinusoidal[bdf$contingency==contingency_index] <- as.character(optmat[,contingency_index]$name)
-  for (model_index in 1:length(models)) {
-    for (set in 1:n_sets) {
-      for (trial in 1:n_trials) {
-        bdf$ev_chosen[bdf$contingency==contingency_index & bdf$model==models[model_index] & bdf$set==set & bdf$trial==trial] <- 
-          optmat[,contingency]$ev[bdf$rt[bdf$contingency==contingency_index & bdf$model==models[model_index] & bdf$set==set & bdf$trial==trial]]
-      }
-    }
-  }
+  cont_df <- as_tibble(as.vector(optmat[,contingency_index]$ev)) %>% rename(ev_chosen = value)
+  cont_df$contingency <- contingency_index
+  cont_df$contingency_name <- as.character(optmat[1,][contingency_index])
+  cont_df$rt <- as.numeric(1:500)
+  ev_list[[contingency_index]] <- cont_df
 }
-bdf <- bdf %>% group_by(model, contingency, set) %>% arrange(trial, by_group = T) %>% mutate(ev_lag = lag(ev_chosen),
-                                                                                             rt_lag = lag(rt)) %>% ungroup()
+ev_df <- data.table::rbindlist(ev_list)
+
+ggplot(bdf, aes(rt, reward)) + geom_smooth() + facet_wrap(~contingency)
+
+
+bdf <- bdf %>% inner_join(ev_df, by = c("rt", "contingency")) %>% 
+  # remove regular KF, dead on arrival
+  filter(!str_detect(pattern = "kalman",model))%>% 
+  group_by(model, contingency, set) %>% arrange(trial, by_group = T) %>% 
+  mutate(ev_lag = lag(ev_chosen),
+         rt_lag = lag(rt),
+         reward_lag = lag(reward)) %>% ungroup() 
+ggplot(ev_df, aes(rt, ev_chosen)) + geom_line() + facet_wrap(~contingency)
+ggplot(bdf, aes(rt, ev_chosen)) + geom_line() + facet_wrap(~contingency)
+
+ggplot(ev_df, aes(rt, ev_chosen)) + geom_smooth()
+
 setwd("~/OneDrive - University of Pittsburgh/Documents/SCEPTIC_fMRI/model_simulations/")
 pdf("ev_chosen_by_model_trial_set.pdf", height = 30, width = 10)
 ggplot(bdf, aes(trial,ev_chosen, color = model)) + geom_smooth() + facet_wrap(contingency~set)
 dev.off()
 
-# sanity check: SOMETHING WRONG
-ggplot(bdf, aes(rt,ev_chosen, color = model)) + geom_smooth(method = "loess")# + facet_wrap(contingency~set)
-
-pdf("ev_chosen_vs_rtswing_by_model.pdf", height = 30, width = 10)
-ggplot(bdf, aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess")# + facet_wrap(contingency~set)
+pdf("ev_chosen_by_model.pdf", height = 4, width = 5)
+ggplot(bdf, aes(trial,ev_chosen, color = model)) + 
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 5, bs = "cs")) + facet_wrap(~set)
 dev.off()
 
-ggplot(bdf %>% filter(trial>1), aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess") + facet_wrap(~ev_lag > 22)# + facet_wrap(contingency~set)
+pdf("rt_swing_by_model.pdf", height = 4, width = 5)
+ggplot(bdf, aes(trial,rt_swing, color = model)) + 
+  geom_smooth(method = "gam", formula = y ~ s(x, k = 5, bs = "cs")) + facet_wrap(~set)
+dev.off()
+
+# sanity check
+# ggplot(bdf, aes(rt,ev_chosen, color = model)) + geom_smooth(method = "loess") + facet_wrap(contingency~set)
+
+pdf("ev_chosen_vs_rtswing_by_model.pdf", height = 4, width = 5)
+ggplot(bdf, aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess") + facet_wrap(~set)
+dev.off()
+
+pdf("rt_swing_ev_by_model_and_reward.pdf", height = 4, width = 8)
+ggplot(bdf %>% filter(trial>1), aes(rt_swing,ev_chosen, color = model)) + geom_smooth(method = "loess") + facet_wrap(~reward_lag>0)# + facet_wrap(contingency~set)
+dev.off()
