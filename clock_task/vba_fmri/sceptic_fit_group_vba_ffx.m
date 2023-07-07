@@ -17,7 +17,7 @@ so=[];
 %so.model='decay_factorize_selective_psequate_fixedparams_meg';
 so.mfx=0; %so that output dir is set properly to have 'ffx' in path
 so.dataset='explore';
-so.model='decay_factorize_selective_psequate_fixedparams_fmri’; %options: decay, fixed, fixed_uv';
+so.model='decay_factorize_selective_psequate_fixedparams_fmri'; % ;options: decay, fixed, fixed_uv';
 so.trials_per_run = 120;
 %so.model='decay';
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
@@ -26,9 +26,12 @@ so = sceptic_validate_options(so); %initialize and validate sceptic fitting sett
 [so, poolobj, behavfiles] = sceptic_setup_environment(so);
 
 %extract IDs for record keeping
-[~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
-ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
-
+if(strcmpi(so.dataset,'explore'))
+  ids=cellfun(@getexploreid,behavfiles,'UniformOutput', false);
+else
+  [~,fnames]=cellfun(@fileparts, behavfiles, 'UniformOutput', false);
+  ids=cellfun(@(x) char(regexp(x,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match')), fnames, 'UniformOutput', false);
+end
 %puts a nested cell in each element
 %ids=regexp(fnames,'(?<=MEG_|fMRIEmoClock_)[\d_]+(?=_tc|_concat)','match'); %use lookahead and lookbehind to make id more flexible (e.g., 128_1)
 
@@ -40,12 +43,17 @@ s_all = cell(1,length(behavfiles));
 
 % p = ProgressBar(length(behavfiles));
 
-parfor sub = 1:length(behavfiles)
+for sub = 1:length(behavfiles)
   fprintf('Fitting subject %d id: %s \n', sub, ids{sub});
-  
+   if strcmp(ids{sub},'213163') % == 21 %hack for subject with only 103 trials   % 213163
+      disp("hack - change the number of trials per run for this subject");
+      so.trials_per_run = 102;
+  else
+      so.trials_per_run = 120;
+  end
   [posterior, out] = clock_sceptic_vba_fmri(behavfiles{sub}, so);
   s_all{sub} = extract_subject_statistics(posterior, out); %extract key statistics for each subject
-  
+  s_all{sub}.id = ids{sub};
   L(sub) = out.F;
   
   subj_id=ids{sub};
@@ -57,12 +65,6 @@ parfor sub = 1:length(behavfiles)
     basis_mat = array2table(out.options.inF.gaussmat, 'VariableNames', vnames);
 
     writetable(basis_mat, sprintf('%s/%s_%s_ffx_sceptic_basis.csv', so.output_dir, so.dataset, so.model));    
-  end
-  if strcmp(ids{sub},'213163') % == 21 %hack for subject with only 103 trials   % 213163
-      disp("hack - change the number of trials per run for this subject");
-      so.trials_per_run = 102;
-  else
-      so.trials_per_run = 120;
   end
   %parsave doesn't work in recent MATLAB versions...
   m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
