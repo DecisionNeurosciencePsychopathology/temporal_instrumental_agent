@@ -23,10 +23,10 @@ function [priors] = sceptic_get_priors(dim, so)
 
   elseif strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_fmri')
     %fix params at group means from MFX
-    priors.muPhi = [ 2.6519 ];
+    priors.muPhi = [ 2.576046 ];
     priors.SigmaPhi = zeros(dim.n_phi);
 
-    priors.muTheta = [ 0.2159; 0.5150 ];
+    priors.muTheta = [ -0.4139055; -0.02077855 ];
     priors.SigmaTheta = zeros(dim.n_theta);
 
   elseif strcmpi(so.model, 'decay_factorize_selective_psequate_fixedparams_meg')
@@ -60,7 +60,11 @@ function [priors] = sceptic_get_priors(dim, so)
 
     priors.muTheta = [ 4.218003 ]; %learning rate
     priors.SigmaTheta = zeros(dim.n_theta);    
-
+  elseif strcmpi(so.model,'decay_factorize_selective_psequate_fixedparams_fmri')
+     priors.muPhi = [ 2.696895114 ]; % AI raw mean beta from global stats
+  priors.SigmaPhi = zeros(dim.n_phi);
+  priors.muTheta = [ 0.069335857; 0.27263676 ]; % AI raw mean alpha, gamma from global stats
+  priors.SigmaTheta = zeros(dim.n_theta); 
   else
     priors.muPhi = zeros(dim.n_phi,1); % exp tranform on temperature inside observation fx
     priors.SigmaPhi = 1e1*eye(dim.n_phi); %variance of 10

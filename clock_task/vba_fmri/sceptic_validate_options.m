@@ -29,7 +29,7 @@ else
     end
 end
 
-if ~isfield(so, 'nbasis'), so.nbasis=24; end
+if ~isfield(so, 'nbasis'), so.nbasis=6; end
 if ~isfield(so, 'multinomial'), so.multinomial=1; end
 if ~isfield(so, 'multisession'), so.multisession=0; end
 if ~isfield(so, 'fixed_params_across_runs'), so.fixed_params_across_runs=1; end

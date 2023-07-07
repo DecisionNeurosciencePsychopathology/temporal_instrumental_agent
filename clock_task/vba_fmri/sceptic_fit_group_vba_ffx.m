@@ -16,7 +16,9 @@ so=[];
 %so.model='decay_factorize_selective_psequate_fixedparams_fmri';
 %so.model='decay_factorize_selective_psequate_fixedparams_meg';
 so.mfx=0; %so that output dir is set properly to have 'ffx' in path
-
+so.dataset='explore';
+so.model='decay_factorize_selective_psequate_fixedparams_fmri’; %options: decay, fixed, fixed_uv';
+so.trials_per_run = 120;
 %so.model='decay';
 so = sceptic_validate_options(so); %initialize and validate sceptic fitting settings
 
@@ -56,7 +58,12 @@ parfor sub = 1:length(behavfiles)
 
     writetable(basis_mat, sprintf('%s/%s_%s_ffx_sceptic_basis.csv', so.output_dir, so.dataset, so.model));    
   end
-  
+  if strcmp(ids{sub},'213163') % == 21 %hack for subject with only 103 trials   % 213163
+      disp("hack - change the number of trials per run for this subject");
+      so.trials_per_run = 102;
+  else
+      so.trials_per_run = 120;
+  end
   %parsave doesn't work in recent MATLAB versions...
   m=matfile(sprintf('%s/sceptic_fit_%s_%s_multinomial%d_multisession%d_fixedparams%d_uaversion%d', ...
     so.output_dir, ids{sub}, so.model, so.multinomial, so.multisession, ...

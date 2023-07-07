@@ -108,9 +108,6 @@ elseif is_jiazhouchen
 elseif is_andrew
     ncpus = 6;
     poolobj = gcp('nocreate');
-    if isempty(poolobj)
-        poolobj=parpool('local',ncpus); %just use shared pool for now since it seems not to matter (no collisions)
-    end
 else
   ncpus=getenv('matlab_cpus');
   if strcmpi(ncpus, '')

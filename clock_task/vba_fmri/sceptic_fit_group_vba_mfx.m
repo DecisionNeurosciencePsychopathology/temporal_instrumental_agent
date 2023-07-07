@@ -8,9 +8,10 @@ so = []; %you can set custom sceptic options here that will override the functio
 
 %for manual tests
 %so.model = 'fixed_uv';
+so.model = 'decay_factorize_selective_psequate_fixedparams_fmri'; %this is the more nuanced model
 %so.dataset = 'mmclock_fmri';
 %so.model='exp_compress_variant3_psequate';
-%so.dataset='explore';
+so.dataset='explore';
 %so.sceptic_dataset=so.dataset;
 %setenv('matlab_cpus', '1');
 
@@ -49,6 +50,12 @@ rew_rng_seed = 99;
 
 for sub = 1:ns
     fprintf('Loading subject %d id: %s \n', sub, ids{sub});
+    if strcmp(ids{sub},'213163') % == 21 %hack for subject with only 103 trials   % 213163
+        disp("hack - change the number of trials per run for this subject");
+        so.trials_per_run = 102;
+    else
+         so.trials_per_run = 120;
+    end
     [data, y, u] = sceptic_get_data(behavfiles{sub}, so);
     [options, dim] = sceptic_get_vba_options(data, so);
     n_t(sub) = dim.n_t; % allow for variation in number of trials across subjects
